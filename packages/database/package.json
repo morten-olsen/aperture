@@ -1,0 +1,33 @@
+{
+  "type": "module",
+  "main": "dist/exports.js",
+  "scripts": {
+    "build": "tsc --build",
+    "dev": "tsc --build --watch --preserveWatchOutput",
+    "test:unit": "vitest --run --passWithNoTests",
+    "test": "pnpm run \"/^test:/\""
+  },
+  "packageManager": "pnpm@10.6.0",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": "./dist/exports.js"
+  },
+  "devDependencies": {
+    "@morten-olsen/agentic-configs": "workspace:*",
+    "@morten-olsen/agentic-tests": "workspace:*",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "25.2.3",
+    "@vitest/coverage-v8": "4.0.18",
+    "typescript": "5.9.3",
+    "vitest": "4.0.18"
+  },
+  "name": "@morten-olsen/agentic-database",
+  "version": "1.0.0",
+  "dependencies": {
+    "better-sqlite3": "^12.6.2",
+    "kysely": "^0.28.11",
+    "zod": "^4.3.6"
+  }
+}

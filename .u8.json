@@ -1,0 +1,211 @@
+{
+  "values": {
+    "monoRepo": true,
+    "packagePrefix": "@morten-olsen/agentic-",
+    "packageVersion": "1.0.0"
+  },
+  "entries": [
+    {
+      "timestamp": "2026-02-14T13:29:36.948Z",
+      "template": "monorepo",
+      "values": {
+        "monoRepo": true,
+        "packagePrefix": "@morten-olsen/agentic-",
+        "packageVersion": "1.0.0"
+      }
+    },
+    {
+      "timestamp": "2026-02-14T13:29:47.651Z",
+      "template": "eslint",
+      "values": {
+        "monoRepo": true,
+        "packagePrefix": "@morten-olsen/agentic-",
+        "packageVersion": "1.0.0",
+        "target-pkg": {
+          "name": "@morten-olsen/agentic-repo",
+          "dir": "/Users/alice/Projects/incubator/glados2"
+        }
+      }
+    },
+    {
+      "timestamp": "2026-02-14T13:30:01.362Z",
+      "template": "pkg",
+      "values": {
+        "monoRepo": true,
+        "packagePrefix": "@morten-olsen/agentic-",
+        "packageVersion": "1.0.0",
+        "packageName": "core"
+      }
+    },
+    {
+      "timestamp": "2026-02-14T20:53:51.887Z",
+      "template": "pkg",
+      "values": {
+        "monoRepo": true,
+        "packagePrefix": "@morten-olsen/agentic-",
+        "packageVersion": "1.0.0",
+        "packageName": "prompt"
+      }
+    },
+    {
+      "timestamp": "2026-02-14T20:56:55.056Z",
+      "template": "pkg",
+      "values": {
+        "monoRepo": true,
+        "packagePrefix": "@morten-olsen/agentic-",
+        "packageVersion": "1.0.0",
+        "packageName": "database"
+      }
+    },
+    {
+      "timestamp": "2026-02-14T21:20:46.339Z",
+      "template": "pkg",
+      "values": {
+        "monoRepo": true,
+        "packagePrefix": "@morten-olsen/agentic-",
+        "packageVersion": "1.0.0",
+        "packageName": "server"
+      }
+    },
+    {
+      "timestamp": "2026-02-14T21:22:21.749Z",
+      "template": "pkg",
+      "values": {
+        "monoRepo": true,
+        "packagePrefix": "@morten-olsen/agentic-",
+        "packageVersion": "1.0.0",
+        "packageName": "behaviour"
+      }
+    },
+    {
+      "timestamp": "2026-02-14T21:50:33.322Z",
+      "template": "pkg",
+      "values": {
+        "monoRepo": true,
+        "packagePrefix": "@morten-olsen/agentic-",
+        "packageVersion": "1.0.0",
+        "packageName": "trigger"
+      }
+    },
+    {
+      "timestamp": "2026-02-14T22:19:09.905Z",
+      "template": "pkg",
+      "values": {
+        "monoRepo": true,
+        "packagePrefix": "@morten-olsen/agentic-",
+        "packageVersion": "1.0.0",
+        "packageName": "conversation"
+      }
+    },
+    {
+      "timestamp": "2026-02-14T22:19:18.574Z",
+      "template": "pkg",
+      "values": {
+        "monoRepo": true,
+        "packagePrefix": "@morten-olsen/agentic-",
+        "packageVersion": "1.0.0",
+        "packageName": "playground"
+      }
+    },
+    {
+      "timestamp": "2026-02-14T23:06:33.092Z",
+      "template": "pkg",
+      "values": {
+        "monoRepo": true,
+        "packagePrefix": "@morten-olsen/agentic-",
+        "packageVersion": "1.0.0",
+        "packageName": "timeline"
+      }
+    },
+    {
+      "timestamp": "2026-02-14T23:06:40.346Z",
+      "template": "pkg",
+      "values": {
+        "monoRepo": true,
+        "packagePrefix": "@morten-olsen/agentic-",
+        "packageVersion": "1.0.0",
+        "packageName": "playground"
+      }
+    },
+    {
+      "timestamp": "2026-02-14T23:07:00.277Z",
+      "template": "pkg",
+      "values": {
+        "monoRepo": true,
+        "packagePrefix": "@morten-olsen/agentic-",
+        "packageVersion": "1.0.0",
+        "packageName": "events"
+      }
+    },
+    {
+      "timestamp": "2026-02-14T23:07:05.562Z",
+      "template": "pkg",
+      "values": {
+        "monoRepo": true,
+        "packagePrefix": "@morten-olsen/agentic-",
+        "packageVersion": "1.0.0",
+        "packageName": "memory"
+      }
+    },
+    {
+      "timestamp": "2026-02-14T23:07:17.090Z",
+      "template": "pkg",
+      "values": {
+        "monoRepo": true,
+        "packagePrefix": "@morten-olsen/agentic-",
+        "packageVersion": "1.0.0",
+        "packageName": "calendar"
+      }
+    },
+    {
+      "timestamp": "2026-02-14T23:07:29.267Z",
+      "template": "pkg",
+      "values": {
+        "monoRepo": true,
+        "packagePrefix": "@morten-olsen/agentic-",
+        "packageVersion": "1.0.0",
+        "packageName": "home-assistant"
+      }
+    },
+    {
+      "timestamp": "2026-02-14T23:07:47.346Z",
+      "template": "pkg",
+      "values": {
+        "monoRepo": true,
+        "packagePrefix": "@morten-olsen/agentic-",
+        "packageVersion": "1.0.0",
+        "packageName": "day-planner"
+      }
+    },
+    {
+      "timestamp": "2026-02-14T23:07:59.632Z",
+      "template": "pkg",
+      "values": {
+        "monoRepo": true,
+        "packagePrefix": "@morten-olsen/agentic-",
+        "packageVersion": "1.0.0",
+        "packageName": "personality"
+      }
+    },
+    {
+      "timestamp": "2026-02-14T23:08:08.065Z",
+      "template": "pkg",
+      "values": {
+        "monoRepo": true,
+        "packagePrefix": "@morten-olsen/agentic-",
+        "packageVersion": "1.0.0",
+        "packageName": "time"
+      }
+    },
+    {
+      "timestamp": "2026-02-15T00:39:15.815Z",
+      "template": "pkg",
+      "values": {
+        "monoRepo": true,
+        "packagePrefix": "@morten-olsen/agentic-",
+        "packageVersion": "1.0.0",
+        "packageName": "skill"
+      }
+    }
+  ]
+}
