@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import OpenAI from 'openai';
 
+import type { Tool } from '../tool/tool.js';
 import type { Services } from '../utils/utils.service.js';
 import { PluginService, PluginPrepare } from '../plugin/plugin.js';
 import { EventEmitter } from '../utils/utils.event-emitter.js';
@@ -66,6 +67,16 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
     return this.#prompt.output;
   }
 
+  #formatToolError = (toolName: string, error: unknown): string => {
+    if (error instanceof SyntaxError) {
+      return `Invalid JSON in arguments for tool "${toolName}": ${error.message}`;
+    }
+    if (error instanceof Error) {
+      return `Error in tool "${toolName}": ${error.message}`;
+    }
+    return `Error in tool "${toolName}": ${String(error)}`;
+  };
+
   #prepare = async () => {
     const { services, history = [] } = this.#options;
     const pluginService = services.get(PluginService);
@@ -86,26 +97,97 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
     return prepare;
   };
 
-  public run = async () => {
-    const { model, services } = this.#options;
+  #callModel = async (prepared: PluginPrepare) => {
+    const messages: OpenAI.Responses.ResponseInput = [
+      ...contextToMessages(prepared.context),
+      ...promptsToMessages(prepared.prompts),
+    ];
 
-    while (this.#prompt.state === 'running') {
-      const { prompts, context, tools, state } = await this.#prepare();
-      const messages: OpenAI.Responses.ResponseInput = [...contextToMessages(context), ...promptsToMessages(prompts)];
+    const tools: OpenAI.Responses.Tool[] = prepared.tools.map((tool) => ({
+      type: 'function',
+      name: tool.id,
+      description: tool.description,
+      strict: true,
+      parameters: tool.input.toJSONSchema(),
+    }));
 
-      const openAiTools: OpenAI.Responses.Tool[] = tools.map((tool) => ({
-        type: 'function',
-        name: tool.id,
-        description: tool.description,
-        strict: true,
-        parameters: tool.input.toJSONSchema(),
-      }));
+    return this.#client.responses.create({
+      input: messages,
+      tools,
+      model: this.#options.model,
+    });
+  };
 
-      const response = await this.#client.responses.create({
-        input: messages,
-        tools: openAiTools,
-        model,
+  #executeToolCall = async (
+    toolCall: OpenAI.Responses.ResponseFunctionToolCall,
+    tools: Tool[],
+    state: State,
+  ): Promise<PromptOutputTool> => {
+    const start = new Date().toISOString();
+    const tool = tools.find((t) => t.id === toolCall.name);
+
+    if (!tool) {
+      const available = tools.map((t) => t.id).join(', ');
+      return {
+        id: toolCall.call_id,
+        type: 'tool',
+        function: toolCall.name,
+        input: undefined,
+        result: {
+          type: 'error',
+          error: `Tool "${toolCall.name}" not found. Available tools: ${available}`,
+        },
+        start,
+        end: new Date().toISOString(),
+      };
+    }
+
+    try {
+      const args = tool.input.parse(JSON.parse(toolCall.arguments));
+      const result = await tool.invoke({
+        input: args,
+        state,
+        services: this.#options.services,
       });
+
+      return {
+        id: toolCall.call_id,
+        type: 'tool',
+        function: toolCall.name,
+        input: args,
+        result: { type: 'success', output: result },
+        start,
+        end: new Date().toISOString(),
+      };
+    } catch (error) {
+      return {
+        id: toolCall.call_id,
+        type: 'tool',
+        function: toolCall.name,
+        input: undefined,
+        result: { type: 'error', error: this.#formatToolError(toolCall.name, error) },
+        start,
+        end: new Date().toISOString(),
+      };
+    }
+  };
+
+  #completeWithText = (text: string) => {
+    const textOutput: PromptOutputText = {
+      type: 'text',
+      content: text,
+      start: new Date().toISOString(),
+      end: new Date().toISOString(),
+    };
+
+    this.#prompt.output.push(textOutput);
+    this.#prompt.state = 'completed';
+  };
+
+  public run = async () => {
+    while (this.#prompt.state === 'running') {
+      const prepared = await this.#prepare();
+      const response = await this.#callModel(prepared);
 
       const toolCalls = response.output.filter(
         (item): item is OpenAI.Responses.ResponseFunctionToolCall => item.type === 'function_call',
@@ -113,57 +195,12 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
 
       if (toolCalls.length > 0) {
         for (const toolCall of toolCalls) {
-          const tool = tools.find((t) => t.id === toolCall.name);
-          if (!tool) {
-            console.error(`Tool ${toolCall.name} not found`);
-            continue;
-          }
-
-          console.log(toolCall.arguments);
-          const args = tool.input.parse(JSON.parse(toolCall.arguments));
-          const result = await tool.invoke({
-            input: args,
-            state,
-            services,
-          });
-
-          const toolOutput: PromptOutputTool = {
-            id: toolCall.call_id,
-            type: 'tool',
-            function: toolCall.name,
-            input: args,
-            result: { type: 'success', output: result },
-            start: new Date().toISOString(),
-            end: new Date().toISOString(),
-          };
-
-          this.#prompt.output.push(toolOutput);
-
-          messages.push({
-            type: 'function_call',
-            call_id: toolCall.call_id,
-            name: toolCall.name,
-            arguments: toolCall.arguments,
-          });
-
-          messages.push({
-            type: 'function_call_output',
-            call_id: toolCall.call_id,
-            output: JSON.stringify(result),
-          });
+          this.#prompt.output.push(await this.#executeToolCall(toolCall, prepared.tools, prepared.state));
         }
       } else {
-        const text = response.output_text;
-        const textOutput: PromptOutputText = {
-          type: 'text',
-          content: text,
-          start: new Date().toISOString(),
-          end: new Date().toISOString(),
-        };
-
-        this.#prompt.output.push(textOutput);
-        this.#prompt.state = 'completed';
+        this.#completeWithText(response.output_text);
       }
+
       this.emit('updated', this);
     }
 

@@ -95,9 +95,11 @@ Full standards are in `docs/coding-standard.md`. The critical rules enforced by 
 ## Key Documentation
 
 - `docs/architecture.md` — High-level overview and quick start
+- `docs/developer-guide.md` — Getting started, workflow, and conventions
 - `docs/services.md` — DI container usage
 - `docs/plugins.md` — Writing plugins with lifecycle hooks
 - `docs/tools.md` — Defining and registering tools
 - `docs/databases.md` — Database definitions and migrations
 - `docs/state.md` — Per-plugin conversation state
+- `docs/testing.md` — Test infrastructure, MSW patterns, and conventions
 - `docs/coding-standard.md` — Full TypeScript coding standards

@@ -3,7 +3,14 @@
     "allow": [
       "Bash(done)",
       "Bash(grep:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(pnpm --filter @morten-olsen/agentic-core add:*)",
+      "Bash(pnpm --filter @morten-olsen/agentic-core build:*)",
+      "Bash(pnpm vitest:*)",
+      "Bash(pnpm test:lint:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm test:unit:*)",
+      "Bash(pnpm --filter @morten-olsen/agentic-core test:unit)"
     ]
   }
 }

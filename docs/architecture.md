@@ -93,6 +93,8 @@ The core agent loop in `PromptCompletion.run()` follows this cycle:
 │    If tool calls:                           │
 │      - Validate args with tool.input.parse()│
 │      - Call tool.invoke()                   │
+│      - On error: format error, record it,  │
+│        feed back to model for recovery     │
 │      - Record result, loop back to step 1  │
 │    If text:                                 │
 │      - Record output, mark as completed    │
@@ -133,8 +135,10 @@ await completion.run();
 
 ## Further Reading
 
+- [Developer Guide](./developer-guide.md) - Getting started and development workflow
 - [Services](./services.md) - Dependency injection container
 - [Plugins](./plugins.md) - Writing and registering plugins
 - [Tools](./tools.md) - Defining tools for the AI model
 - [Databases](./databases.md) - Typed database access with migrations
 - [State](./state.md) - Per-plugin conversation state
+- [Testing](./testing.md) - Test infrastructure and MSW patterns
