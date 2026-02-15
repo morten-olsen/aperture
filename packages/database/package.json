@@ -3,7 +3,7 @@
   "main": "dist/exports.js",
   "scripts": {
     "build": "tsc --build",
-    "dev": "tsc --build --watch --preserveWatchOutput",
+    "build:dev": "tsc --build --watch --preserveWatchOutput",
     "test:unit": "vitest --run --passWithNoTests",
     "test": "pnpm run \"/^test:/\""
   },
@@ -20,12 +20,14 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "25.2.3",
     "@vitest/coverage-v8": "4.0.18",
+    "msw": "^2.12.10",
     "typescript": "5.9.3",
     "vitest": "4.0.18"
   },
   "name": "@morten-olsen/agentic-database",
   "version": "1.0.0",
   "dependencies": {
+    "@morten-olsen/agentic-core": "workspace:*",
     "better-sqlite3": "^12.6.2",
     "kysely": "^0.28.11",
     "zod": "^4.3.6"

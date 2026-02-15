@@ -6,7 +6,7 @@
   "scripts": {
     "test:lint": "eslint",
     "build": "turbo build",
-    "build:dev": "tsc --build --watch",
+    "build:dev": "turbo run build:dev",
     "test:unit": "vitest --run --coverage --passWithNoTests",
     "test": "pnpm run \"/^test:.+/\""
   },

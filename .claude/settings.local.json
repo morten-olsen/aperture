@@ -31,7 +31,8 @@
       "WebFetch(domain:jsr.io)",
       "Bash(pnpm install:*)",
       "Bash(pnpm --filter @morten-olsen/agentic-telegram build:*)",
-      "Bash(pnpm --filter @morten-olsen/agentic-telegram test:unit)"
+      "Bash(pnpm --filter @morten-olsen/agentic-telegram test:unit)",
+      "Bash(pnpm test:*)"
     ]
   }
 }

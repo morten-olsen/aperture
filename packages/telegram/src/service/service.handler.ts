@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import type { Services } from '@morten-olsen/agentic-core';
 import { ConversationService } from '@morten-olsen/agentic-conversation';
 
@@ -31,7 +33,29 @@ class TelegramMessageHandler {
     this.#queues.set(chatId, next);
   };
 
+  #getOrCreateConversation = async (userId: string) => {
+    const conversationService = this.#services.get(ConversationService);
+    const active = await conversationService.getActive(userId);
+    if (active) {
+      return active;
+    }
+    const conversation = await conversationService.create({ id: randomUUID() });
+    await conversationService.setActive(conversation.id, userId);
+    return conversation;
+  };
+
+  #handleNew = async (telegramChatId: string) => {
+    const userId = `telegram:${telegramChatId}`;
+    const conversationService = this.#services.get(ConversationService);
+    const conversation = await conversationService.create({ id: randomUUID() });
+    await conversationService.setActive(conversation.id, userId);
+
+    const botService = this.#services.get(TelegramBotService);
+    await botService.sendMessage(telegramChatId, 'New conversation started.');
+  };
+
   #processMessage = async (telegramChatId: string, text: string, meta: MessageMeta) => {
+    const userId = `telegram:${telegramChatId}`;
     const chatId = `telegram:${telegramChatId}`;
     const repo = new TelegramChatRepo(this.#services);
 
@@ -48,8 +72,7 @@ class TelegramMessageHandler {
     const chat = await repo.get(chatId);
     const model = chat?.model ?? this.#options.defaultModel;
 
-    const conversationService = this.#services.get(ConversationService);
-    const conversation = await conversationService.get(chatId);
+    const conversation = await this.#getOrCreateConversation(userId);
 
     const completion = await conversation.prompt({
       input: text,
@@ -86,6 +109,10 @@ class TelegramMessageHandler {
   public handle = (telegramChatId: string, text: string, meta: MessageMeta) => {
     this.#enqueue(telegramChatId, async () => {
       try {
+        if (text.trim() === '/new') {
+          await this.#handleNew(telegramChatId);
+          return;
+        }
         await this.#processMessage(telegramChatId, text, meta);
       } catch (error) {
         console.error('[Telegram] Error processing message:', error);

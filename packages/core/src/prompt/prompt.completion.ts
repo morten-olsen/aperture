@@ -68,6 +68,10 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
     return this.#prompt.output;
   }
 
+  public get state() {
+    return this.#state;
+  }
+
   #formatToolError = (toolName: string, error: unknown): string => {
     if (error instanceof SyntaxError) {
       return `Invalid JSON in arguments for tool "${toolName}": ${error.message}`;

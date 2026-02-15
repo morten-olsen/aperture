@@ -20,7 +20,7 @@
       "cache": false
     },
     "clean": {},
-    "dev": {
+    "build:dev": {
       "dependsOn": [
         "^build"
       ],

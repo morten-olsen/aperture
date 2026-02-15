@@ -26,7 +26,8 @@
   "dependencies": {
     "@morten-olsen/agentic-conversation": "workspace:*",
     "@morten-olsen/agentic-core": "workspace:*",
-    "@morten-olsen/agentic-trigger": "workspace:*"
+    "@morten-olsen/agentic-trigger": "workspace:*",
+    "@morten-olsen/agentic-telegram": "workspace:*"
   },
   "name": "@morten-olsen/agentic-playground",
   "version": "1.0.0"

@@ -26,6 +26,8 @@ class State {
     return plugin.state.parse(state);
   };
 
+  public toRecord = (): Record<string, unknown> => ({ ...this.#states });
+
   public static fromInit = (initial: Record<string, unknown>) => {
     return new State({
       initial,

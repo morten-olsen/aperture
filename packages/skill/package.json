@@ -3,6 +3,7 @@
   "main": "dist/exports.js",
   "scripts": {
     "build": "tsc --build",
+    "build:dev": "tsc --build --watch --preserveWatchOutput",
     "test:unit": "vitest --run --passWithNoTests",
     "test": "pnpm run \"/^test:/\""
   },

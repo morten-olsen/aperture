@@ -55,6 +55,12 @@ importers:
       '@morten-olsen/agentic-core':
         specifier: workspace:*
         version: link:../core
+      '@morten-olsen/agentic-database':
+        specifier: workspace:*
+        version: link:../database
+      kysely:
+        specifier: ^0.28.11
+        version: 0.28.11
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -71,6 +77,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 4.0.18
         version: 4.0.18(vitest@4.0.18(@types/node@25.2.3)(msw@2.12.10(@types/node@25.2.3)(typescript@5.9.3))(tsx@4.21.0))
+      msw:
+        specifier: ^2.12.10
+        version: 2.12.10(@types/node@25.2.3)(typescript@5.9.3)
       typescript:
         specifier: 5.9.3
         version: 5.9.3
@@ -111,6 +120,9 @@ importers:
 
   packages/database:
     dependencies:
+      '@morten-olsen/agentic-core':
+        specifier: workspace:*
+        version: link:../core
       better-sqlite3:
         specifier: ^12.6.2
         version: 12.6.2
@@ -136,6 +148,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 4.0.18
         version: 4.0.18(vitest@4.0.18(@types/node@25.2.3)(msw@2.12.10(@types/node@25.2.3)(typescript@5.9.3))(tsx@4.21.0))
+      msw:
+        specifier: ^2.12.10
+        version: 2.12.10(@types/node@25.2.3)(typescript@5.9.3)
       typescript:
         specifier: 5.9.3
         version: 5.9.3
@@ -151,6 +166,9 @@ importers:
       '@morten-olsen/agentic-core':
         specifier: workspace:*
         version: link:../core
+      '@morten-olsen/agentic-telegram':
+        specifier: workspace:*
+        version: link:../telegram
       '@morten-olsen/agentic-trigger':
         specifier: workspace:*
         version: link:../trigger
