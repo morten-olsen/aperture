@@ -15,16 +15,17 @@
     ".": "./dist/exports.js"
   },
   "devDependencies": {
+    "@morten-olsen/agentic-configs": "workspace:*",
+    "@morten-olsen/agentic-tests": "workspace:*",
     "@types/node": "25.2.3",
     "@vitest/coverage-v8": "4.0.18",
     "typescript": "5.9.3",
-    "vitest": "4.0.18",
-    "@morten-olsen/agentic-configs": "workspace:*",
-    "@morten-olsen/agentic-tests": "workspace:*"
+    "vitest": "4.0.18"
   },
   "dependencies": {
-    "@morten-olsen/agentic-database": "workspace:*",
     "@morten-olsen/agentic-core": "workspace:*",
+    "@morten-olsen/agentic-database": "workspace:*",
+    "croner": "^10.0.1",
     "zod": "^4.3.6"
   },
   "name": "@morten-olsen/agentic-trigger",
