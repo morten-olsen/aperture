@@ -68,9 +68,6 @@ class TriggerRepo {
     const now = new Date().toISOString();
     const id = randomUUID();
 
-    const scheduleType = input.schedule.type;
-    const scheduleValue = input.schedule.type === 'once' ? input.schedule.at : input.schedule.expression;
-
     await db
       .insertInto('triggers_triggers')
       .values({
@@ -78,8 +75,8 @@ class TriggerRepo {
         name: input.name,
         goal: input.goal,
         model: input.model,
-        schedule_type: scheduleType,
-        schedule_value: scheduleValue,
+        schedule_type: input.scheduleType,
+        schedule_value: input.scheduleValue,
         status: 'active',
         setup_context: input.setupContext ?? null,
         invocation_count: 0,
@@ -101,8 +98,8 @@ class TriggerRepo {
       name: input.name,
       goal: input.goal,
       model: input.model,
-      scheduleType,
-      scheduleValue,
+      scheduleType: input.scheduleType,
+      scheduleValue: input.scheduleValue,
       status: 'active',
       setupContext: input.setupContext ?? null,
       invocationCount: 0,

@@ -79,7 +79,8 @@ describe('triggerPlugin', () => {
         name: 'Test Trigger',
         goal: 'Check something',
         model: 'test-model',
-        schedule: { type: 'cron', expression: '0 9 * * *' },
+        scheduleType: 'cron',
+        scheduleValue: '0 9 * * *',
         setupContext: 'Morning check',
       });
 
@@ -113,7 +114,8 @@ describe('triggerPlugin', () => {
         name: 'Test',
         goal: 'Monitor',
         model: 'test-model',
-        schedule: { type: 'cron', expression: '0 * * * *' },
+        scheduleType: 'cron',
+        scheduleValue: '0 * * * *',
       });
       await scheduler.update(trigger.id, { continuation: 'Found 3 items last time' });
 

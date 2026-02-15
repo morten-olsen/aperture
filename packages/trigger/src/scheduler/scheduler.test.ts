@@ -23,7 +23,8 @@ describe('TriggerScheduler', () => {
       name: 'Test Once',
       goal: 'Test goal',
       model: overrides.model ?? 'test-model',
-      schedule: { type: 'once', at: overrides.at ?? '2026-03-15T09:00:00Z' },
+      scheduleType: 'once',
+      scheduleValue: overrides.at ?? '2026-03-15T09:00:00Z',
     });
 
   const createCronTrigger = (overrides: { expression?: string; model?: string; maxInvocations?: number } = {}) =>
@@ -31,7 +32,8 @@ describe('TriggerScheduler', () => {
       name: 'Test Cron',
       goal: 'Monitor something',
       model: overrides.model ?? 'test-model',
-      schedule: { type: 'cron', expression: overrides.expression ?? '0 9 * * 1-5' },
+      scheduleType: 'cron',
+      scheduleValue: overrides.expression ?? '0 9 * * 1-5',
       setupContext: 'Check weekday mornings',
       maxInvocations: overrides.maxInvocations ?? 10,
     });
@@ -151,7 +153,8 @@ describe('TriggerScheduler', () => {
     it('updates schedule', async () => {
       const trigger = await createOnceTrigger();
       const updated = await scheduler.update(trigger.id, {
-        schedule: { type: 'cron', expression: '*/30 * * * *' },
+        scheduleType: 'cron',
+        scheduleValue: '*/30 * * * *',
       });
 
       expect(updated?.scheduleType).toBe('cron');
@@ -409,7 +412,8 @@ describe('TriggerScheduler', () => {
       const oldNext = beforeUpdate?.nextInvocationAt;
 
       await scheduler.update(trigger.id, {
-        schedule: { type: 'cron', expression: '* * * * *' },
+        scheduleType: 'cron',
+        scheduleValue: '* * * * *',
       });
 
       const afterUpdate = await scheduler.get(trigger.id);

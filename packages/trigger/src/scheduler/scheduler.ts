@@ -178,12 +178,13 @@ class TriggerScheduler {
       dbUpdates['model'] = changes.model;
       memUpdates.model = changes.model;
     }
-    if (changes.schedule !== undefined) {
-      dbUpdates['schedule_type'] = changes.schedule.type;
-      dbUpdates['schedule_value'] =
-        changes.schedule.type === 'once' ? changes.schedule.at : changes.schedule.expression;
-      memUpdates.scheduleType = changes.schedule.type;
-      memUpdates.scheduleValue = changes.schedule.type === 'once' ? changes.schedule.at : changes.schedule.expression;
+    if (changes.scheduleType !== undefined) {
+      dbUpdates['schedule_type'] = changes.scheduleType;
+      memUpdates.scheduleType = changes.scheduleType;
+    }
+    if (changes.scheduleValue !== undefined) {
+      dbUpdates['schedule_value'] = changes.scheduleValue;
+      memUpdates.scheduleValue = changes.scheduleValue;
     }
     if (changes.setupContext !== undefined) {
       dbUpdates['setup_context'] = changes.setupContext;
@@ -213,7 +214,7 @@ class TriggerScheduler {
     const updated = { ...existing, ...memUpdates };
     this.#triggers.set(id, updated);
 
-    if (changes.schedule !== undefined || changes.status !== undefined) {
+    if (changes.scheduleType !== undefined || changes.scheduleValue !== undefined || changes.status !== undefined) {
       this.#scheduleTrigger(updated);
     }
 

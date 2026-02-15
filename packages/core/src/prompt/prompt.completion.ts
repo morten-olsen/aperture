@@ -17,6 +17,7 @@ type PromptCompletionOptions = {
   history?: Prompt[];
   input?: string;
   state?: Record<string, unknown>;
+  maxRounds?: number;
 };
 
 type PromptCompletionEvents = {
@@ -142,8 +143,23 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
       };
     }
 
+    let parsed: unknown;
     try {
-      const args = tool.input.parse(JSON.parse(toolCall.arguments));
+      parsed = JSON.parse(toolCall.arguments);
+    } catch (error) {
+      return {
+        id: toolCall.call_id,
+        type: 'tool',
+        function: toolCall.name,
+        input: undefined,
+        result: { type: 'error', error: this.#formatToolError(toolCall.name, error) },
+        start,
+        end: new Date().toISOString(),
+      };
+    }
+
+    try {
+      const args = tool.input.parse(parsed);
       const result = await tool.invoke({
         input: args,
         state,
@@ -160,11 +176,12 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
         end: new Date().toISOString(),
       };
     } catch (error) {
+      console.error('[TOOL ERROR]', error);
       return {
         id: toolCall.call_id,
         type: 'tool',
         function: toolCall.name,
-        input: undefined,
+        input: parsed,
         result: { type: 'error', error: this.#formatToolError(toolCall.name, error) },
         start,
         end: new Date().toISOString(),
@@ -185,7 +202,11 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
   };
 
   public run = async () => {
+    const maxRounds = this.#options.maxRounds ?? 25;
+    let round = 0;
+
     while (this.#prompt.state === 'running') {
+      round += 1;
       const prepared = await this.#prepare();
       const response = await this.#callModel(prepared);
 
@@ -202,6 +223,11 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
       }
 
       this.emit('updated', this);
+
+      if (round >= maxRounds && this.#prompt.state === 'running') {
+        this.#completeWithText(`Exceeded maximum number of rounds (${maxRounds}). Stopping.`);
+        this.emit('updated', this);
+      }
     }
 
     this.emit('updated', this);

@@ -1,18 +1,5 @@
 import { z } from 'zod';
 
-const triggerScheduleSchema = z.discriminatedUnion('type', [
-  z.object({
-    type: z.literal('once'),
-    at: z.string().describe('ISO8601 datetime when the trigger should fire'),
-  }),
-  z.object({
-    type: z.literal('cron'),
-    expression: z.string().describe('Cron expression (minute hour day-of-month month day-of-week)'),
-  }),
-]);
-
-type TriggerSchedule = z.infer<typeof triggerScheduleSchema>;
-
 const triggerStatusSchema = z.enum(['active', 'paused', 'completed', 'failed']);
 
 type TriggerStatus = z.infer<typeof triggerStatusSchema>;
@@ -52,7 +39,10 @@ const triggerCreateInputSchema = z.object({
   name: z.string().describe('Human-readable name for the trigger'),
   goal: z.string().describe('What the agent should accomplish when invoked'),
   model: z.string().describe('Model ID to use when invoking this trigger'),
-  schedule: triggerScheduleSchema.describe('When the trigger should fire'),
+  scheduleType: z.enum(['once', 'cron']).describe('Type of schedule: "once" for a one-time trigger, "cron" for recurring'),
+  scheduleValue: z
+    .string()
+    .describe('For once: ISO8601 datetime (e.g. "2026-03-15T09:00:00Z"). For cron: expression (e.g. "0 9 * * 1-5")'),
   setupContext: z.string().optional().describe('Why this trigger exists (injected as context on invocation)'),
   maxInvocations: z.number().optional().describe('For recurring: stop after N invocations'),
   endsAt: z.string().optional().describe('For recurring: stop after this ISO8601 datetime'),
@@ -65,7 +55,11 @@ const triggerUpdateInputSchema = z.object({
   name: z.string().optional().describe('New name'),
   goal: z.string().optional().describe('New goal'),
   model: z.string().optional().describe('New model ID'),
-  schedule: triggerScheduleSchema.optional().describe('New schedule'),
+  scheduleType: z.enum(['once', 'cron']).optional().describe('New schedule type'),
+  scheduleValue: z
+    .string()
+    .optional()
+    .describe('New schedule value. For once: ISO8601 datetime. For cron: cron expression'),
   setupContext: z.string().optional().describe('New setup context'),
   maxInvocations: z.number().optional().describe('New max invocations'),
   endsAt: z.string().optional().describe('New end datetime'),
@@ -107,7 +101,6 @@ type TriggerPrompt = z.infer<typeof triggerPromptSchema>;
 type NotifyHandler = (input: TriggerNotifyInput) => Promise<void>;
 
 export {
-  triggerScheduleSchema,
   triggerStatusSchema,
   triggerReferenceSchema,
   triggerSchema,
@@ -120,7 +113,6 @@ export {
 };
 
 export type {
-  TriggerSchedule,
   TriggerStatus,
   TriggerReference,
   Trigger,

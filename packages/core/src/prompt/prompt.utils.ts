@@ -26,7 +26,7 @@ const promptsToMessages = (prompts: Prompt[]) => {
           type: 'function_call',
           call_id: output.id,
           name: output.function,
-          arguments: JSON.stringify(output.input),
+          arguments: JSON.stringify(output.input ?? {}),
         });
         messages.push({
           type: 'function_call_output',
