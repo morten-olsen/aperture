@@ -23,7 +23,15 @@
       "Bash(git -C /Users/alice/Projects/private/incubator/glados diff --cached --stat)",
       "Bash(git -C /Users/alice/Projects/private/incubator/glados commit -m \"$\\(cat <<''EOF''\nadd real scheduling to TriggerScheduler with per-trigger model field\n\nReplaces the orchestrator-dependent scheduling design with built-in timer\nmanagement using croner. Triggers now auto-fire on schedule: cron expressions\nget recurring Cron jobs with overlap protection, once triggers get one-shot\ntimers \\(past datetimes fire immediately\\). Adds a required `model` field so\neach trigger knows which model to use for invocations.\n\nKey changes:\n- TriggerScheduler: #jobs map, start/stop lifecycle, #scheduleTrigger,\n  #onTriggerFire with auto-complete \\(once\\) and termination checks \\(cron\\)\n- Plugin setup calls scheduler.start\\(\\) after load\\(\\)\n- Schema/DB/repo all carry model through the stack\n- invoke\\(id, model?\\) defaults to trigger.model\n- 39 tests covering CRUD, invoke, and timer-based scheduling\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git -C /Users/alice/Projects/private/incubator/glados status)",
-      "Bash(pnpm tsx:*)"
+      "Bash(pnpm tsx:*)",
+      "WebFetch(domain:gramio.dev)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(ls:*)",
+      "WebFetch(domain:jsr.io)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm --filter @morten-olsen/agentic-telegram build:*)",
+      "Bash(pnpm --filter @morten-olsen/agentic-telegram test:unit)"
     ]
   }
 }

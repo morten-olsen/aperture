@@ -31,7 +31,7 @@ class ConversationInstance {
     const promptService = services.get(PromptService);
     const promptCompletion = promptService.create({
       ...input,
-      state: this.#state,
+      state: { ...this.#state, ...input.state },
     });
     // TODO: update state on complete
     this.#prompts.push(promptCompletion.prompt);
