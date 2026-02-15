@@ -1,0 +1,39 @@
+{
+  "openai": {
+    "apiKey": "sk-...",
+    "baseUrl": "https://openrouter.ai/api/v1"
+  },
+  "model": {
+    "normal": "google/gemini-3-flash-preview",
+    "high": ""
+  },
+  "telegram": {
+    "enabled": false,
+    "token": "",
+    "allowedChatIds": []
+  },
+  "calendar": {
+    "enabled": false,
+    "sources": [
+      {
+        "id": "personal",
+        "name": "Personal",
+        "url": "https://caldav.example.com/dav/calendars/user/default/",
+        "auth": {
+          "username": "user",
+          "password": "pass"
+        },
+        "syncIntervalMinutes": 30
+      }
+    ],
+    "defaultSyncIntervalMinutes": 30,
+    "injectTodayAgenda": true,
+    "expansionWindow": {
+      "pastMonths": 1,
+      "futureMonths": 3
+    }
+  },
+  "trigger": {
+    "enabled": true
+  }
+}

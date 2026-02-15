@@ -64,11 +64,11 @@ const listOutputSchema = z.array(
 );
 
 const searchInputSchema = z.object({
-  query: z.string().optional(),
-  calendarId: z.string().optional(),
-  from: z.string().optional(),
-  to: z.string().optional(),
-  limit: z.number().optional(),
+  query: z.string().optional().describe('Text to search in event summary, description, or location'),
+  calendarId: z.string().optional().describe('Filter by calendar source ID'),
+  from: z.string().optional().describe('Start of date range, ISO 8601 date (YYYY-MM-DD) or datetime (YYYY-MM-DDTHH:mm:ssZ)'),
+  to: z.string().optional().describe('End of date range, ISO 8601 date (YYYY-MM-DD) or datetime (YYYY-MM-DDTHH:mm:ssZ)'),
+  limit: z.number().optional().describe('Max number of events to return (default 20)'),
 });
 
 const searchOutputSchema = z.array(

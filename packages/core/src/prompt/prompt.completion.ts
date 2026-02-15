@@ -13,7 +13,7 @@ import type { Prompt, PromptOutputText, PromptOutputTool } from './prompt.schema
 
 type PromptCompletionOptions = {
   services: Services;
-  model: string;
+  model?: 'normal' | 'high';
   history?: Prompt[];
   input?: string;
   state?: Record<string, unknown>;
@@ -38,13 +38,13 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
       id: randomUUID(),
       state: 'running',
       input: options.input,
-      model: options.model,
+      model: options.model || 'normal',
       output: [],
     };
     this.#state = State.fromInit(options.state || {});
     this.#client = new OpenAI({
-      apiKey: process.env['OPENAI_API_KEY'],
-      baseURL: process.env['OPENAI_BASE_URL'],
+      apiKey: options.services.config.provider.apiKey,
+      baseURL: options.services.config.provider.baseUrl,
     });
   }
 
@@ -103,6 +103,7 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
   };
 
   #callModel = async (prepared: PluginPrepare) => {
+    const { services } = this.#options;
     const messages: OpenAI.Responses.ResponseInput = [
       ...contextToMessages(prepared.context),
       ...promptsToMessages(prepared.prompts),
@@ -116,10 +117,11 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
       parameters: tool.input.toJSONSchema(),
     }));
 
+    const modelName = services.config.models[this.#prompt.model];
     return this.#client.responses.create({
       input: messages,
       tools,
-      model: this.#options.model,
+      model: modelName,
     });
   };
 

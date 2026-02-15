@@ -92,7 +92,6 @@ const createTelegramPlugin = (options: TelegramPluginOptions) =>
 
 const telegramPlugin = createTelegramPlugin({
   token: '',
-  defaultModel: '',
 });
 
 export { createTelegramPlugin, telegramPlugin };

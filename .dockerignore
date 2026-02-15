@@ -1,0 +1,9 @@
+node_modules
+.turbo
+.env
+coverage
+dist
+*.md
+!README.md
+.git
+config.json

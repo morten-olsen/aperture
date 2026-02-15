@@ -7,7 +7,7 @@ const promptStoreDatabase = createDatabase({
   schema: {
     db_prompts: z.object({
       id: z.string(),
-      model: z.string(),
+      model: z.enum(['normal', 'high']),
       visible: z.number(),
       state: z.string(),
       input: z.string().nullable(),

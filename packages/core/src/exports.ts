@@ -1,3 +1,4 @@
+export * from './config/config.js';
 export * from './context/context.js';
 export * from './plugin/plugin.js';
 export * from './prompt/prompt.js';

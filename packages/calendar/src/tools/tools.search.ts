@@ -46,11 +46,13 @@ const search = createTool({
     }
 
     if (input.from) {
-      query = query.where('e.start_at', '>=', input.from);
+      const from = input.from.includes('T') ? input.from : `${input.from}T00:00:00.000Z`;
+      query = query.where('e.start_at', '>=', from);
     }
 
     if (input.to) {
-      query = query.where('e.start_at', '<=', input.to);
+      const to = input.to.includes('T') ? input.to : `${input.to}T23:59:59.999Z`;
+      query = query.where('e.start_at', '<=', to);
     }
 
     query = query.orderBy('e.start_at', 'asc');

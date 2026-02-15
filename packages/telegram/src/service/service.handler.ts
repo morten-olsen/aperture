@@ -70,13 +70,13 @@ class TelegramMessageHandler {
     });
 
     const chat = await repo.get(chatId);
-    const model = chat?.model ?? this.#options.defaultModel;
+    const model = chat?.model;
 
     const conversation = await this.#getOrCreateConversation(userId);
 
     const completion = await conversation.prompt({
       input: text,
-      model,
+      model: model || undefined,
       state: {
         telegram: {
           chat: {

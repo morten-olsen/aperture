@@ -11,7 +11,7 @@ type TelegramChatRow = {
   title: string | null;
   username: string | null;
   first_name: string | null;
-  model: string | null;
+  model: 'normal' | 'high' | null;
   created_at: string;
   updated_at: string;
 };

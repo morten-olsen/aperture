@@ -7,7 +7,7 @@ import { promptStoreDatabase } from './prompt-store.database.js';
 
 type PromptRow = {
   id: string;
-  model: string;
+  model: 'normal' | 'high';
   visible: number;
   state: string;
   input: string | null;

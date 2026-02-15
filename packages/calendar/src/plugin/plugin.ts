@@ -17,7 +17,9 @@ const createCalendarPlugin = (options: CalendarPluginOptions) => {
       const syncService = services.get(CalendarSyncService);
       syncService.initialize(options);
 
-      await syncService.initialSync();
+      await syncService.initialSync().catch((error) => {
+        console.warn('[calendar] Initial sync failed, will retry on next interval:', error.message);
+      });
       syncService.startPeriodicSync();
     },
     prepare: async ({ tools, context, services }) => {

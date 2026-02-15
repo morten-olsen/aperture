@@ -1,8 +1,13 @@
 {
   "type": "module",
   "main": "dist/exports.js",
+  "bin": {
+    "glados-server": "dist/server/server.start.js"
+  },
   "scripts": {
     "build": "tsc --build",
+    "build:dev": "tsc --build --watch --preserveWatchOutput",
+    "start": "node dist/server/server.start.js",
     "test:unit": "vitest --run --passWithNoTests",
     "test": "pnpm run \"/^test:/\""
   },
@@ -13,7 +18,18 @@
   "exports": {
     ".": "./dist/exports.js"
   },
+  "dependencies": {
+    "convict": "6.2.4",
+    "zod": "^4.3.6",
+    "@morten-olsen/agentic-core": "workspace:*",
+    "@morten-olsen/agentic-database": "workspace:*",
+    "@morten-olsen/agentic-conversation": "workspace:*",
+    "@morten-olsen/agentic-trigger": "workspace:*",
+    "@morten-olsen/agentic-calendar": "workspace:*",
+    "@morten-olsen/agentic-telegram": "workspace:*"
+  },
   "devDependencies": {
+    "@types/convict": "6.1.6",
     "@types/node": "25.2.3",
     "@vitest/coverage-v8": "4.0.18",
     "typescript": "5.9.3",

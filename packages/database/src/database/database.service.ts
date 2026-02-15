@@ -1,20 +1,26 @@
 import SQLite from 'better-sqlite3';
 import { Kysely, Migrator, SqliteDialect, type MigrationProvider } from 'kysely';
 import type { z, ZodType } from 'zod';
+import type { Services } from '@morten-olsen/agentic-core';
+
+import { DatabaseConfig } from '../config/config.js';
 
 import type { Database } from './database.types.js';
 
 class DatabaseService {
+  #services: Services;
   #db?: Promise<Kysely<unknown>>;
   #instances: Record<string, Promise<Kysely<unknown>>>;
 
-  constructor() {
+  constructor(services: Services) {
+    this.#services = services;
     this.#instances = {};
   }
 
   #setupDb = async () => {
+    const config = this.#services.get(DatabaseConfig);
     const dialect = new SqliteDialect({
-      database: new SQLite(':memory:'),
+      database: new SQLite(config.location),
     });
 
     const db = new Kysely<unknown>({

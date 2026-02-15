@@ -11,7 +11,7 @@ const telegramChatSchema = z.object({
   title: z.string().nullable(),
   username: z.string().nullable(),
   firstName: z.string().nullable(),
-  model: z.string().nullable(),
+  model: z.enum(['normal', 'high']).nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -58,7 +58,6 @@ type TelegramState = z.infer<typeof telegramStateSchema>;
 
 type TelegramPluginOptions = {
   token: string;
-  defaultModel: string;
   allowedChatIds?: string[];
 };
 

@@ -32,7 +32,15 @@
       "Bash(pnpm install:*)",
       "Bash(pnpm --filter @morten-olsen/agentic-telegram build:*)",
       "Bash(pnpm --filter @morten-olsen/agentic-telegram test:unit)",
-      "Bash(pnpm test:*)"
+      "Bash(pnpm test:*)",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(node -e:*)",
+      "Bash(pnpm:*)",
+      "Bash(npx eslint:*)",
+      "Bash(python3:*)",
+      "Bash(node:*)",
+      "Bash(sqlite3:*)"
     ]
   }
 }

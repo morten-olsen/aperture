@@ -1,3 +1,5 @@
+import type { Config } from '../config/config.js';
+
 const destroy = Symbol('destroy');
 const instanceKey = Symbol('instances');
 
@@ -6,10 +8,16 @@ type ServiceDependency<T> = new (services: Services) => T & {
 };
 
 class Services {
+  #config: Config;
   [instanceKey]: Map<ServiceDependency<unknown>, unknown>;
 
-  constructor() {
+  constructor(config: Config) {
+    this.#config = config;
     this[instanceKey] = new Map();
+  }
+
+  public get config() {
+    return this.#config;
   }
 
   public get = <T>(service: ServiceDependency<T>) => {
@@ -27,11 +35,6 @@ class Services {
     this[instanceKey].set(service, instance);
   };
 
-  public clone = () => {
-    const services = new Services();
-    services[instanceKey] = Object.fromEntries(this[instanceKey].entries());
-  };
-
   public destroy = async () => {
     await Promise.all(
       this[instanceKey].values().map(async (instance) => {
@@ -45,6 +48,19 @@ class Services {
         }
       }),
     );
+  };
+
+  public static mock = () => {
+    return new Services({
+      provider: {
+        apiKey: 'foo',
+        baseUrl: 'bar',
+      },
+      models: {
+        normal: 'baz',
+        high: 'bax',
+      },
+    });
   };
 }
 

@@ -4,16 +4,24 @@ import { z } from 'zod';
 import { DatabaseService } from '../database/database.service.js';
 import { promptStoreDatabase } from '../prompt-store/prompt-store.database.js';
 import { PromptStoreService } from '../prompt-store/prompt-store.service.js';
+import { DatabaseConfig } from '../config/config.js';
 
-const databasePlugin = createPlugin({
-  id: 'database',
-  state: z.unknown(),
-  setup: async ({ services }) => {
-    const databaseService = services.get(DatabaseService);
-    await databaseService.get(promptStoreDatabase);
-    const promptStore = services.get(PromptStoreService);
-    promptStore.listen();
-  },
-});
+type DatabasePluginOptions = {
+  location: string;
+};
 
-export { databasePlugin };
+const createDatabasePlugin = (options: DatabasePluginOptions) =>
+  createPlugin({
+    id: 'database',
+    state: z.unknown(),
+    setup: async ({ services }) => {
+      const databaseConfig = services.get(DatabaseConfig);
+      databaseConfig.location = options.location;
+      const databaseService = services.get(DatabaseService);
+      await databaseService.get(promptStoreDatabase);
+      const promptStore = services.get(PromptStoreService);
+      promptStore.listen();
+    },
+  });
+
+export { createDatabasePlugin };
