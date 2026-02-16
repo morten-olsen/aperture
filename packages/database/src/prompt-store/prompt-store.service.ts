@@ -8,6 +8,7 @@ import { promptStoreDatabase } from './prompt-store.database.js';
 type PromptRow = {
   id: string;
   model: 'normal' | 'high';
+  userId: string;
   visible: number;
   state: string;
   input: string | null;
@@ -38,6 +39,7 @@ class PromptStoreService {
 
   #rowToPrompt = (row: PromptRow): Prompt => ({
     id: row.id,
+    userId: row.userId,
     model: row.model,
     visible: row.visible === 1,
     state: row.state as Prompt['state'],
@@ -47,6 +49,7 @@ class PromptStoreService {
 
   #promptToRow = (prompt: Prompt): PromptRow => ({
     id: prompt.id,
+    userId: prompt.userId,
     model: prompt.model,
     visible: prompt.visible === false ? 0 : 1,
     state: prompt.state,
@@ -76,6 +79,12 @@ class PromptStoreService {
           .execute();
       });
     });
+  };
+
+  public insert = async (prompt: Prompt) => {
+    const db = await this.#getDb();
+    const row = this.#promptToRow(prompt);
+    await db.insertInto('db_prompts').values(row).execute();
   };
 
   public getById = async (id: string): Promise<Prompt | undefined> => {

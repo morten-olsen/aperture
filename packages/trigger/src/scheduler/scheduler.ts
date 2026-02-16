@@ -142,8 +142,8 @@ class TriggerScheduler {
     return this.#triggers.get(id);
   };
 
-  public list = async (input: TriggerListInput = {}): Promise<Trigger[]> => {
-    let results = Array.from(this.#triggers.values());
+  public list = async (input: TriggerListInput): Promise<Trigger[]> => {
+    let results = Array.from(this.#triggers.values()).filter((user) => user.userId === input.userId);
 
     if (input.status) {
       results = results.filter((t) => t.status === input.status);
@@ -254,7 +254,7 @@ class TriggerScheduler {
     }
   };
 
-  public invoke = async (id: string, model?: string): Promise<Prompt> => {
+  public invoke = async (id: string, model?: 'normal' | 'high'): Promise<Prompt> => {
     const trigger = this.#triggers.get(id);
     if (!trigger) {
       throw new Error(`Trigger ${id} not found`);
@@ -267,6 +267,7 @@ class TriggerScheduler {
 
     const promptService = this.#services.get(PromptService);
     const completion = promptService.create({
+      userId: trigger.userId,
       model: resolvedModel,
       state: {
         trigger: { from: { id: trigger.id, type: trigger.scheduleType } },

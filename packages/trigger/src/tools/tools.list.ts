@@ -6,7 +6,7 @@ import { triggerListInputSchema } from '../schemas/schemas.js';
 const list = createTool({
   id: 'trigger.list',
   description: 'List triggers, optionally filtered by status.',
-  input: triggerListInputSchema,
+  input: triggerListInputSchema.omit({ userId: true }),
   output: z.object({
     triggers: z.array(
       z.object({
@@ -21,10 +21,10 @@ const list = createTool({
       }),
     ),
   }),
-  invoke: async ({ input, services }) => {
+  invoke: async ({ input, services, userId }) => {
     const { TriggerScheduler } = await import('../scheduler/scheduler.js');
     const triggerService = services.get(TriggerScheduler);
-    const triggers = await triggerService.list(input);
+    const triggers = await triggerService.list({ ...input, userId });
     return {
       triggers: triggers.map((t) => ({
         id: t.id,

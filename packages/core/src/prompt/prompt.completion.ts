@@ -14,6 +14,7 @@ import type { Prompt, PromptOutputText, PromptOutputTool } from './prompt.schema
 type PromptCompletionOptions = {
   services: Services;
   model?: 'normal' | 'high';
+  userId: string;
   history?: Prompt[];
   input?: string;
   state?: Record<string, unknown>;
@@ -36,6 +37,7 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
     this.#options = options;
     this.#prompt = {
       id: randomUUID(),
+      userId: options.userId,
       state: 'running',
       input: options.input,
       model: options.model || 'normal',
@@ -54,6 +56,10 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
 
   public get id() {
     return this.#prompt.id;
+  }
+
+  public get userId() {
+    return this.prompt.userId;
   }
 
   public get model() {
@@ -83,9 +89,10 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
   };
 
   #prepare = async () => {
-    const { services, history = [] } = this.#options;
+    const { userId, services, history = [] } = this.#options;
     const pluginService = services.get(PluginService);
     const prepare = new PluginPrepare({
+      userId,
       context: {
         items: [],
       },
@@ -168,6 +175,7 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
       const args = tool.input.parse(parsed);
       const result = await tool.invoke({
         input: args,
+        userId: this.userId,
         state,
         services: this.#options.services,
       });

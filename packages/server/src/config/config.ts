@@ -80,11 +80,10 @@ const configSchema = convict({
       env: 'TELEGRAM_TOKEN',
       sensitive: true,
     },
-    allowedChatIds: {
-      doc: 'Comma-separated list of allowed Telegram chat IDs',
-      format: 'comma-separated-strings' as unknown as 'String',
+    users: {
+      format: 'json-array' as unknown as 'String',
       default: [] as string[],
-      env: 'TELEGRAM_ALLOWED_CHAT_IDS',
+      env: 'TELEGRAM_USERS',
     },
   },
   calendar: {

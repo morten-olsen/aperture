@@ -8,6 +8,7 @@ const promptStoreDatabase = createDatabase({
     db_prompts: z.object({
       id: z.string(),
       model: z.enum(['normal', 'high']),
+      userId: z.string(),
       visible: z.number(),
       state: z.string(),
       input: z.string().nullable(),
@@ -23,6 +24,7 @@ const promptStoreDatabase = createDatabase({
           .createTable('db_prompts')
           .addColumn('id', 'varchar(255)', (cb) => cb.primaryKey())
           .addColumn('model', 'varchar(255)', (cb) => cb.notNull())
+          .addColumn('userId', 'varchar(255)', (cb) => cb.notNull())
           .addColumn('visible', 'integer', (cb) => cb.notNull().defaultTo(1))
           .addColumn('state', 'varchar(50)', (cb) => cb.notNull())
           .addColumn('input', 'text')

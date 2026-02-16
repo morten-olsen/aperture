@@ -9,7 +9,7 @@ describe('TriggerScheduler', () => {
   let scheduler: TriggerScheduler;
 
   beforeEach(async () => {
-    services = new Services();
+    services = Services.mock();
     services.get(DatabaseService);
     scheduler = services.get(TriggerScheduler);
   });
@@ -18,17 +18,19 @@ describe('TriggerScheduler', () => {
     scheduler.stop();
   });
 
-  const createOnceTrigger = (overrides: { at?: string; model?: string } = {}) =>
+  const createOnceTrigger = (overrides: { at?: string; model?: 'normal' | 'high' } = {}) =>
     scheduler.create({
+      userId: 'admin',
       name: 'Test Once',
       goal: 'Test goal',
-      model: overrides.model ?? 'test-model',
+      model: overrides.model ?? 'normal',
       scheduleType: 'once',
       scheduleValue: overrides.at ?? '2026-03-15T09:00:00Z',
     });
 
   const createCronTrigger = (overrides: { expression?: string; model?: string; maxInvocations?: number } = {}) =>
     scheduler.create({
+      userId: 'admin',
       name: 'Test Cron',
       goal: 'Monitor something',
       model: overrides.model ?? 'test-model',
@@ -102,7 +104,7 @@ describe('TriggerScheduler', () => {
       await createOnceTrigger();
       await createCronTrigger();
 
-      const triggers = await scheduler.list();
+      const triggers = await scheduler.list({ userId: 'admin' });
       expect(triggers).toHaveLength(2);
     });
 
@@ -111,11 +113,11 @@ describe('TriggerScheduler', () => {
       await createCronTrigger();
       await scheduler.update(trigger.id, { status: 'paused' });
 
-      const active = await scheduler.list({ status: 'active' });
+      const active = await scheduler.list({ status: 'active', userId: 'admin' });
       expect(active).toHaveLength(1);
       expect(active[0].name).toBe('Test Cron');
 
-      const paused = await scheduler.list({ status: 'paused' });
+      const paused = await scheduler.list({ status: 'paused', userId: 'admin' });
       expect(paused).toHaveLength(1);
       expect(paused[0].name).toBe('Test Once');
     });
@@ -124,7 +126,7 @@ describe('TriggerScheduler', () => {
       await createOnceTrigger();
       await createCronTrigger();
 
-      const limited = await scheduler.list({ limit: 1 });
+      const limited = await scheduler.list({ limit: 1, userId: 'admin' });
       expect(limited).toHaveLength(1);
     });
   });
@@ -144,7 +146,7 @@ describe('TriggerScheduler', () => {
     it('updates model', async () => {
       const trigger = await createOnceTrigger();
       const updated = await scheduler.update(trigger.id, {
-        model: 'new-model',
+        model: 'normal',
       });
 
       expect(updated?.model).toBe('new-model');
@@ -268,7 +270,7 @@ describe('TriggerScheduler', () => {
   describe('invoke', () => {
     it('uses trigger model when no model argument provided', async () => {
       const { spy, fakePrompt } = mockPromptService();
-      const trigger = await createOnceTrigger({ model: 'gpt-4' });
+      const trigger = await createOnceTrigger({ model: 'normal' });
 
       const prompt = await scheduler.invoke(trigger.id);
 
@@ -278,9 +280,9 @@ describe('TriggerScheduler', () => {
 
     it('uses explicit model over trigger model', async () => {
       const { spy } = mockPromptService();
-      const trigger = await createOnceTrigger({ model: 'gpt-4' });
+      const trigger = await createOnceTrigger({ model: 'normal' });
 
-      await scheduler.invoke(trigger.id, 'gpt-3.5');
+      await scheduler.invoke(trigger.id, 'normal');
 
       expect(spy).toHaveBeenCalledWith(expect.objectContaining({ model: 'gpt-3.5' }));
     });

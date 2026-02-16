@@ -49,6 +49,7 @@ type PromptOutput = z.input<typeof promptOutputSchema>;
 
 const promptSchema = z.object({
   id: z.string(),
+  userId: z.string(),
   model: z.enum(['normal', 'high']),
   visible: z.boolean().default(true),
   state: z.enum(['running', 'completed']),

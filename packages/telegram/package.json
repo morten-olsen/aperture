@@ -26,6 +26,8 @@
     "@morten-olsen/agentic-core": "workspace:*",
     "@morten-olsen/agentic-conversation": "workspace:*",
     "@morten-olsen/agentic-database": "workspace:*",
+    "@morten-olsen/agentic-trigger": "workspace:*",
+    "@morten-olsen/agentic-notification": "workspace:*",
     "gramio": "^0.4.14",
     "zod": "^4.3.6"
   },

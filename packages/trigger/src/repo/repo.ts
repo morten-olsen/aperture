@@ -8,9 +8,10 @@ import { database } from '../database/database.js';
 
 type TriggerRow = {
   id: string;
+  userId: string;
   name: string;
   goal: string;
-  model: string;
+  model: 'normal' | 'high';
   schedule_type: string;
   schedule_value: string;
   status: string;
@@ -43,6 +44,7 @@ class TriggerRepo {
 
   #rowToTrigger = (row: TriggerRow): Trigger => ({
     id: row.id,
+    userId: row.userId,
     name: row.name,
     goal: row.goal,
     model: row.model,
@@ -72,6 +74,7 @@ class TriggerRepo {
       .insertInto('triggers_triggers')
       .values({
         id,
+        userId: input.userId,
         name: input.name,
         goal: input.goal,
         model: input.model,
@@ -95,6 +98,7 @@ class TriggerRepo {
 
     const trigger: Trigger = {
       id,
+      userId: input.userId,
       name: input.name,
       goal: input.goal,
       model: input.model,

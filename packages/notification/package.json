@@ -19,20 +19,13 @@
     "@morten-olsen/agentic-tests": "workspace:*",
     "@types/node": "25.2.3",
     "@vitest/coverage-v8": "4.0.18",
-    "msw": "^2.12.10",
     "typescript": "5.9.3",
     "vitest": "4.0.18"
   },
+  "name": "@morten-olsen/agentic-notification",
+  "version": "1.0.0",
   "dependencies": {
     "@morten-olsen/agentic-core": "workspace:*",
-    "@morten-olsen/agentic-database": "workspace:*",
-    "@morten-olsen/agentic-notification": "workspace:*",
-    "kysely": "^0.28.11",
     "zod": "^4.3.6"
-  },
-  "name": "@morten-olsen/agentic-conversation",
-  "version": "1.0.0",
-  "imports": {
-    "#root/*": "./src/*"
   }
 }

@@ -21,12 +21,15 @@ const invoke = createTool({
     invocationCount: z.number(),
     lastInvokedAt: z.string().nullable(),
   }),
-  invoke: async ({ input, services }) => {
+  invoke: async ({ input, services, userId }) => {
     const { TriggerScheduler } = await import('../scheduler/scheduler.js');
     const scheduler = services.get(TriggerScheduler);
     const trigger = await scheduler.get(input.triggerId);
     if (!trigger) {
       throw new Error(`Trigger ${input.triggerId} not found`);
+    }
+    if (trigger.userId !== userId) {
+      throw new Error('User not owner of trigger');
     }
     return {
       id: trigger.id,

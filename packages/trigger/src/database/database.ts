@@ -6,6 +6,7 @@ const database = createDatabase({
   schema: {
     triggers_triggers: z.object({
       id: z.string(),
+      userId: z.string(),
       name: z.string(),
       goal: z.string(),
       model: z.string(),
@@ -37,6 +38,7 @@ const database = createDatabase({
         await db.schema
           .createTable('triggers_triggers')
           .addColumn('id', 'varchar(255)', (cb) => cb.primaryKey())
+          .addColumn('userId', 'varchar(255)', (cb) => cb.primaryKey())
           .addColumn('name', 'varchar(255)', (cb) => cb.notNull())
           .addColumn('goal', 'text', (cb) => cb.notNull())
           .addColumn('model', 'varchar(255)', (cb) => cb.notNull().defaultTo(''))

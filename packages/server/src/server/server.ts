@@ -3,7 +3,7 @@ import { createDatabasePlugin } from '@morten-olsen/agentic-database';
 import { conversationPlugin } from '@morten-olsen/agentic-conversation';
 import { triggerPlugin } from '@morten-olsen/agentic-trigger';
 import { createCalendarPlugin, calendarPluginOptionsSchema } from '@morten-olsen/agentic-calendar';
-import { createTelegramPlugin } from '@morten-olsen/agentic-telegram';
+import { createTelegramPlugin, telegramPluginOptionsSchema } from '@morten-olsen/agentic-telegram';
 import type { Plugin } from '@morten-olsen/agentic-core';
 import type { ZodType } from 'zod';
 
@@ -51,15 +51,13 @@ const startServer = async ({ config }: StartServerOptions) => {
   }
 
   if (config.telegram.enabled) {
-    if (!config.telegram.token) {
-      throw new Error('Telegram is enabled but no token is configured');
-    }
-    const chatIds = config.telegram.allowedChatIds;
     plugins.push(
-      createTelegramPlugin({
-        token: config.telegram.token,
-        allowedChatIds: chatIds.length > 0 ? chatIds : undefined,
-      }),
+      createTelegramPlugin(
+        telegramPluginOptionsSchema.parse({
+          token: config.telegram.token,
+          users: config.telegram.users,
+        }),
+      ),
     );
   }
 

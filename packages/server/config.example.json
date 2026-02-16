@@ -10,7 +10,12 @@
   "telegram": {
     "enabled": false,
     "token": "",
-    "allowedChatIds": []
+    "users": [
+      {
+        "chatId": "12345678",
+        "userId": "user"
+      }
+    ]
   },
   "calendar": {
     "enabled": false,

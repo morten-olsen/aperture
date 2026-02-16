@@ -4,6 +4,7 @@ import type { State } from '../state/state.js';
 import type { Services } from '../exports.js';
 
 type ToolInput<TInput extends ZodType> = {
+  userId: string;
   input: z.input<TInput>;
   state: State;
   services: Services;

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi, beforeAll, afterAll } 
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { Services, PluginService } from '@morten-olsen/agentic-core';
-import { DatabaseService, databasePlugin, PromptStoreService } from '@morten-olsen/agentic-database';
+import { DatabaseService, createDatabasePlugin, PromptStoreService } from '@morten-olsen/agentic-database';
 
 import { conversationDatabase } from '../database/database.js';
 import { ConversationRepo } from '../repo/repo.js';
@@ -58,11 +58,15 @@ describe('ConversationService', () => {
   beforeEach(async () => {
     vi.stubEnv('OPENAI_API_KEY', 'test-key');
     vi.stubEnv('OPENAI_BASE_URL', TEST_BASE_URL);
-    services = new Services();
+    services = Services.mock();
 
     // Setup databases (like databasePlugin + conversationPlugin would)
     const pluginService = services.get(PluginService);
-    await pluginService.register(databasePlugin);
+    await pluginService.register(
+      createDatabasePlugin({
+        location: ':memory:',
+      }),
+    );
 
     const dbService = services.get(DatabaseService);
     await dbService.get(conversationDatabase);
@@ -75,14 +79,14 @@ describe('ConversationService', () => {
   });
 
   it('creates a new conversation', async () => {
-    const conv = await conversationService.create({ id: 'test-conv' });
+    const conv = await conversationService.create({ id: 'test-conv', userId: 'admin' });
     expect(conv.id).toBe('test-conv');
     expect(conv.prompts).toHaveLength(0);
   });
 
   it('returns cached instance on second get', async () => {
-    const conv1 = await conversationService.get('conv-1');
-    const conv2 = await conversationService.get('conv-1');
+    const conv1 = await conversationService.get('conv-1', 'admin');
+    const conv2 = await conversationService.get('conv-1', 'admin');
     expect(conv1).toBe(conv2);
   });
 
@@ -93,12 +97,12 @@ describe('ConversationService', () => {
       }),
     );
 
-    const conv = await conversationService.get('conv-persist');
-    const completion = await conv.prompt({ model: 'test-model', input: 'Hello' });
+    const conv = await conversationService.get('conv-persist', 'admin');
+    const completion = await conv.prompt({ model: 'normal', input: 'Hello' });
     await completion.run();
 
     // Create a new ConversationService to simulate cold start
-    const freshServices = new Services();
+    const freshServices = Services.mock();
     // Share the same DatabaseService (same in-memory SQLite)
     freshServices.set(DatabaseService, services.get(DatabaseService));
     // Need to re-listen on the new PromptService
@@ -106,7 +110,7 @@ describe('ConversationService', () => {
     freshPromptStore.listen();
 
     const freshConvService = freshServices.get(ConversationService);
-    const rehydrated = await freshConvService.get('conv-persist');
+    const rehydrated = await freshConvService.get('conv-persist', 'admin');
 
     expect(rehydrated.prompts).toHaveLength(1);
     expect(rehydrated.prompts[0]?.state).toBe('completed');
@@ -122,12 +126,12 @@ describe('ConversationService', () => {
       }),
     );
 
-    const conv = await conversationService.get('conv-history');
+    const conv = await conversationService.get('conv-history', 'admin');
 
-    const c1 = await conv.prompt({ model: 'test-model', input: 'First message' });
+    const c1 = await conv.prompt({ model: 'normal', input: 'First message' });
     await c1.run();
 
-    const c2 = await conv.prompt({ model: 'test-model', input: 'Second message' });
+    const c2 = await conv.prompt({ model: 'normal', input: 'Second message' });
     await c2.run();
 
     // The first prompt's request should have no prior user messages
@@ -159,7 +163,7 @@ describe('ConversationService', () => {
           return HttpResponse.json(createTextApiResponse('OK'));
         }),
       );
-      const completion = await conv.prompt({ model: 'test-model', input: 'Hi' });
+      const completion = await conv.prompt({ model: 'normal', input: 'Hi' });
       await completion.run();
 
       await conversationService.setActive('conv-active', 'user-1');
@@ -186,14 +190,14 @@ describe('ConversationService', () => {
       // Access maxCacheSize + 1 conversations to trigger eviction
       // Default maxCacheSize is 50, so create 51 entries
       for (let i = 0; i < 51; i++) {
-        await conversationService.get(`conv-${i}`);
+        await conversationService.get(`conv-${i}`, 'admin');
       }
 
       // conv-0 should have been evicted (oldest access)
       // Getting it again should create a new instance (not same reference)
-      const before = await conversationService.get('conv-1');
+      const before = await conversationService.get('conv-1', 'admin');
       // conv-1 is now touched, so it won't be evicted
-      const after = await conversationService.get('conv-1');
+      const after = await conversationService.get('conv-1', 'admin');
       expect(before).toBe(after);
     });
   });

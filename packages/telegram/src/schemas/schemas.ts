@@ -56,10 +56,19 @@ const telegramStateSchema = z.object({
 
 type TelegramState = z.infer<typeof telegramStateSchema>;
 
-type TelegramPluginOptions = {
-  token: string;
-  allowedChatIds?: string[];
-};
+const telegramUserSchema = z.object({
+  chatId: z.string(),
+  userId: z.string(),
+});
+
+type TelegramUser = z.infer<typeof telegramUserSchema>;
+
+const telegramPluginOptionsSchema = z.object({
+  token: z.string().min(1, 'Missing telegram token'),
+  users: z.array(telegramUserSchema).default([]),
+});
+
+type TelegramPluginOptions = z.infer<typeof telegramPluginOptionsSchema>;
 
 export {
   telegramChatTypeSchema,
@@ -68,6 +77,8 @@ export {
   telegramSetModelInputSchema,
   telegramListChatsOutputSchema,
   telegramStateSchema,
+  telegramUserSchema,
+  telegramPluginOptionsSchema,
 };
 
 export type {
@@ -78,4 +89,5 @@ export type {
   TelegramListChatsOutput,
   TelegramState,
   TelegramPluginOptions,
+  TelegramUser,
 };

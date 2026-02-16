@@ -1,5 +1,6 @@
 import { createPlugin, PromptService } from '@morten-olsen/agentic-core';
 import { DatabaseService } from '@morten-olsen/agentic-database';
+import { NotificationService } from '@morten-olsen/agentic-notification';
 
 import type { TelegramPluginOptions } from '../schemas/schemas.js';
 import { telegramStateSchema } from '../schemas/schemas.js';
@@ -15,6 +16,19 @@ const createTelegramPlugin = (options: TelegramPluginOptions) =>
     setup: async ({ services }) => {
       const databaseService = services.get(DatabaseService);
       await databaseService.get(database);
+
+      const notificationService = services.get(NotificationService);
+      notificationService.on('published', async (notification) => {
+        const user = options.users?.find((user) => user.userId === notification.userId);
+        if (!user) {
+          return;
+        }
+        try {
+          await botService.sendMessage(user.chatId, notification.body);
+        } catch (error) {
+          console.error('[Telegram] Error sending response:', error);
+        }
+      });
 
       const botService = services.get(TelegramBotService);
       botService.start(options.token, options);
@@ -51,8 +65,9 @@ const createTelegramPlugin = (options: TelegramPluginOptions) =>
         if (!text) return;
 
         const telegramChatId = String(ctx.chat.id);
+        const user = options.users?.find((user) => user.chatId === telegramChatId);
 
-        if (options.allowedChatIds && !options.allowedChatIds.includes(telegramChatId)) {
+        if (!user) {
           return;
         }
 
@@ -92,6 +107,7 @@ const createTelegramPlugin = (options: TelegramPluginOptions) =>
 
 const telegramPlugin = createTelegramPlugin({
   token: '',
+  users: [],
 });
 
 export { createTelegramPlugin, telegramPlugin };

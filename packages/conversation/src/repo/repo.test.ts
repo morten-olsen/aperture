@@ -11,7 +11,7 @@ describe('ConversationRepo', () => {
   let repo: ConversationRepo;
 
   beforeEach(async () => {
-    services = new Services();
+    services = Services.mock();
     const dbService = services.get(DatabaseService);
     await dbService.get(conversationDatabase);
     repo = services.get(ConversationRepo);

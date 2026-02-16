@@ -7,13 +7,16 @@ import type { Services } from '../utils/utils.service.js';
 import type { Prompt } from '../prompt/prompt.js';
 
 type PluginPrepareOptions = {
+  userId: string;
   context: Context;
   prompts: Prompt[];
   tools: Tool<ZodType, ZodType>[];
   services: Services;
   state: State;
 };
+
 class PluginPrepare {
+  #userId: string;
   #services: Services;
   #context: Context;
   #prompts: Prompt[];
@@ -21,11 +24,16 @@ class PluginPrepare {
   #state: State;
 
   constructor(options: PluginPrepareOptions) {
+    this.#userId = options.userId;
     this.#services = options.services;
     this.#context = options.context;
     this.#prompts = options.prompts;
     this.#tools = options.tools;
     this.#state = options.state;
+  }
+
+  public get userId() {
+    return this.#userId;
   }
 
   public get context() {

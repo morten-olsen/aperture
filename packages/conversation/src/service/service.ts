@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import type { Services } from '@morten-olsen/agentic-core';
+import type { Prompt, Services } from '@morten-olsen/agentic-core';
 import { PromptStoreService } from '@morten-olsen/agentic-database';
 
 import { ConversationRepo } from '../repo/repo.js';
@@ -47,7 +47,7 @@ class ConversationService {
     }
   };
 
-  public get = async (id: string, userId = 'admin') => {
+  public get = async (id: string, userId: string) => {
     const cached = this.#cache.get(id);
     if (cached) {
       this.#touch(id, cached.instance);
@@ -86,11 +86,12 @@ class ConversationService {
   };
 
   public create = async (input: ConversationCreateInput) => {
-    const { id = randomUUID(), history, state } = input;
+    const { id = randomUUID(), userId, history, state } = input;
     const repo = this.#repo();
     const conversation = new ConversationInstance({
       id,
       services: this.#services,
+      userId,
       repo,
       history,
       state,
@@ -99,7 +100,7 @@ class ConversationService {
     return conversation;
   };
 
-  public getActive = async (userId = 'admin') => {
+  public getActive = async (userId: string) => {
     const repo = this.#repo();
     const user = await repo.getUser(userId);
     if (!user?.active_conversation_id) {
@@ -108,10 +109,15 @@ class ConversationService {
     return this.get(user.active_conversation_id, userId);
   };
 
-  public setActive = async (conversationId: string | null, userId = 'admin') => {
+  public setActive = async (conversationId: string | null, userId: string) => {
     const repo = this.#repo();
     await repo.ensureUser(userId);
     await repo.setActiveConversation(userId, conversationId);
+  };
+
+  public insertIntoActive = async (prompt: Prompt) => {
+    const current = await this.getActive(prompt.userId);
+    await current?.insertPrompt(prompt);
   };
 }
 

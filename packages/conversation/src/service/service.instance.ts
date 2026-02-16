@@ -1,11 +1,12 @@
 import { type Prompt, type Services, type PromptCompletionInput, PromptService } from '@morten-olsen/agentic-core';
+import { PromptStoreService } from '@morten-olsen/agentic-database';
 
 import type { ConversationRepo } from '../repo/repo.js';
 
 type ConversationInstanceOptions = {
   services: Services;
   id: string;
-  userId?: string;
+  userId: string;
   repo: ConversationRepo;
   state?: Record<string, unknown>;
   history?: Prompt[];
@@ -34,7 +35,7 @@ class ConversationInstance {
     return this.#prompts;
   }
 
-  public prompt = async (input: PromptCompletionInput) => {
+  public prompt = async (input: Omit<PromptCompletionInput, 'userId'>) => {
     const { services, repo } = this.#options;
     const userId = this.userId;
 
@@ -44,6 +45,7 @@ class ConversationInstance {
     const promptService = services.get(PromptService);
     const promptCompletion = promptService.create({
       ...input,
+      userId,
       history: [...this.#prompts],
       state: { ...this.#state, ...input.state },
     });
@@ -57,6 +59,14 @@ class ConversationInstance {
     });
 
     return promptCompletion;
+  };
+
+  public insertPrompt = async (prompt: Prompt) => {
+    const { services, repo } = this.#options;
+    const promptStore = services.get(PromptStoreService);
+    promptStore.insert(prompt);
+    await repo.ensureUser(prompt.userId);
+    await repo.addPrompt(this.id, prompt.id);
   };
 }
 

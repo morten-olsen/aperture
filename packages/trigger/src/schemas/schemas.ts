@@ -13,9 +13,10 @@ type TriggerReference = z.infer<typeof triggerReferenceSchema>;
 
 const triggerSchema = z.object({
   id: z.string(),
+  userId: z.string(),
   name: z.string(),
   goal: z.string(),
-  model: z.string(),
+  model: z.enum(['normal', 'high']),
   scheduleType: z.enum(['once', 'cron']),
   scheduleValue: z.string(),
   status: triggerStatusSchema,
@@ -36,10 +37,13 @@ const triggerSchema = z.object({
 type Trigger = z.infer<typeof triggerSchema>;
 
 const triggerCreateInputSchema = z.object({
+  userId: z.string(),
   name: z.string().describe('Human-readable name for the trigger'),
   goal: z.string().describe('What the agent should accomplish when invoked'),
-  model: z.string().describe('Model ID to use when invoking this trigger'),
-  scheduleType: z.enum(['once', 'cron']).describe('Type of schedule: "once" for a one-time trigger, "cron" for recurring'),
+  model: z.enum(['normal', 'high']).describe('Model ID to use when invoking this trigger'),
+  scheduleType: z
+    .enum(['once', 'cron'])
+    .describe('Type of schedule: "once" for a one-time trigger, "cron" for recurring'),
   scheduleValue: z
     .string()
     .describe('For once: ISO8601 datetime (e.g. "2026-03-15T09:00:00Z"). For cron: expression (e.g. "0 9 * * 1-5")'),
@@ -51,10 +55,11 @@ const triggerCreateInputSchema = z.object({
 type TriggerCreateInput = z.infer<typeof triggerCreateInputSchema>;
 
 const triggerUpdateInputSchema = z.object({
+  userId: z.string(),
   triggerId: z.string().describe('ID of the trigger to update'),
   name: z.string().optional().describe('New name'),
   goal: z.string().optional().describe('New goal'),
-  model: z.string().optional().describe('New model ID'),
+  model: z.enum(['normal', 'high']).optional().describe('New model ID'),
   scheduleType: z.enum(['once', 'cron']).optional().describe('New schedule type'),
   scheduleValue: z
     .string()
@@ -70,35 +75,28 @@ const triggerUpdateInputSchema = z.object({
 type TriggerUpdateInput = z.infer<typeof triggerUpdateInputSchema>;
 
 const triggerDeleteInputSchema = z.object({
+  userId: z.string(),
   triggerId: z.string().describe('ID of the trigger to delete'),
 });
 
 type TriggerDeleteInput = z.infer<typeof triggerDeleteInputSchema>;
 
 const triggerListInputSchema = z.object({
+  userId: z.string(),
   status: triggerStatusSchema.optional().describe('Filter by status'),
   limit: z.number().optional().describe('Maximum number of results (default 50)'),
 });
 
 type TriggerListInput = z.infer<typeof triggerListInputSchema>;
 
-const triggerNotifyInputSchema = z.object({
-  title: z.string().describe('Short notification title (max 100 chars)'),
-  body: z.string().describe('Notification content (max 1000 chars)'),
-  urgency: z.enum(['low', 'medium', 'high', 'critical']).optional().describe('Notification urgency level'),
-});
-
-type TriggerNotifyInput = z.infer<typeof triggerNotifyInputSchema>;
-
 const triggerPromptSchema = z.object({
+  userId: z.string(),
   triggerId: z.string(),
   promptId: z.string(),
   invokedAt: z.string(),
 });
 
 type TriggerPrompt = z.infer<typeof triggerPromptSchema>;
-
-type NotifyHandler = (input: TriggerNotifyInput) => Promise<void>;
 
 export {
   triggerStatusSchema,
@@ -108,7 +106,6 @@ export {
   triggerUpdateInputSchema,
   triggerDeleteInputSchema,
   triggerListInputSchema,
-  triggerNotifyInputSchema,
   triggerPromptSchema,
 };
 
@@ -120,7 +117,5 @@ export type {
   TriggerUpdateInput,
   TriggerDeleteInput,
   TriggerListInput,
-  TriggerNotifyInput,
   TriggerPrompt,
-  NotifyHandler,
 };

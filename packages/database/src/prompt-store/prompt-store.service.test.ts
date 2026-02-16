@@ -78,6 +78,7 @@ describe('PromptStoreService', () => {
     const promptService = services.get(PromptService);
     const completion = promptService.create({
       model: 'normal',
+      userId: 'admin',
       input: 'Say hello',
     });
 
@@ -112,10 +113,10 @@ describe('PromptStoreService', () => {
 
     const promptService = services.get(PromptService);
 
-    const c1 = promptService.create({ model: 'normal', input: 'First' });
+    const c1 = promptService.create({ model: 'normal', input: 'First', userId: 'admin' });
     await c1.run();
 
-    const c2 = promptService.create({ model: 'normal', input: 'Second' });
+    const c2 = promptService.create({ model: 'normal', input: 'Second', userId: 'admin' });
     await c2.run();
 
     // Request in reverse order — should get them back in the requested order
@@ -139,7 +140,7 @@ describe('PromptStoreService', () => {
 
     const ids: string[] = [];
     for (let i = 0; i < 3; i++) {
-      const c = promptService.create({ model: 'normal', input: `Msg ${i}` });
+      const c = promptService.create({ model: 'normal', input: `Msg ${i}`, userId: 'admin' });
       ids.push(c.id);
       await c.run();
     }
