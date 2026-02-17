@@ -98,12 +98,12 @@ const search = createTool({
         });
       }
 
-      const event = eventMap.get(row.uid)!;
-      if (row.note_id) {
+      const event = eventMap.get(row.uid);
+      if (event && row.note_id) {
         event.notes.push({
           id: row.note_id,
-          content: row.note_content!,
-          createdAt: row.note_created_at!,
+          content: row.note_content ?? '',
+          createdAt: row.note_created_at ?? '',
         });
       }
     }

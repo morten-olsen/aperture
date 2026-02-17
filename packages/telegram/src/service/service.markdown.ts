@@ -59,6 +59,7 @@ const toTelegramMarkdown = (text: string): string => {
     out = escapeV2(out);
 
     // 10. Restore slots
+    // eslint-disable-next-line no-control-regex
     out = out.replace(/\x00(\d+)\x00/g, (_m, i) => {
       return slots[Number(i)] ?? '';
     });

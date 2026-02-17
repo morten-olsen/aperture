@@ -8,5 +8,8 @@ export default defineConfig(async () => {
     resolve: {
       alias: aliases,
     },
+    test: {
+      exclude: ['**/dist/**', '**/node_modules/**'],
+    },
   };
 });

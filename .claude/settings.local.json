@@ -40,7 +40,9 @@
       "Bash(npx eslint:*)",
       "Bash(python3:*)",
       "Bash(node:*)",
-      "Bash(sqlite3:*)"
+      "Bash(sqlite3:*)",
+      "Bash(npx husky:*)",
+      "Bash(docker compose build:*)"
     ]
   }
 }

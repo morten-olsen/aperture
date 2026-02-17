@@ -54,15 +54,9 @@ describe('PromptStoreService', () => {
   let services: Services;
 
   beforeEach(async () => {
-    vi.stubEnv('OPENAI_API_KEY', 'test-key');
-    vi.stubEnv('OPENAI_BASE_URL', TEST_BASE_URL);
     services = Services.mock();
     const dbService = services.get(DatabaseService);
     await dbService.get(promptStoreDatabase);
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
   });
 
   it('captures a prompt on creation and updates on completion', async () => {

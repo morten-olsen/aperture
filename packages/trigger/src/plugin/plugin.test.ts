@@ -3,13 +3,13 @@ import { Services, PluginService, State, PluginPrepare } from '@morten-olsen/age
 
 import { TriggerScheduler } from '../scheduler/scheduler.js';
 
-import { createTriggerPlugin, triggerPlugin } from './plugin.js';
+import { triggerPlugin } from './plugin.js';
 
 describe('triggerPlugin', () => {
   let services: Services;
 
   beforeEach(() => {
-    services = new Services();
+    services = Services.mock();
   });
 
   afterEach(() => {
@@ -68,17 +68,15 @@ describe('triggerPlugin', () => {
 
   describe('prepare (trigger-invoked session)', () => {
     it('adds trigger context and pre-bound tools', async () => {
-      const plugin = createTriggerPlugin({
-        notifyHandler: () => Promise.resolve(),
-      });
       const pluginService = services.get(PluginService);
-      await pluginService.register(plugin);
+      await pluginService.register(triggerPlugin);
 
       const scheduler = services.get(TriggerScheduler);
       const trigger = await scheduler.create({
+        userId: 'admin',
         name: 'Test Trigger',
         goal: 'Check something',
-        model: 'test-model',
+        model: 'normal',
         scheduleType: 'cron',
         scheduleValue: '0 9 * * *',
         setupContext: 'Morning check',
@@ -88,14 +86,13 @@ describe('triggerPlugin', () => {
         trigger: { from: { id: trigger.id, type: 'cron' } },
       });
 
-      await plugin.prepare?.(prepare);
+      await triggerPlugin.prepare?.(prepare);
 
       const toolIds = prepare.tools.map((t) => t.id);
       expect(toolIds).toContain('trigger.create');
       expect(toolIds).toContain('trigger.list');
       expect(toolIds).toContain('trigger.update');
       expect(toolIds).toContain('trigger.delete');
-      expect(toolIds).toContain('trigger.notify');
       expect(toolIds).not.toContain('trigger.invoke');
 
       const contextContent = prepare.context.items.map((i) => i.content).join('\n');
@@ -105,15 +102,15 @@ describe('triggerPlugin', () => {
     });
 
     it('includes continuation in context when present', async () => {
-      const plugin = createTriggerPlugin();
       const pluginService = services.get(PluginService);
-      await pluginService.register(plugin);
+      await pluginService.register(triggerPlugin);
 
       const scheduler = services.get(TriggerScheduler);
       const trigger = await scheduler.create({
+        userId: 'admin',
         name: 'Test',
         goal: 'Monitor',
-        model: 'test-model',
+        model: 'normal',
         scheduleType: 'cron',
         scheduleValue: '0 * * * *',
       });
@@ -123,7 +120,7 @@ describe('triggerPlugin', () => {
         trigger: { from: { id: trigger.id, type: 'cron' } },
       });
 
-      await plugin.prepare?.(prepare);
+      await triggerPlugin.prepare?.(prepare);
 
       const contextContent = prepare.context.items.map((i) => i.content).join('\n');
       expect(contextContent).toContain('Found 3 items last time');

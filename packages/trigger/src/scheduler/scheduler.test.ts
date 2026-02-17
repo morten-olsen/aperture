@@ -28,12 +28,14 @@ describe('TriggerScheduler', () => {
       scheduleValue: overrides.at ?? '2026-03-15T09:00:00Z',
     });
 
-  const createCronTrigger = (overrides: { expression?: string; model?: string; maxInvocations?: number } = {}) =>
+  const createCronTrigger = (
+    overrides: { expression?: string; model?: 'normal' | 'high'; maxInvocations?: number } = {},
+  ) =>
     scheduler.create({
       userId: 'admin',
       name: 'Test Cron',
       goal: 'Monitor something',
-      model: overrides.model ?? 'test-model',
+      model: overrides.model ?? 'normal',
       scheduleType: 'cron',
       scheduleValue: overrides.expression ?? '0 9 * * 1-5',
       setupContext: 'Check weekday mornings',
@@ -61,7 +63,7 @@ describe('TriggerScheduler', () => {
       expect(trigger.id).toBeDefined();
       expect(trigger.name).toBe('Test Once');
       expect(trigger.goal).toBe('Test goal');
-      expect(trigger.model).toBe('test-model');
+      expect(trigger.model).toBe('normal');
       expect(trigger.scheduleType).toBe('once');
       expect(trigger.scheduleValue).toBe('2026-03-15T09:00:00Z');
       expect(trigger.status).toBe('active');
@@ -79,7 +81,7 @@ describe('TriggerScheduler', () => {
       expect(trigger.scheduleValue).toBe('0 9 * * 1-5');
       expect(trigger.setupContext).toBe('Check weekday mornings');
       expect(trigger.maxInvocations).toBe(10);
-      expect(trigger.model).toBe('test-model');
+      expect(trigger.model).toBe('normal');
     });
   });
 
@@ -146,10 +148,10 @@ describe('TriggerScheduler', () => {
     it('updates model', async () => {
       const trigger = await createOnceTrigger();
       const updated = await scheduler.update(trigger.id, {
-        model: 'normal',
+        model: 'high',
       });
 
-      expect(updated?.model).toBe('new-model');
+      expect(updated?.model).toBe('high');
     });
 
     it('updates schedule', async () => {
@@ -275,16 +277,17 @@ describe('TriggerScheduler', () => {
       const prompt = await scheduler.invoke(trigger.id);
 
       expect(prompt.id).toBe(fakePrompt.id);
-      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ model: 'gpt-4' }));
+      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ model: 'normal' }));
     });
 
     it('uses explicit model over trigger model', async () => {
       const { spy } = mockPromptService();
+      await createOnceTrigger({ model: 'normal' });
+
       const trigger = await createOnceTrigger({ model: 'normal' });
+      await scheduler.invoke(trigger.id, 'high');
 
-      await scheduler.invoke(trigger.id, 'normal');
-
-      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ model: 'gpt-3.5' }));
+      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ model: 'high' }));
     });
 
     it('marks invoked on success', async () => {

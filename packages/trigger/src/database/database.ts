@@ -38,7 +38,7 @@ const database = createDatabase({
         await db.schema
           .createTable('triggers_triggers')
           .addColumn('id', 'varchar(255)', (cb) => cb.primaryKey())
-          .addColumn('userId', 'varchar(255)', (cb) => cb.primaryKey())
+          .addColumn('userId', 'varchar(255)', (cb) => cb.notNull())
           .addColumn('name', 'varchar(255)', (cb) => cb.notNull())
           .addColumn('goal', 'text', (cb) => cb.notNull())
           .addColumn('model', 'varchar(255)', (cb) => cb.notNull().defaultTo(''))

@@ -1,0 +1,9 @@
+services:
+  glados:
+    build: .
+    volumes:
+      - ./packages/server/config.json:/etc/glados/config.json:ro
+      - glados-data:/data
+
+volumes:
+  glados-data:

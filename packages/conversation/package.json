@@ -31,8 +31,5 @@
     "zod": "^4.3.6"
   },
   "name": "@morten-olsen/agentic-conversation",
-  "version": "1.0.0",
-  "imports": {
-    "#root/*": "./src/*"
-  }
+  "version": "1.0.0"
 }

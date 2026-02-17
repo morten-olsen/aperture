@@ -6,4 +6,9 @@ dist
 *.md
 !README.md
 .git
+.github
+.husky
+docker-compose.yml
+commitlint.config.ts
 config.json
+*.sqlite

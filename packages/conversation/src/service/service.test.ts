@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { Services, PluginService } from '@morten-olsen/agentic-core';
@@ -56,8 +56,6 @@ describe('ConversationService', () => {
   let conversationService: ConversationService;
 
   beforeEach(async () => {
-    vi.stubEnv('OPENAI_API_KEY', 'test-key');
-    vi.stubEnv('OPENAI_BASE_URL', TEST_BASE_URL);
     services = Services.mock();
 
     // Setup databases (like databasePlugin + conversationPlugin would)
@@ -72,10 +70,6 @@ describe('ConversationService', () => {
     await dbService.get(conversationDatabase);
 
     conversationService = services.get(ConversationService);
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
   });
 
   it('creates a new conversation', async () => {

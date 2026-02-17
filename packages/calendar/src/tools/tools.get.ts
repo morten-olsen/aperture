@@ -49,9 +49,9 @@ const get = createTool({
       if (row.note_id) {
         notes.push({
           id: row.note_id,
-          content: row.note_content!,
-          createdAt: row.note_created_at!,
-          updatedAt: row.note_updated_at!,
+          content: row.note_content ?? '',
+          createdAt: row.note_created_at ?? '',
+          updatedAt: row.note_updated_at ?? '',
         });
       }
     }

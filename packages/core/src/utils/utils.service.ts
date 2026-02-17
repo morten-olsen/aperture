@@ -53,12 +53,12 @@ class Services {
   public static mock = () => {
     return new Services({
       provider: {
-        apiKey: 'foo',
-        baseUrl: 'bar',
+        apiKey: 'test-key',
+        baseUrl: 'https://test.openai.com/v1',
       },
       models: {
-        normal: 'baz',
-        high: 'bax',
+        normal: 'test-model',
+        high: 'test-model-high',
       },
     });
   };

@@ -6,8 +6,7 @@ import { z } from 'zod';
 import { NotificationService } from '@morten-olsen/agentic-notification';
 
 import { conversationDatabase } from '../database/database.js';
-
-import { ConversationService } from '#root/exports.js';
+import { ConversationService } from '../service/service.js';
 
 const conversationPlugin = createPlugin({
   id: 'conversation',

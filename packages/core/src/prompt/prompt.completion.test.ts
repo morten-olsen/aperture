@@ -84,13 +84,7 @@ describe('PromptCompletion', () => {
   let services: Services;
 
   beforeEach(() => {
-    vi.stubEnv('OPENAI_API_KEY', 'test-key');
-    vi.stubEnv('OPENAI_BASE_URL', TEST_BASE_URL);
-    services = new Services();
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
+    services = Services.mock();
   });
 
   it('completes with a text response when no tools are called', async () => {

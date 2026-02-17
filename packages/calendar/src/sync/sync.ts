@@ -3,6 +3,7 @@ import { DatabaseService } from '@morten-olsen/agentic-database';
 import { createDAVClient } from 'tsdav';
 import * as rrulePkg from 'rrule';
 
+// eslint-disable-next-line import/namespace
 const rruleDefault = ('default' in rrulePkg ? rrulePkg.default : rrulePkg) as typeof rrulePkg;
 const { rrulestr } = rruleDefault;
 type RRule = rrulePkg.RRule;
@@ -196,11 +197,12 @@ class CalendarSyncService {
     return results
       .filter((r) => r.ok && r.props?.calendarData)
       .map((r) => {
-        const raw = r.props!.calendarData as string | { _cdata: string };
+        const props = r.props as NonNullable<typeof r.props>;
+        const raw = props.calendarData as string | { _cdata: string };
         const data = typeof raw === 'string' ? raw : raw._cdata;
         return {
           data,
-          etag: (r.props!.getetag as string) || '',
+          etag: (props.getetag as string) || '',
         };
       });
   }
@@ -251,7 +253,10 @@ class CalendarSyncService {
 
     const objectUrls = responses
       .filter((r) => r.ok && r.href && r.href.endsWith('.ics'))
-      .map((r) => (r.href!.startsWith('http') ? new URL(r.href!).pathname : r.href!));
+      .map((r) => {
+        const href = r.href as string;
+        return href.startsWith('http') ? new URL(href).pathname : href;
+      });
 
     if (objectUrls.length === 0) return [];
 
