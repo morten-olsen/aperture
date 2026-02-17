@@ -6,8 +6,8 @@ import { triggerUpdateInputSchema } from '../schemas/schemas.js';
 const createUpdateTool = (currentTriggerId?: string) => {
   const inputSchema = currentTriggerId
     ? triggerUpdateInputSchema.extend({
-      triggerId: z.string().optional().describe('ID of the trigger to update (defaults to current trigger)'),
-    })
+        triggerId: z.string().optional().describe('ID of the trigger to update (defaults to current trigger)'),
+      })
     : triggerUpdateInputSchema;
 
   return createTool({

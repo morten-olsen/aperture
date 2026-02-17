@@ -60,14 +60,20 @@ const listOutputSchema = z.array(
     name: z.string(),
     color: z.string().optional(),
     lastSyncedAt: z.string().optional(),
-  })
+  }),
 );
 
 const searchInputSchema = z.object({
   query: z.string().optional().describe('Text to search in event summary, description, or location'),
   calendarId: z.string().optional().describe('Filter by calendar source ID'),
-  from: z.string().optional().describe('Start of date range, ISO 8601 date (YYYY-MM-DD) or datetime (YYYY-MM-DDTHH:mm:ssZ)'),
-  to: z.string().optional().describe('End of date range, ISO 8601 date (YYYY-MM-DD) or datetime (YYYY-MM-DDTHH:mm:ssZ)'),
+  from: z
+    .string()
+    .optional()
+    .describe('Start of date range, ISO 8601 date (YYYY-MM-DD) or datetime (YYYY-MM-DDTHH:mm:ssZ)'),
+  to: z
+    .string()
+    .optional()
+    .describe('End of date range, ISO 8601 date (YYYY-MM-DD) or datetime (YYYY-MM-DDTHH:mm:ssZ)'),
   limit: z.number().optional().describe('Max number of events to return (default 20)'),
 });
 
@@ -87,9 +93,9 @@ const searchOutputSchema = z.array(
         id: z.string(),
         content: z.string(),
         createdAt: z.string(),
-      })
+      }),
     ),
-  })
+  }),
 );
 
 const getInputSchema = z.object({
@@ -112,7 +118,7 @@ const getOutputSchema = z.object({
       content: z.string(),
       createdAt: z.string(),
       updatedAt: z.string(),
-    })
+    }),
   ),
 });
 
@@ -167,10 +173,4 @@ export {
   deleteNoteOutputSchema,
 };
 
-export type {
-  CalendarSource,
-  CalendarPluginOptions,
-  ExpansionWindow,
-  Event,
-  EventNote,
-};
+export type { CalendarSource, CalendarPluginOptions, ExpansionWindow, Event, EventNote };

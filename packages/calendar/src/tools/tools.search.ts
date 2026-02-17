@@ -1,12 +1,12 @@
 import { createTool } from '@morten-olsen/agentic-core';
 import { DatabaseService } from '@morten-olsen/agentic-database';
+
 import { searchInputSchema, searchOutputSchema } from '../schemas/schemas.js';
 import { database } from '../database/database.js';
 
 const search = createTool({
   id: 'calendar.search',
-  description:
-    'Search events by text and/or date range across all calendars or a specific calendar.',
+  description: 'Search events by text and/or date range across all calendars or a specific calendar.',
   input: searchInputSchema,
   output: searchOutputSchema,
   invoke: async ({ input, services }) => {
@@ -37,7 +37,7 @@ const search = createTool({
           eb('e.summary', 'like', likePattern),
           eb('e.description', 'like', likePattern),
           eb('e.location', 'like', likePattern),
-        ])
+        ]),
       );
     }
 
@@ -74,11 +74,11 @@ const search = createTool({
         endAt: string;
         allDay: boolean;
         isRecurring: boolean;
-        notes: Array<{
+        notes: {
           id: string;
           content: string;
           createdAt: string;
-        }>;
+        }[];
       }
     >();
 

@@ -64,11 +64,7 @@ const database = createDatabase({
           .column('calendar_id')
           .execute();
 
-        await db.schema
-          .createIndex('calendar_events_start_at_idx')
-          .on('calendar_events')
-          .column('start_at')
-          .execute();
+        await db.schema.createIndex('calendar_events_start_at_idx').on('calendar_events').column('start_at').execute();
 
         await db.schema
           .createIndex('calendar_events_master_uid_idx')
@@ -76,11 +72,7 @@ const database = createDatabase({
           .column('master_uid')
           .execute();
 
-        await db.schema
-          .createIndex('calendar_notes_event_uid_idx')
-          .on('calendar_notes')
-          .column('event_uid')
-          .execute();
+        await db.schema.createIndex('calendar_notes_event_uid_idx').on('calendar_notes').column('event_uid').execute();
       },
     },
   },

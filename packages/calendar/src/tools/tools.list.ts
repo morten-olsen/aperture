@@ -1,5 +1,6 @@
 import { createTool } from '@morten-olsen/agentic-core';
 import { z } from 'zod';
+
 import { listOutputSchema } from '../schemas/schemas.js';
 
 const list = createTool({

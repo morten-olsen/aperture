@@ -27,9 +27,7 @@ const toTelegramMarkdown = (text: string): string => {
 
     // 3. Links [text](url)
     out = out.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, url) => {
-      return slot(
-        `[${escapeV2(label)}](${url.replace(/([)\\])/g, '\\$1')})`,
-      );
+      return slot(`[${escapeV2(label)}](${url.replace(/([)\\])/g, '\\$1')})`);
     });
 
     // 4. Bold + italic (***text***)

@@ -6,8 +6,8 @@ import { triggerDeleteInputSchema } from '../schemas/schemas.js';
 const createDeleteTool = (currentTriggerId?: string) => {
   const inputSchema = currentTriggerId
     ? triggerDeleteInputSchema.extend({
-      triggerId: z.string().optional().describe('ID of the trigger to delete (defaults to current trigger)'),
-    })
+        triggerId: z.string().optional().describe('ID of the trigger to delete (defaults to current trigger)'),
+      })
     : triggerDeleteInputSchema;
 
   return createTool({

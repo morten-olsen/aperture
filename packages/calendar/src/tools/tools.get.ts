@@ -1,5 +1,6 @@
 import { createTool } from '@morten-olsen/agentic-core';
 import { DatabaseService } from '@morten-olsen/agentic-database';
+
 import { getInputSchema, getOutputSchema } from '../schemas/schemas.js';
 import { database } from '../database/database.js';
 
@@ -37,12 +38,12 @@ const get = createTool({
     }
 
     const firstRow = rows[0];
-    const notes: Array<{
+    const notes: {
       id: string;
       content: string;
       createdAt: string;
       updatedAt: string;
-    }> = [];
+    }[] = [];
 
     for (const row of rows) {
       if (row.note_id) {

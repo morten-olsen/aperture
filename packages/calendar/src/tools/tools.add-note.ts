@@ -1,10 +1,9 @@
+import { randomUUID } from 'crypto';
+
 import { createTool } from '@morten-olsen/agentic-core';
 import { DatabaseService } from '@morten-olsen/agentic-database';
-import { randomUUID } from 'crypto';
-import {
-  addNoteInputSchema,
-  addNoteOutputSchema,
-} from '../schemas/schemas.js';
+
+import { addNoteInputSchema, addNoteOutputSchema } from '../schemas/schemas.js';
 import { database } from '../database/database.js';
 
 const addNote = createTool({

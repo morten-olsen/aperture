@@ -8,15 +8,11 @@ describe('toTelegramMarkdown', () => {
   });
 
   it('should convert **bold** to MarkdownV2 bold', () => {
-    expect(toTelegramMarkdown('this is **bold** text')).toBe(
-      'this is *bold* text',
-    );
+    expect(toTelegramMarkdown('this is **bold** text')).toBe('this is *bold* text');
   });
 
   it('should convert *italic* to MarkdownV2 italic', () => {
-    expect(toTelegramMarkdown('this is *italic* text')).toBe(
-      'this is _italic_ text',
-    );
+    expect(toTelegramMarkdown('this is *italic* text')).toBe('this is _italic_ text');
   });
 
   it('should convert ***bold italic*** to MarkdownV2', () => {
@@ -28,9 +24,7 @@ describe('toTelegramMarkdown', () => {
   });
 
   it('should preserve inline code without escaping content', () => {
-    expect(toTelegramMarkdown('run `rm -rf /` now')).toBe(
-      'run `rm -rf /` now',
-    );
+    expect(toTelegramMarkdown('run `rm -rf /` now')).toBe('run `rm -rf /` now');
   });
 
   it('should preserve fenced code blocks', () => {
@@ -40,15 +34,11 @@ describe('toTelegramMarkdown', () => {
   });
 
   it('should convert links', () => {
-    expect(toTelegramMarkdown('[click](https://example.com)')).toBe(
-      '[click](https://example.com)',
-    );
+    expect(toTelegramMarkdown('[click](https://example.com)')).toBe('[click](https://example.com)');
   });
 
   it('should escape special chars inside link text', () => {
-    expect(toTelegramMarkdown('[a.b](https://example.com)')).toBe(
-      '[a\\.b](https://example.com)',
-    );
+    expect(toTelegramMarkdown('[a.b](https://example.com)')).toBe('[a\\.b](https://example.com)');
   });
 
   it('should convert headings to bold', () => {

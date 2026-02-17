@@ -1,6 +1,7 @@
 import { createPlugin } from '@morten-olsen/agentic-core';
 import { z } from 'zod';
 import { DatabaseService } from '@morten-olsen/agentic-database';
+
 import type { CalendarPluginOptions } from '../schemas/schemas.js';
 import { CalendarSyncService } from '../sync/sync.js';
 import { calendarTools } from '../tools/tools.js';

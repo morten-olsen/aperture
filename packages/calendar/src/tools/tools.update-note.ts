@@ -1,9 +1,7 @@
 import { createTool } from '@morten-olsen/agentic-core';
 import { DatabaseService } from '@morten-olsen/agentic-database';
-import {
-  updateNoteInputSchema,
-  updateNoteOutputSchema,
-} from '../schemas/schemas.js';
+
+import { updateNoteInputSchema, updateNoteOutputSchema } from '../schemas/schemas.js';
 import { database } from '../database/database.js';
 
 const updateNote = createTool({

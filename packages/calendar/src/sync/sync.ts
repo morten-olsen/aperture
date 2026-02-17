@@ -159,7 +159,6 @@ class CalendarSyncService {
               .execute();
           }
         }
-
       }
 
       if (allMasterUids.size > 0) {
@@ -252,7 +251,7 @@ class CalendarSyncService {
 
     const objectUrls = responses
       .filter((r) => r.ok && r.href && r.href.endsWith('.ics'))
-      .map((r) => r.href!.startsWith('http') ? new URL(r.href!).pathname : r.href!);
+      .map((r) => (r.href!.startsWith('http') ? new URL(r.href!).pathname : r.href!));
 
     if (objectUrls.length === 0) return [];
 
