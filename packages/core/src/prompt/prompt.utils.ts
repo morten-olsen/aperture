@@ -28,13 +28,20 @@ const promptsToMessages = (prompts: Prompt[]) => {
           name: output.function,
           arguments: JSON.stringify(output.input ?? {}),
         });
+
+        let resultOutput: string;
+        if (output.result.type === 'success') {
+          resultOutput = JSON.stringify(output.result.output);
+        } else if (output.result.type === 'pending') {
+          resultOutput = JSON.stringify({ pending: true, reason: output.result.reason });
+        } else {
+          resultOutput = JSON.stringify(output.result.error);
+        }
+
         messages.push({
           type: 'function_call_output',
           call_id: output.id,
-          output:
-            output.result.type === 'success'
-              ? JSON.stringify(output.result.output)
-              : JSON.stringify(output.result.error),
+          output: resultOutput,
         });
       }
     }

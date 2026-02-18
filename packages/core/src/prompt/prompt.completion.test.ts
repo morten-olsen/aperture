@@ -74,6 +74,38 @@ const createToolCallApiResponse = (name: string, args: Record<string, unknown>, 
   text: { format: { type: 'text' } },
 });
 
+const createMultiToolCallApiResponse = (calls: { name: string; args: Record<string, unknown>; callId: string }[]) => ({
+  id: 'resp_test',
+  object: 'response',
+  created_at: Math.floor(Date.now() / 1000),
+  model: 'test-model',
+  status: 'completed',
+  output_text: '',
+  output: calls.map((c) => ({
+    type: 'function_call',
+    id: `fc_${c.callId}`,
+    call_id: c.callId,
+    name: c.name,
+    arguments: JSON.stringify(c.args),
+    status: 'completed',
+  })),
+  error: null,
+  incomplete_details: null,
+  instructions: null,
+  metadata: null,
+  parallel_tool_calls: true,
+  temperature: 1,
+  tool_choice: 'auto',
+  top_p: 1,
+  max_output_tokens: null,
+  previous_response_id: null,
+  reasoning: null,
+  truncation: 'disabled',
+  tools: [],
+  usage: { input_tokens: 10, output_tokens: 5, total_tokens: 15, output_tokens_details: { reasoning_tokens: 0 } },
+  text: { format: { type: 'text' } },
+});
+
 const server = setupServer();
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
@@ -407,5 +439,721 @@ describe('PromptCompletion', () => {
     const toolResultMessage = messages.find((m: Record<string, unknown>) => m.type === 'function_call_output');
     expect(toolResultMessage).toBeDefined();
     expect(JSON.parse((toolResultMessage as { output: string }).output)).toEqual({ sum: 5 });
+  });
+
+  describe('requireApproval', () => {
+    it('pauses with static requireApproval', async () => {
+      const gatedTool = createTool({
+        id: 'test.gated',
+        description: 'Needs approval',
+        input: z.object({ value: z.string() }),
+        output: z.object({ result: z.string() }),
+        requireApproval: { required: true, reason: 'Sensitive operation' },
+        invoke: async ({ input }) => ({ result: input.value }),
+      });
+
+      const plugin = createPlugin({
+        id: 'test',
+        name: 'Test Plugin',
+        state: z.unknown(),
+        prepare: async (prepare) => {
+          prepare.tools.push(gatedTool);
+        },
+      });
+
+      await services.get(PluginService).register(plugin);
+
+      server.use(
+        http.post(RESPONSES_URL, () => {
+          return HttpResponse.json(createToolCallApiResponse('test.gated', { value: 'hello' }, 'call_1'));
+        }),
+      );
+
+      const completion = new PromptCompletion({
+        services,
+        userId: 'user-1',
+        input: 'Do it',
+      });
+
+      const approvalSpy = vi.fn();
+      completion.on('approval-requested', approvalSpy);
+
+      const result = await completion.run();
+
+      expect(result.state).toBe('waiting_for_approval');
+      expect(approvalSpy).toHaveBeenCalledOnce();
+      expect(approvalSpy.mock.calls[0][1]).toMatchObject({
+        toolCallId: 'call_1',
+        toolName: 'test.gated',
+        input: { value: 'hello' },
+        reason: 'Sensitive operation',
+      });
+
+      const toolOutput = result.output[0];
+      expect(toolOutput).toMatchObject({
+        type: 'tool',
+        result: { type: 'pending', reason: 'Sensitive operation' },
+      });
+    });
+
+    it('runs normally with dynamic requireApproval returning required: false', async () => {
+      const conditionalTool = createTool({
+        id: 'test.conditional',
+        description: 'Conditionally gated',
+        input: z.object({ safe: z.boolean() }),
+        output: z.object({ done: z.boolean() }),
+        requireApproval: async ({ input }) => ({
+          required: !input.safe,
+          reason: 'Unsafe operation',
+        }),
+        invoke: async () => ({ done: true }),
+      });
+
+      const plugin = createPlugin({
+        id: 'test',
+        name: 'Test Plugin',
+        state: z.unknown(),
+        prepare: async (prepare) => {
+          prepare.tools.push(conditionalTool);
+        },
+      });
+
+      await services.get(PluginService).register(plugin);
+
+      let callCount = 0;
+      server.use(
+        http.post(RESPONSES_URL, () => {
+          callCount++;
+          if (callCount === 1) {
+            return HttpResponse.json(createToolCallApiResponse('test.conditional', { safe: true }, 'call_1'));
+          }
+          return HttpResponse.json(createTextApiResponse('All done'));
+        }),
+      );
+
+      const completion = new PromptCompletion({
+        services,
+        userId: 'user-1',
+        input: 'Do safe thing',
+      });
+
+      const result = await completion.run();
+
+      expect(result.state).toBe('completed');
+      expect(result.output[0]).toMatchObject({
+        type: 'tool',
+        result: { type: 'success', output: { done: true } },
+      });
+    });
+
+    it('approve() invokes the tool and resumes to completion', async () => {
+      const gatedTool = createTool({
+        id: 'test.gated',
+        description: 'Needs approval',
+        input: z.object({ value: z.string() }),
+        output: z.object({ result: z.string() }),
+        requireApproval: { required: true, reason: 'Sensitive' },
+        invoke: async ({ input }) => ({ result: input.value.toUpperCase() }),
+      });
+
+      const plugin = createPlugin({
+        id: 'test',
+        name: 'Test Plugin',
+        state: z.unknown(),
+        prepare: async (prepare) => {
+          prepare.tools.push(gatedTool);
+        },
+      });
+
+      await services.get(PluginService).register(plugin);
+
+      let callCount = 0;
+      server.use(
+        http.post(RESPONSES_URL, () => {
+          callCount++;
+          if (callCount === 1) {
+            return HttpResponse.json(createToolCallApiResponse('test.gated', { value: 'hello' }, 'call_1'));
+          }
+          return HttpResponse.json(createTextApiResponse('Approved and done'));
+        }),
+      );
+
+      const completion = new PromptCompletion({
+        services,
+        userId: 'user-1',
+        input: 'Do it',
+      });
+
+      await completion.run();
+      expect(completion.prompt.state).toBe('waiting_for_approval');
+
+      const completedSpy = vi.fn();
+      completion.on('completed', completedSpy);
+
+      await completion.approve('call_1');
+
+      expect(completedSpy).toHaveBeenCalledOnce();
+      expect(completion.prompt.state).toBe('completed');
+
+      const toolOutput = completion.prompt.output[0];
+      expect(toolOutput).toMatchObject({
+        type: 'tool',
+        result: { type: 'success', output: { result: 'HELLO' } },
+      });
+    });
+
+    it('reject() feeds error back and resumes to completion', async () => {
+      const gatedTool = createTool({
+        id: 'test.gated',
+        description: 'Needs approval',
+        input: z.object({ value: z.string() }),
+        output: z.object({ result: z.string() }),
+        requireApproval: { required: true, reason: 'Sensitive' },
+        invoke: async ({ input }) => ({ result: input.value }),
+      });
+
+      const plugin = createPlugin({
+        id: 'test',
+        name: 'Test Plugin',
+        state: z.unknown(),
+        prepare: async (prepare) => {
+          prepare.tools.push(gatedTool);
+        },
+      });
+
+      await services.get(PluginService).register(plugin);
+
+      let callCount = 0;
+      server.use(
+        http.post(RESPONSES_URL, () => {
+          callCount++;
+          if (callCount === 1) {
+            return HttpResponse.json(createToolCallApiResponse('test.gated', { value: 'hello' }, 'call_1'));
+          }
+          return HttpResponse.json(createTextApiResponse('Rejected and recovered'));
+        }),
+      );
+
+      const completion = new PromptCompletion({
+        services,
+        userId: 'user-1',
+        input: 'Do it',
+      });
+
+      await completion.run();
+      expect(completion.prompt.state).toBe('waiting_for_approval');
+
+      await completion.reject('call_1', 'Not allowed');
+
+      expect(completion.prompt.state).toBe('completed');
+      const toolOutput = completion.prompt.output[0];
+      expect(toolOutput).toMatchObject({
+        type: 'tool',
+        result: { type: 'error', error: 'Not allowed' },
+      });
+    });
+
+    it('reject() uses default reason when none provided', async () => {
+      const gatedTool = createTool({
+        id: 'test.gated',
+        description: 'Needs approval',
+        input: z.object({ value: z.string() }),
+        output: z.object({ result: z.string() }),
+        requireApproval: { required: true, reason: 'Sensitive' },
+        invoke: async ({ input }) => ({ result: input.value }),
+      });
+
+      const plugin = createPlugin({
+        id: 'test',
+        name: 'Test Plugin',
+        state: z.unknown(),
+        prepare: async (prepare) => {
+          prepare.tools.push(gatedTool);
+        },
+      });
+
+      await services.get(PluginService).register(plugin);
+
+      let callCount = 0;
+      server.use(
+        http.post(RESPONSES_URL, () => {
+          callCount++;
+          if (callCount === 1) {
+            return HttpResponse.json(createToolCallApiResponse('test.gated', { value: 'hello' }, 'call_1'));
+          }
+          return HttpResponse.json(createTextApiResponse('Done'));
+        }),
+      );
+
+      const completion = new PromptCompletion({
+        services,
+        userId: 'user-1',
+        input: 'Do it',
+      });
+
+      await completion.run();
+      await completion.reject('call_1');
+
+      const toolOutput = completion.prompt.output[0];
+      expect(toolOutput).toMatchObject({
+        type: 'tool',
+        result: { type: 'error', error: 'Rejected by user' },
+      });
+    });
+
+    it('processes remaining tool calls after approve, pausing again if needed', async () => {
+      const normalTool = createTool({
+        id: 'test.normal',
+        description: 'No approval needed',
+        input: z.object({ x: z.number() }),
+        output: z.object({ doubled: z.number() }),
+        invoke: async ({ input }) => ({ doubled: input.x * 2 }),
+      });
+
+      const gatedTool = createTool({
+        id: 'test.gated',
+        description: 'Needs approval',
+        input: z.object({ value: z.string() }),
+        output: z.object({ result: z.string() }),
+        requireApproval: { required: true, reason: 'Gated' },
+        invoke: async ({ input }) => ({ result: input.value }),
+      });
+
+      const plugin = createPlugin({
+        id: 'test',
+        name: 'Test Plugin',
+        state: z.unknown(),
+        prepare: async (prepare) => {
+          prepare.tools.push(gatedTool);
+          prepare.tools.push(normalTool);
+        },
+      });
+
+      await services.get(PluginService).register(plugin);
+
+      let callCount = 0;
+      server.use(
+        http.post(RESPONSES_URL, () => {
+          callCount++;
+          if (callCount === 1) {
+            return HttpResponse.json(
+              createMultiToolCallApiResponse([
+                { name: 'test.gated', args: { value: 'first' }, callId: 'call_1' },
+                { name: 'test.normal', args: { x: 5 }, callId: 'call_2' },
+              ]),
+            );
+          }
+          return HttpResponse.json(createTextApiResponse('All done'));
+        }),
+      );
+
+      const completion = new PromptCompletion({
+        services,
+        userId: 'user-1',
+        input: 'Do both',
+      });
+
+      await completion.run();
+      expect(completion.prompt.state).toBe('waiting_for_approval');
+      // Only the pending tool output should be present
+      expect(completion.prompt.output).toHaveLength(1);
+
+      await completion.approve('call_1');
+
+      expect(completion.prompt.state).toBe('completed');
+      // Gated tool + normal tool + text
+      expect(completion.prompt.output).toHaveLength(3);
+      expect(completion.prompt.output[0]).toMatchObject({
+        type: 'tool',
+        function: 'test.gated',
+        result: { type: 'success', output: { result: 'first' } },
+      });
+      expect(completion.prompt.output[1]).toMatchObject({
+        type: 'tool',
+        function: 'test.normal',
+        result: { type: 'success', output: { doubled: 10 } },
+      });
+    });
+
+    it('approve/reject on non-pending completion is a no-op', async () => {
+      server.use(
+        http.post(RESPONSES_URL, () => {
+          return HttpResponse.json(createTextApiResponse('Hello'));
+        }),
+      );
+
+      const completion = new PromptCompletion({
+        services,
+        userId: 'user-1',
+        input: 'Hi',
+      });
+
+      await completion.run();
+      expect(completion.prompt.state).toBe('completed');
+
+      // Should not throw or change state
+      await completion.approve('nonexistent');
+      await completion.reject('nonexistent');
+      expect(completion.prompt.state).toBe('completed');
+    });
+  });
+
+  describe('approval flow tests', () => {
+    it('full approve flow: pause → approve → model called again → text completion', async () => {
+      const invokeSpy = vi.fn(async ({ input }: { input: { value: string } }) => ({
+        result: input.value.toUpperCase(),
+      }));
+
+      const gatedTool = createTool({
+        id: 'test.gated',
+        description: 'Needs approval',
+        input: z.object({ value: z.string() }),
+        output: z.object({ result: z.string() }),
+        requireApproval: { required: true, reason: 'Gated' },
+        invoke: invokeSpy,
+      });
+
+      const plugin = createPlugin({
+        id: 'test',
+        name: 'Test Plugin',
+        state: z.unknown(),
+        prepare: async (prepare) => {
+          prepare.tools.push(gatedTool);
+        },
+      });
+
+      await services.get(PluginService).register(plugin);
+
+      let callCount = 0;
+      server.use(
+        http.post(RESPONSES_URL, () => {
+          callCount++;
+          if (callCount === 1) {
+            return HttpResponse.json(createToolCallApiResponse('test.gated', { value: 'hello' }, 'call_1'));
+          }
+          return HttpResponse.json(createTextApiResponse('Approved result'));
+        }),
+      );
+
+      const completion = new PromptCompletion({
+        services,
+        userId: 'user-1',
+        input: 'Do it',
+      });
+
+      // Phase 1: run until paused
+      await completion.run();
+      expect(callCount).toBe(1);
+      expect(completion.prompt.state).toBe('waiting_for_approval');
+      expect(invokeSpy).not.toHaveBeenCalled();
+
+      // Phase 2: approve → tool invoked → model called → text
+      await completion.approve('call_1');
+      expect(callCount).toBe(2);
+      expect(invokeSpy).toHaveBeenCalledOnce();
+      expect(completion.prompt.state).toBe('completed');
+      expect(completion.prompt.output).toHaveLength(2);
+      expect(completion.prompt.output[0]).toMatchObject({
+        type: 'tool',
+        result: { type: 'success', output: { result: 'HELLO' } },
+      });
+      expect(completion.prompt.output[1]).toMatchObject({
+        type: 'text',
+        content: 'Approved result',
+      });
+    });
+
+    it('full reject flow: pause → reject → model called again → text completion', async () => {
+      const invokeSpy = vi.fn(async () => ({ result: 'never called' }));
+
+      const gatedTool = createTool({
+        id: 'test.gated',
+        description: 'Needs approval',
+        input: z.object({ value: z.string() }),
+        output: z.object({ result: z.string() }),
+        requireApproval: { required: true, reason: 'Gated' },
+        invoke: invokeSpy,
+      });
+
+      const plugin = createPlugin({
+        id: 'test',
+        name: 'Test Plugin',
+        state: z.unknown(),
+        prepare: async (prepare) => {
+          prepare.tools.push(gatedTool);
+        },
+      });
+
+      await services.get(PluginService).register(plugin);
+
+      let callCount = 0;
+      server.use(
+        http.post(RESPONSES_URL, () => {
+          callCount++;
+          if (callCount === 1) {
+            return HttpResponse.json(createToolCallApiResponse('test.gated', { value: 'hello' }, 'call_1'));
+          }
+          return HttpResponse.json(createTextApiResponse('Rejection acknowledged'));
+        }),
+      );
+
+      const completion = new PromptCompletion({
+        services,
+        userId: 'user-1',
+        input: 'Do it',
+      });
+
+      await completion.run();
+      expect(completion.prompt.state).toBe('waiting_for_approval');
+
+      await completion.reject('call_1', 'User denied');
+      expect(invokeSpy).not.toHaveBeenCalled();
+      expect(callCount).toBe(2);
+      expect(completion.prompt.state).toBe('completed');
+      expect(completion.prompt.output[0]).toMatchObject({
+        type: 'tool',
+        result: { type: 'error', error: 'User denied' },
+      });
+      expect(completion.prompt.output[1]).toMatchObject({
+        type: 'text',
+        content: 'Rejection acknowledged',
+      });
+    });
+
+    it('event sequence: updated → approval-requested → (approve) → updated → completed', async () => {
+      const gatedTool = createTool({
+        id: 'test.gated',
+        description: 'Needs approval',
+        input: z.object({ value: z.string() }),
+        output: z.object({ result: z.string() }),
+        requireApproval: { required: true, reason: 'Gated' },
+        invoke: async ({ input }) => ({ result: input.value }),
+      });
+
+      const plugin = createPlugin({
+        id: 'test',
+        name: 'Test Plugin',
+        state: z.unknown(),
+        prepare: async (prepare) => {
+          prepare.tools.push(gatedTool);
+        },
+      });
+
+      await services.get(PluginService).register(plugin);
+
+      let callCount = 0;
+      server.use(
+        http.post(RESPONSES_URL, () => {
+          callCount++;
+          if (callCount === 1) {
+            return HttpResponse.json(createToolCallApiResponse('test.gated', { value: 'x' }, 'call_1'));
+          }
+          return HttpResponse.json(createTextApiResponse('Done'));
+        }),
+      );
+
+      const completion = new PromptCompletion({
+        services,
+        userId: 'user-1',
+        input: 'Go',
+      });
+
+      const events: string[] = [];
+      completion.on('updated', () => events.push('updated'));
+      completion.on('approval-requested', () => events.push('approval-requested'));
+      completion.on('completed', () => events.push('completed'));
+
+      await completion.run();
+      expect(events).toEqual(['updated', 'approval-requested']);
+
+      await completion.approve('call_1');
+      expect(events).toEqual(['updated', 'approval-requested', 'updated', 'updated', 'completed']);
+    });
+
+    it('dynamic approval that pauses on required: true', async () => {
+      const conditionalTool = createTool({
+        id: 'test.conditional',
+        description: 'Conditionally gated',
+        input: z.object({ safe: z.boolean() }),
+        output: z.object({ done: z.boolean() }),
+        requireApproval: async ({ input }) => ({
+          required: !input.safe,
+          reason: 'Unsafe operation',
+        }),
+        invoke: async () => ({ done: true }),
+      });
+
+      const plugin = createPlugin({
+        id: 'test',
+        name: 'Test Plugin',
+        state: z.unknown(),
+        prepare: async (prepare) => {
+          prepare.tools.push(conditionalTool);
+        },
+      });
+
+      await services.get(PluginService).register(plugin);
+
+      let callCount = 0;
+      server.use(
+        http.post(RESPONSES_URL, () => {
+          callCount++;
+          if (callCount === 1) {
+            return HttpResponse.json(createToolCallApiResponse('test.conditional', { safe: false }, 'call_1'));
+          }
+          return HttpResponse.json(createTextApiResponse('Approved'));
+        }),
+      );
+
+      const completion = new PromptCompletion({
+        services,
+        userId: 'user-1',
+        input: 'Do unsafe',
+      });
+
+      const approvalSpy = vi.fn();
+      completion.on('approval-requested', approvalSpy);
+
+      await completion.run();
+      expect(completion.prompt.state).toBe('waiting_for_approval');
+      expect(approvalSpy).toHaveBeenCalledOnce();
+      expect(approvalSpy.mock.calls[0][1]).toMatchObject({
+        reason: 'Unsafe operation',
+      });
+
+      await completion.approve('call_1');
+      expect(completion.prompt.state).toBe('completed');
+    });
+
+    it('chained approvals: two gated tools in one batch require sequential approval', async () => {
+      const gatedTool = createTool({
+        id: 'test.gated',
+        description: 'Needs approval',
+        input: z.object({ value: z.string() }),
+        output: z.object({ result: z.string() }),
+        requireApproval: { required: true, reason: 'Gated' },
+        invoke: async ({ input }) => ({ result: input.value }),
+      });
+
+      const plugin = createPlugin({
+        id: 'test',
+        name: 'Test Plugin',
+        state: z.unknown(),
+        prepare: async (prepare) => {
+          prepare.tools.push(gatedTool);
+        },
+      });
+
+      await services.get(PluginService).register(plugin);
+
+      let callCount = 0;
+      server.use(
+        http.post(RESPONSES_URL, () => {
+          callCount++;
+          if (callCount === 1) {
+            return HttpResponse.json(
+              createMultiToolCallApiResponse([
+                { name: 'test.gated', args: { value: 'first' }, callId: 'call_1' },
+                { name: 'test.gated', args: { value: 'second' }, callId: 'call_2' },
+              ]),
+            );
+          }
+          return HttpResponse.json(createTextApiResponse('Both approved'));
+        }),
+      );
+
+      const completion = new PromptCompletion({
+        services,
+        userId: 'user-1',
+        input: 'Do both',
+      });
+
+      // First pause
+      await completion.run();
+      expect(completion.prompt.state).toBe('waiting_for_approval');
+      expect(completion.prompt.output).toHaveLength(1);
+      expect(completion.prompt.output[0]).toMatchObject({ id: 'call_1' });
+
+      // Approve first → second pauses
+      await completion.approve('call_1');
+      expect(completion.prompt.state).toBe('waiting_for_approval');
+      expect(completion.prompt.output).toHaveLength(2);
+      expect(completion.prompt.output[1]).toMatchObject({
+        id: 'call_2',
+        result: { type: 'pending' },
+      });
+
+      // Approve second → model called → complete
+      await completion.approve('call_2');
+      expect(completion.prompt.state).toBe('completed');
+      expect(callCount).toBe(2);
+      expect(completion.prompt.output).toHaveLength(3);
+      expect(completion.prompt.output[0]).toMatchObject({
+        type: 'tool',
+        result: { type: 'success', output: { result: 'first' } },
+      });
+      expect(completion.prompt.output[1]).toMatchObject({
+        type: 'tool',
+        result: { type: 'success', output: { result: 'second' } },
+      });
+      expect(completion.prompt.output[2]).toMatchObject({
+        type: 'text',
+        content: 'Both approved',
+      });
+    });
+
+    it('approved tool result is sent back to model in next request', async () => {
+      const gatedTool = createTool({
+        id: 'test.gated',
+        description: 'Needs approval',
+        input: z.object({ value: z.string() }),
+        output: z.object({ result: z.string() }),
+        requireApproval: { required: true, reason: 'Gated' },
+        invoke: async ({ input }) => ({ result: input.value.toUpperCase() }),
+      });
+
+      const plugin = createPlugin({
+        id: 'test',
+        name: 'Test Plugin',
+        state: z.unknown(),
+        prepare: async (prepare) => {
+          prepare.tools.push(gatedTool);
+        },
+      });
+
+      await services.get(PluginService).register(plugin);
+
+      let callCount = 0;
+      const capturedBodies: unknown[] = [];
+      server.use(
+        http.post(RESPONSES_URL, async ({ request }) => {
+          callCount++;
+          capturedBodies.push(await request.json());
+          if (callCount === 1) {
+            return HttpResponse.json(createToolCallApiResponse('test.gated', { value: 'hello' }, 'call_1'));
+          }
+          return HttpResponse.json(createTextApiResponse('Got it'));
+        }),
+      );
+
+      const completion = new PromptCompletion({
+        services,
+        userId: 'user-1',
+        input: 'Do it',
+      });
+
+      await completion.run();
+      await completion.approve('call_1');
+
+      expect(callCount).toBe(2);
+
+      // The second model request should contain the approved tool result
+      const secondBody = capturedBodies[1] as { input: { type?: string; output?: string }[] };
+      const toolResultMessage = secondBody.input.find(
+        (m: Record<string, unknown>) => m.type === 'function_call_output',
+      ) as { output: string } | undefined;
+      expect(toolResultMessage).toBeDefined();
+      expect(JSON.parse((toolResultMessage as { output: string }).output)).toEqual({ result: 'HELLO' });
+    });
   });
 });

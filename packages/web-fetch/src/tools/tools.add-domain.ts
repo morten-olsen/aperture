@@ -7,6 +7,7 @@ const addDomain = createTool({
   description: 'Add a domain to the web fetch allowlist.',
   input: addDomainInputSchema,
   output: addDomainOutputSchema,
+  requireApproval: { required: true, reason: 'Adding a domain grants permanent fetch access.' },
   invoke: async ({ input, services }) => {
     const { WebFetchService } = await import('../service/service.js');
     const service = services.get(WebFetchService);

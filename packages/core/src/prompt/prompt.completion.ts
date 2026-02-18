@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import OpenAI from 'openai';
 
-import type { Tool } from '../tool/tool.js';
+import type { ApprovalRequest, Tool } from '../tool/tool.js';
 import type { Services } from '../utils/utils.service.js';
 import { PluginService, PluginPrepare } from '../plugin/plugin.js';
 import { EventEmitter } from '../utils/utils.event-emitter.js';
@@ -10,6 +10,13 @@ import { State } from '../state/state.js';
 
 import { contextToMessages, promptsToMessages } from './prompt.utils.js';
 import type { Prompt, PromptOutputText, PromptOutputTool } from './prompt.schema.js';
+
+type ApprovalRequestedEvent = {
+  toolCallId: string;
+  toolName: string;
+  input: unknown;
+  reason: string;
+};
 
 type PromptCompletionOptions = {
   services: Services;
@@ -19,11 +26,13 @@ type PromptCompletionOptions = {
   input?: string;
   state?: Record<string, unknown>;
   maxRounds?: number;
+  resumePrompt?: Prompt;
 };
 
 type PromptCompletionEvents = {
   updated: (completion: PromptCompletion) => void;
   completed: (completion: PromptCompletion) => void;
+  'approval-requested': (completion: PromptCompletion, request: ApprovalRequestedEvent) => void;
 };
 
 class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
@@ -31,11 +40,13 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
   #prompt: Prompt;
   #client: OpenAI;
   #state: State;
+  #pendingBatchRemaining: OpenAI.Responses.ResponseFunctionToolCall[] = [];
+  #pendingToolCallTools: Tool[] = [];
 
   constructor(options: PromptCompletionOptions) {
     super();
     this.#options = options;
-    this.#prompt = {
+    this.#prompt = options.resumePrompt ?? {
       id: randomUUID(),
       userId: options.userId,
       state: 'running',
@@ -132,6 +143,21 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
     });
   };
 
+  #evaluateApproval = async (tool: Tool, args: unknown, state: State): Promise<ApprovalRequest | undefined> => {
+    if (!tool.requireApproval) {
+      return undefined;
+    }
+    if (typeof tool.requireApproval === 'function') {
+      return tool.requireApproval({
+        input: args,
+        userId: this.userId,
+        state,
+        services: this.#options.services,
+      });
+    }
+    return tool.requireApproval;
+  };
+
   #executeToolCall = async (
     toolCall: OpenAI.Responses.ResponseFunctionToolCall,
     tools: Tool[],
@@ -173,6 +199,19 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
 
     try {
       const args = tool.input.parse(parsed);
+
+      const approval = await this.#evaluateApproval(tool, args, state);
+      if (approval && approval.required) {
+        return {
+          id: toolCall.call_id,
+          type: 'tool',
+          function: toolCall.name,
+          input: args,
+          result: { type: 'pending', reason: approval.reason },
+          start,
+        };
+      }
+
       const result = await tool.invoke({
         input: args,
         userId: this.userId,
@@ -215,6 +254,96 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
     this.#prompt.state = 'completed';
   };
 
+  #processToolCalls = async (
+    toolCalls: OpenAI.Responses.ResponseFunctionToolCall[],
+    tools: Tool[],
+    state: State,
+  ): Promise<boolean> => {
+    for (let i = 0; i < toolCalls.length; i++) {
+      const output = await this.#executeToolCall(toolCalls[i], tools, state);
+      this.#prompt.output.push(output);
+
+      if (output.result.type === 'pending') {
+        this.#pendingBatchRemaining = toolCalls.slice(i + 1);
+        this.#pendingToolCallTools = tools;
+        this.#prompt.state = 'waiting_for_approval';
+        this.emit('updated', this);
+        this.emit('approval-requested', this, {
+          toolCallId: output.id,
+          toolName: output.function,
+          input: output.input,
+          reason: output.result.reason,
+        });
+        return true;
+      }
+    }
+    return false;
+  };
+
+  #findPendingOutput = (toolCallId: string): PromptOutputTool | undefined => {
+    return this.#prompt.output.find(
+      (o): o is PromptOutputTool => o.type === 'tool' && o.id === toolCallId && o.result.type === 'pending',
+    );
+  };
+
+  public approve = async (toolCallId: string) => {
+    const pendingOutput = this.#findPendingOutput(toolCallId);
+    if (!pendingOutput) return;
+
+    const tool = this.#pendingToolCallTools.find((t) => t.id === pendingOutput.function);
+    if (tool) {
+      try {
+        const result = await tool.invoke({
+          input: pendingOutput.input,
+          userId: this.userId,
+          state: this.#state,
+          services: this.#options.services,
+        });
+        pendingOutput.result = { type: 'success', output: result };
+      } catch (error) {
+        console.error('[TOOL ERROR]', error);
+        pendingOutput.result = { type: 'error', error: this.#formatToolError(pendingOutput.function, error) };
+      }
+    } else {
+      pendingOutput.result = { type: 'error', error: `Tool "${pendingOutput.function}" no longer available` };
+    }
+    pendingOutput.end = new Date().toISOString();
+
+    const remaining = this.#pendingBatchRemaining;
+    const tools = this.#pendingToolCallTools;
+    this.#pendingBatchRemaining = [];
+
+    if (remaining.length > 0) {
+      const paused = await this.#processToolCalls(remaining, tools, this.#state);
+      if (paused) return;
+    }
+
+    this.#pendingToolCallTools = [];
+    this.#prompt.state = 'running';
+    await this.run();
+  };
+
+  public reject = async (toolCallId: string, reason?: string) => {
+    const pendingOutput = this.#findPendingOutput(toolCallId);
+    if (!pendingOutput) return;
+
+    pendingOutput.result = { type: 'error', error: reason ?? 'Rejected by user' };
+    pendingOutput.end = new Date().toISOString();
+
+    const remaining = this.#pendingBatchRemaining;
+    const tools = this.#pendingToolCallTools;
+    this.#pendingBatchRemaining = [];
+
+    if (remaining.length > 0) {
+      const paused = await this.#processToolCalls(remaining, tools, this.#state);
+      if (paused) return;
+    }
+
+    this.#pendingToolCallTools = [];
+    this.#prompt.state = 'running';
+    await this.run();
+  };
+
   public run = async () => {
     const maxRounds = this.#options.maxRounds ?? 25;
     let round = 0;
@@ -229,9 +358,8 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
       );
 
       if (toolCalls.length > 0) {
-        for (const toolCall of toolCalls) {
-          this.#prompt.output.push(await this.#executeToolCall(toolCall, prepared.tools, prepared.state));
-        }
+        const paused = await this.#processToolCalls(toolCalls, prepared.tools, prepared.state);
+        if (paused) return this.#prompt;
       } else {
         this.#completeWithText(response.output_text);
       }
@@ -244,11 +372,13 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
       }
     }
 
-    this.emit('updated', this);
-    this.emit('completed', this);
+    if (this.#prompt.state === 'completed') {
+      this.emit('updated', this);
+      this.emit('completed', this);
+    }
     return this.#prompt;
   };
 }
 
-export type { PromptCompletionOptions, PromptCompletionEvents };
+export type { PromptCompletionOptions, PromptCompletionEvents, ApprovalRequestedEvent };
 export { PromptCompletion };

@@ -26,9 +26,17 @@ const promptOutputToolResultErrorSchema = z.object({
 
 type PromptOutputToolResultError = z.input<typeof promptOutputToolResultErrorSchema>;
 
+const promptOutputToolResultPendingSchema = z.object({
+  type: z.literal('pending'),
+  reason: z.string(),
+});
+
+type PromptOutputToolResultPending = z.input<typeof promptOutputToolResultPendingSchema>;
+
 const promptOutputToolResultSchema = z.discriminatedUnion('type', [
   promptOutputToolResultSuccessSchema,
   promptOutputToolResultErrorSchema,
+  promptOutputToolResultPendingSchema,
 ]);
 
 type PromptOutputToolResult = z.input<typeof promptOutputToolResultSchema>;
@@ -52,7 +60,7 @@ const promptSchema = z.object({
   userId: z.string(),
   model: z.enum(['normal', 'high']),
   visible: z.boolean().default(true),
-  state: z.enum(['running', 'completed']),
+  state: z.enum(['running', 'completed', 'waiting_for_approval']),
   input: z.string().optional(),
   output: z.array(promptOutputSchema),
 });
@@ -63,6 +71,7 @@ export type {
   PromptOutputText,
   PromptOutputToolResultSuccess,
   PromptOutputToolResultError,
+  PromptOutputToolResultPending,
   PromptOutputToolResult,
   PromptOutputTool,
   PromptOutput,
@@ -73,6 +82,7 @@ export {
   promptOutputTextSchema,
   promptOutputToolResultSuccessSchema,
   promptOutputToolResultErrorSchema,
+  promptOutputToolResultPendingSchema,
   promptOutputToolResultSchema,
   promptOutputToolSchema,
   promptOutputSchema,

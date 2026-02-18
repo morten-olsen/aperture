@@ -71,18 +71,25 @@ class WebFetchService {
     return rows.map((r) => r.domain);
   };
 
-  fetch = async (options: { url: string; mode?: FetchMode; maxCharacters?: number }): Promise<FetchResult> => {
+  fetch = async (options: {
+    url: string;
+    mode?: FetchMode;
+    maxCharacters?: number;
+    force?: boolean;
+  }): Promise<FetchResult> => {
     const mode = options.mode ?? this.#options.defaultMode;
     const maxChars = options.maxCharacters ?? this.#options.maxCharacters;
 
     const parsed = new URL(options.url);
     const domain = parsed.hostname.toLowerCase();
 
-    const allowed = await this.isAllowed(domain);
-    if (!allowed) {
-      throw new Error(
-        `Domain "${domain}" is not on the allowlist. Use web-fetch.add-domain to add it before fetching.`,
-      );
+    if (!options.force) {
+      const allowed = await this.isAllowed(domain);
+      if (!allowed) {
+        throw new Error(
+          `Domain "${domain}" is not on the allowlist. Use web-fetch.add-domain to add it before fetching.`,
+        );
+      }
     }
 
     const response = await fetch(options.url, {

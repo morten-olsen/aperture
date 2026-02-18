@@ -42,6 +42,7 @@ export { searchTool };
 | `description` | `string` | Description shown to the model. Be concise and specific about what the tool does. |
 | `input` | `ZodType` | Zod schema for the tool's input. Converted to JSON Schema for the model. |
 | `output` | `ZodType` | Zod schema for the tool's output. Used for type inference. |
+| `requireApproval` | `ApprovalRequest \| RequireApproval<TInput>` | Optional. Gate that pauses execution for human approval. See [Human Approval](#human-approval). |
 | `invoke` | `(input: ToolInput) => Promise<Output>` | Async function that executes the tool. |
 
 ### The `invoke` Function
@@ -213,6 +214,75 @@ const createCurrentTriggerTools = (triggerId: string) => [
 tools.push(...createCurrentTriggerTools(currentTriggerId));
 ```
 
+## Human Approval
+
+Tools can require human approval before execution by setting `requireApproval`. When approval is required, the agent loop pauses, persists its state, and fires an `approval-requested` event. External UI (e.g., Telegram inline keyboards) can then approve or reject the call, resuming the loop.
+
+### Static Approval
+
+Use a plain object when the tool always requires approval:
+
+```typescript
+const addDomainTool = createTool({
+  id: 'web-fetch.add-domain',
+  description: 'Add a domain to the fetch allowlist',
+  input: z.object({ domain: z.string() }),
+  output: z.object({ domain: z.string(), added: z.boolean() }),
+  requireApproval: { required: true, reason: 'Adding a domain grants permanent fetch access.' },
+  invoke: async ({ input, services }) => {
+    const service = services.get(WebFetchService);
+    const added = await service.addDomain(input.domain);
+    return { domain: input.domain.toLowerCase(), added };
+  },
+});
+```
+
+### Dynamic Approval
+
+Use a function when approval depends on runtime conditions. The function receives the same `ToolInput` as `invoke`:
+
+```typescript
+const fetchTool = createTool({
+  id: 'web-fetch.fetch',
+  description: 'Fetch a URL',
+  input: z.object({ url: z.string() }),
+  output: fetchResultSchema,
+  requireApproval: async ({ input, services }) => {
+    const service = services.get(WebFetchService);
+    const domain = new URL(input.url).hostname.toLowerCase();
+    const allowed = await service.isAllowed(domain);
+    return { required: !allowed, reason: `Domain "${domain}" is not on the allowlist.` };
+  },
+  invoke: async ({ input, services }) => {
+    const service = services.get(WebFetchService);
+    return service.fetch({ ...input, force: true });
+  },
+});
+```
+
+### The `ApprovalRequest` Type
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `required` | `boolean` | If `true`, the tool pauses for approval. If `false`, it runs immediately. |
+| `reason` | `string` | Human-readable explanation shown in the approval UI. |
+
+### Approval Lifecycle
+
+1. Model calls a tool with `requireApproval`
+2. Framework evaluates `requireApproval` (calls the function if dynamic)
+3. If `required: true`: the tool output is recorded as `pending`, the prompt state becomes `waiting_for_approval`, and `approval-requested` is emitted
+4. External code calls `completion.approve(toolCallId)` or `completion.reject(toolCallId, reason?)`
+5. On approve: the tool's `invoke` runs, the result replaces pending, and the loop resumes
+6. On reject: an error result replaces pending, and the loop resumes
+7. If the model returned multiple tool calls in one batch, remaining calls are processed after the approval — and may trigger another pause if they also require approval
+
+### Tool Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `requireApproval` | `ApprovalRequest \| RequireApproval<TInput>` | Optional. Static object or async function returning `ApprovalRequest`. |
+
 ## How Tool Execution Works
 
 During the agent loop:
@@ -222,6 +292,7 @@ During the agent loop:
 3. The model decides whether to call a tool
 4. If it does, the framework:
    - Parses the arguments with `tool.input.parse(JSON.parse(rawArgs))`
+   - Evaluates `requireApproval` if present — if `required: true`, pauses the loop (see [Human Approval](#human-approval))
    - Calls `tool.invoke({ input, state, services })`
    - Records the result (success or error)
    - Feeds the result back to the model

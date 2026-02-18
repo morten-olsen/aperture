@@ -66,6 +66,19 @@ class PromptStoreService {
       const row = this.#promptToRow(completion.prompt);
       await db.insertInto('db_prompts').values(row).execute();
 
+      completion.on('updated', async () => {
+        if (completion.prompt.state !== 'waiting_for_approval') return;
+        const db = await this.#getDb();
+        await db
+          .updateTable('db_prompts')
+          .set({
+            state: completion.prompt.state,
+            output: JSON.stringify(completion.prompt.output),
+          })
+          .where('id', '=', completion.id)
+          .execute();
+      });
+
       completion.on('completed', async () => {
         const db = await this.#getDb();
         await db
@@ -79,6 +92,12 @@ class PromptStoreService {
           .execute();
       });
     });
+  };
+
+  public recoverPending = async (): Promise<Prompt[]> => {
+    const db = await this.#getDb();
+    const rows = await db.selectFrom('db_prompts').selectAll().where('state', '=', 'waiting_for_approval').execute();
+    return rows.map((r) => this.#rowToPrompt(r as PromptRow));
   };
 
   public insert = async (prompt: Prompt) => {
