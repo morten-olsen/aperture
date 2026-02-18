@@ -34,6 +34,8 @@ const createTelegramPlugin = (options: TelegramPluginOptions) =>
       botService.start(options.token, options);
 
       const telegramCompletions = new Map<string, string>();
+      let approvalCounter = 0;
+      const pendingApprovals = new Map<string, { promptId: string; toolCallId: string }>();
 
       const promptService = services.get(PromptService);
       promptService.on('created', (completion) => {
@@ -62,14 +64,18 @@ const createTelegramPlugin = (options: TelegramPluginOptions) =>
         const chatId = telegramCompletions.get(completion.id);
         if (!chatId) return;
 
+        approvalCounter += 1;
+        const id = String(approvalCounter);
+        pendingApprovals.set(id, { promptId: completion.id, toolCallId: request.toolCallId });
+
         try {
           await botService.sendMessageWithKeyboard(
             chatId,
-            `Approval required for **${request.toolName}**\n\n${request.reason}\n\nInput: \`${JSON.stringify(request.input)}\``,
+            `Approval required for ${request.toolName}\n\n${request.reason}\n\nInput: ${JSON.stringify(request.input)}`,
             [
               [
-                { text: 'Approve', callback_data: `approve:${completion.id}:${request.toolCallId}` },
-                { text: 'Reject', callback_data: `reject:${completion.id}:${request.toolCallId}` },
+                { text: 'Approve', callback_data: `a:${id}` },
+                { text: 'Reject', callback_data: `r:${id}` },
               ],
             ],
           );
@@ -82,21 +88,30 @@ const createTelegramPlugin = (options: TelegramPluginOptions) =>
         const data = ctx.data;
         if (!data) return;
 
-        const [action, promptId, toolCallId] = data.split(':');
-        if (!promptId || !toolCallId) return;
+        const [action, id] = data.split(':');
+        if (!id) return;
 
-        const completion = promptService.getActive(promptId);
-        if (!completion) {
+        const pending = pendingApprovals.get(id);
+        if (!pending) {
           await ctx.answer({ text: 'This approval request has expired.' });
           return;
         }
 
-        if (action === 'approve') {
+        const completion = promptService.getActive(pending.promptId);
+        if (!completion) {
+          pendingApprovals.delete(id);
+          await ctx.answer({ text: 'This approval request has expired.' });
+          return;
+        }
+
+        pendingApprovals.delete(id);
+
+        if (action === 'a') {
           await ctx.answer({ text: 'Approved' });
-          await completion.approve(toolCallId);
-        } else if (action === 'reject') {
+          await completion.approve(pending.toolCallId);
+        } else if (action === 'r') {
           await ctx.answer({ text: 'Rejected' });
-          await completion.reject(toolCallId, 'Rejected by user via Telegram');
+          await completion.reject(pending.toolCallId, 'Rejected by user via Telegram');
         }
       });
 

@@ -21,6 +21,6 @@ await pluginService.register(
   triggerPlugin,
   createTelegramPlugin({
     token: process.env.TELEGRAM_TOKEN ?? '',
-    allowedChatIds: [process.env.TELEGRAM_USER_ID ?? ''],
+    users: [],
   }),
 );
