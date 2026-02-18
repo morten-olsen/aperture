@@ -37,10 +37,17 @@ const createTelegramPlugin = (options: TelegramPluginOptions) =>
       let approvalCounter = 0;
       const pendingApprovals = new Map<string, { promptId: string; toolCallId: string }>();
 
+      const resolveChatId = (completionId: string, userId: string): string | undefined => {
+        const fromMap = telegramCompletions.get(completionId);
+        if (fromMap) return fromMap;
+        const user = options.users?.find((u) => u.userId === userId);
+        return user?.chatId;
+      };
+
       const promptService = services.get(PromptService);
       promptService.on('created', (completion) => {
         completion.on('completed', async () => {
-          const chatId = telegramCompletions.get(completion.id);
+          const chatId = resolveChatId(completion.id, completion.userId);
           if (!chatId) return;
           telegramCompletions.delete(completion.id);
 
@@ -61,7 +68,7 @@ const createTelegramPlugin = (options: TelegramPluginOptions) =>
       });
 
       promptService.on('approval-requested', async (completion, request) => {
-        const chatId = telegramCompletions.get(completion.id);
+        const chatId = resolveChatId(completion.id, completion.userId);
         if (!chatId) return;
 
         approvalCounter += 1;
