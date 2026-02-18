@@ -4,6 +4,7 @@ import { conversationPlugin } from '@morten-olsen/agentic-conversation';
 import { triggerPlugin } from '@morten-olsen/agentic-trigger';
 import { createCalendarPlugin, calendarPluginOptionsSchema } from '@morten-olsen/agentic-calendar';
 import { createTelegramPlugin, telegramPluginOptionsSchema } from '@morten-olsen/agentic-telegram';
+import { createWebFetchPlugin } from '@morten-olsen/agentic-web-fetch';
 import type { Plugin } from '@morten-olsen/agentic-core';
 import type { ZodType } from 'zod';
 
@@ -61,12 +62,23 @@ const startServer = async ({ config }: StartServerOptions) => {
     );
   }
 
+  if (config.webFetch.enabled) {
+    plugins.push(
+      createWebFetchPlugin({
+        maxCharacters: config.webFetch.maxCharacters,
+        defaultMode: config.webFetch.defaultMode as 'html' | 'markdown' | 'links',
+        userAgent: config.webFetch.userAgent,
+      }),
+    );
+  }
+
   await pluginService.register(...plugins);
 
   console.log('[glados] Server started');
   console.log(`[glados]   trigger: ${config.trigger.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   calendar: ${config.calendar.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   telegram: ${config.telegram.enabled ? 'enabled' : 'disabled'}`);
+  console.log(`[glados]   web-fetch: ${config.webFetch.enabled ? 'enabled' : 'disabled'}`);
 
   return { services };
 };

@@ -134,6 +134,32 @@ const configSchema = convict({
       env: 'TRIGGER_ENABLED',
     },
   },
+  webFetch: {
+    enabled: {
+      doc: 'Enable web fetch plugin',
+      format: Boolean,
+      default: true,
+      env: 'WEB_FETCH_ENABLED',
+    },
+    maxCharacters: {
+      doc: 'Maximum characters returned per fetch',
+      format: 'int',
+      default: 50000,
+      env: 'WEB_FETCH_MAX_CHARACTERS',
+    },
+    defaultMode: {
+      doc: 'Default fetch mode (html, markdown, links)',
+      format: String,
+      default: 'markdown',
+      env: 'WEB_FETCH_DEFAULT_MODE',
+    },
+    userAgent: {
+      doc: 'Custom User-Agent header for web fetches',
+      format: String,
+      default: 'GLaDOS-Agent/1.0',
+      env: 'WEB_FETCH_USER_AGENT',
+    },
+  },
 });
 
 type ServerConfig = ReturnType<typeof configSchema.getProperties>;

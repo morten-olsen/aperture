@@ -26,7 +26,8 @@
     "@morten-olsen/agentic-conversation": "workspace:*",
     "@morten-olsen/agentic-trigger": "workspace:*",
     "@morten-olsen/agentic-calendar": "workspace:*",
-    "@morten-olsen/agentic-telegram": "workspace:*"
+    "@morten-olsen/agentic-telegram": "workspace:*",
+    "@morten-olsen/agentic-web-fetch": "workspace:*"
   },
   "devDependencies": {
     "@types/convict": "6.1.6",
