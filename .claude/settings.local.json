@@ -42,7 +42,10 @@
       "Bash(node:*)",
       "Bash(sqlite3:*)",
       "Bash(npx husky:*)",
-      "Bash(docker compose build:*)"
+      "Bash(docker compose build:*)",
+      "Bash(kubectl logs:*)",
+      "Bash(kubectl get:*)",
+      "Bash(kubectl cp:*)"
     ]
   }
 }

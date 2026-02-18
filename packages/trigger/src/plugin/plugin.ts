@@ -1,6 +1,7 @@
 import { createPlugin } from '@morten-olsen/agentic-core';
 import { z } from 'zod';
 import { DatabaseService } from '@morten-olsen/agentic-database';
+import { notifyTool } from '@morten-olsen/agentic-notification';
 
 import { triggerReferenceSchema } from '../schemas/schemas.js';
 import { TriggerScheduler } from '../scheduler/scheduler.js';
@@ -28,6 +29,8 @@ const triggerPlugin = createPlugin({
       tools.push(...triggerTools);
       return;
     }
+
+    tools.push(notifyTool);
 
     const scheduler = services.get(TriggerScheduler);
     const trigger = await scheduler.get(triggerState.from.id);
