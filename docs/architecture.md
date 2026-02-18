@@ -65,7 +65,7 @@ Tools are typed, validated functions that the AI model can call during a convers
 
 ### Databases
 
-The database layer provides type-safe SQLite access through Kysely, with a migration system scoped per database definition. See [Databases](./databases.md).
+The database layer provides type-safe SQLite access through Kysely, with a migration system scoped per database definition. It also includes embedding generation and vector search via sqlite-vec. See [Databases](./databases.md) and [Embeddings & Vector Search](./embeddings.md).
 
 ### State
 
@@ -140,5 +140,6 @@ await completion.run();
 - [Plugins](./plugins.md) - Writing and registering plugins
 - [Tools](./tools.md) - Defining tools for the AI model
 - [Databases](./databases.md) - Typed database access with migrations
+- [Embeddings & Vector Search](./embeddings.md) - Embedding generation and similarity search
 - [State](./state.md) - Per-plugin conversation state
 - [Testing](./testing.md) - Test infrastructure and MSW patterns

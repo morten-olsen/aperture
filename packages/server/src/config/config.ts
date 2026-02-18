@@ -134,6 +134,26 @@ const configSchema = convict({
       env: 'TRIGGER_ENABLED',
     },
   },
+  embeddings: {
+    provider: {
+      doc: 'Embedding provider (openai or local)',
+      format: String,
+      default: 'openai' as const,
+      env: 'EMBEDDINGS_PROVIDER',
+    },
+    model: {
+      doc: 'Embedding model ID',
+      format: String,
+      default: 'openai/text-embedding-3-small',
+      env: 'EMBEDDINGS_MODEL',
+    },
+    dimensions: {
+      doc: 'Embedding vector dimensions',
+      format: 'int',
+      default: 1536,
+      env: 'EMBEDDINGS_DIMENSIONS',
+    },
+  },
   webFetch: {
     enabled: {
       doc: 'Enable web fetch plugin',

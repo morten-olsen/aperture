@@ -1,5 +1,6 @@
 import SQLite from 'better-sqlite3';
 import { Kysely, Migrator, SqliteDialect, type MigrationProvider } from 'kysely';
+import * as sqliteVec from 'sqlite-vec';
 import type { z, ZodType } from 'zod';
 import type { Services } from '@morten-olsen/agentic-core';
 
@@ -10,6 +11,7 @@ import type { Database } from './database.types.js';
 class DatabaseService {
   #services: Services;
   #db?: Promise<Kysely<unknown>>;
+  #sqliteDb?: SQLite.Database;
   #instances: Record<string, Promise<Kysely<unknown>>>;
 
   constructor(services: Services) {
@@ -19,8 +21,10 @@ class DatabaseService {
 
   #setupDb = async () => {
     const config = this.#services.get(DatabaseConfig);
+    this.#sqliteDb = new SQLite(config.location);
+    sqliteVec.load(this.#sqliteDb);
     const dialect = new SqliteDialect({
-      database: new SQLite(config.location),
+      database: this.#sqliteDb,
     });
 
     const db = new Kysely<unknown>({
@@ -28,6 +32,13 @@ class DatabaseService {
     });
 
     return db;
+  };
+
+  public getRawDb = (): SQLite.Database => {
+    if (!this.#sqliteDb) {
+      throw new Error('Database not initialized');
+    }
+    return this.#sqliteDb;
   };
 
   #getDb = async () => {

@@ -247,3 +247,7 @@ my-plugin/
 ```
 
 Keep database access behind a service layer rather than querying directly from tools. This centralizes data access logic and makes testing easier.
+
+## Embeddings & Vector Search
+
+The database package also includes infrastructure for generating vector embeddings and performing similarity searches using sqlite-vec. See [Embeddings & Vector Search](./embeddings.md) for the full guide.

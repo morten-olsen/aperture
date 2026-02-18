@@ -30,6 +30,11 @@ const startServer = async ({ config }: StartServerOptions) => {
   const plugins: Plugin<ZodType>[] = [
     createDatabasePlugin({
       location: config.database.location,
+      embeddings: {
+        provider: config.embeddings.provider as 'openai' | 'local',
+        model: config.embeddings.model,
+        dimensions: config.embeddings.dimensions,
+      },
     }),
     conversationPlugin,
   ];

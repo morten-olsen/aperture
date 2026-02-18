@@ -27,9 +27,12 @@
   "name": "@morten-olsen/agentic-database",
   "version": "1.0.0",
   "dependencies": {
+    "@huggingface/transformers": "^3.5.1",
     "@morten-olsen/agentic-core": "workspace:*",
     "better-sqlite3": "^12.6.2",
     "kysely": "^0.28.11",
+    "openai": "^5.8.2",
+    "sqlite-vec": "^0.1.6",
     "zod": "^4.3.6"
   }
 }

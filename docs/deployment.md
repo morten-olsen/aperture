@@ -97,6 +97,14 @@ Every config value can also be set via environment variables. **Env vars take pr
 |----------|---------|-------------|
 | `DATABASE_LOCATION` | `/data/db.sqlite` (Docker) | Path to the SQLite database file |
 
+#### Embeddings
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `EMBEDDINGS_PROVIDER` | `openai` | Embedding provider: `openai` (hosted API) or `local` (HuggingFace) |
+| `EMBEDDINGS_MODEL` | `openai/text-embedding-3-small` | Embedding model identifier |
+| `EMBEDDINGS_DIMENSIONS` | `1536` | Vector dimensions (must match the model's output) |
+
 #### Telegram
 
 | Variable | Default | Description |
