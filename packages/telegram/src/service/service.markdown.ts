@@ -25,40 +25,46 @@ const toTelegramMarkdown = (text: string): string => {
       return slot(`\`${body}\``);
     });
 
-    // 3. Links [text](url)
+    // 3. Normalize * list markers to • (prevents italic regex from matching across list items)
+    out = out.replace(/^(\s*)\*(\s)/gm, '$1•$2');
+
+    // 4. Links [text](url)
     out = out.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, url) => {
       return slot(`[${escapeV2(label)}](${url.replace(/([)\\])/g, '\\$1')})`);
     });
 
-    // 4. Bold + italic (***text***)
+    // 5. Bold + italic (***text***)
     out = out.replace(/\*{3}(.+?)\*{3}/g, (_m, c) => {
       return slot(`*_${escapeV2(c)}_*`);
     });
 
-    // 5. Bold (**text**)
+    // 6. Bold (**text**)
     out = out.replace(/\*{2}(.+?)\*{2}/g, (_m, c) => {
       return slot(`*${escapeV2(c)}*`);
     });
 
-    // 6. Italic (*text*) — single asterisks not adjacent to other asterisks
-    out = out.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, (_m, c) => {
+    // 7. Italic (*text*) — single asterisks not adjacent to other asterisks, content must not start/end with space
+    out = out.replace(/(?<!\*)\*([^*\s][^*]*[^*\s]|[^*\s])\*(?!\*)/g, (_m, c) => {
       return slot(`_${escapeV2(c)}_`);
     });
 
-    // 7. Strikethrough (~~text~~)
+    // 8. Strikethrough (~~text~~)
     out = out.replace(/~~(.+?)~~/g, (_m, c) => {
       return slot(`~${escapeV2(c)}~`);
     });
 
-    // 8. Headings → bold
+    // 9. Headings → bold
     out = out.replace(/^#{1,6}\s+(.+)$/gm, (_m, c) => {
       return slot(`*${escapeV2(c)}*`);
     });
 
-    // 9. Escape everything remaining
+    // 10. Escape everything remaining
     out = escapeV2(out);
 
-    // 10. Restore slots
+    // 11. Restore blockquote markers at line starts
+    out = out.replace(/^\\>/gm, '>');
+
+    // 12. Restore slots
     // eslint-disable-next-line no-control-regex
     out = out.replace(/\x00(\d+)\x00/g, (_m, i) => {
       return slots[Number(i)] ?? '';
@@ -70,4 +76,17 @@ const toTelegramMarkdown = (text: string): string => {
   }
 };
 
-export { toTelegramMarkdown };
+const stripMarkdown = (text: string): string => {
+  let out = text;
+  out = out.replace(/```\w*\n?/g, '');
+  out = out.replace(/\*{3}([^*]+)\*{3}/g, '$1');
+  out = out.replace(/\*{2}([^*]+)\*{2}/g, '$1');
+  out = out.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '$1');
+  out = out.replace(/~~([^~]+)~~/g, '$1');
+  out = out.replace(/^#{1,6}\s+/gm, '');
+  out = out.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+  out = out.replace(/^>\s?/gm, '');
+  return out;
+};
+
+export { toTelegramMarkdown, stripMarkdown };

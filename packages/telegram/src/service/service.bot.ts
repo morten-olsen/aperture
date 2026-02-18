@@ -2,7 +2,7 @@ import { Bot } from 'gramio';
 
 import type { TelegramPluginOptions } from '../schemas/schemas.js';
 
-import { toTelegramMarkdown } from './service.markdown.js';
+import { stripMarkdown, toTelegramMarkdown } from './service.markdown.js';
 import { splitMessage } from './service.split.js';
 
 class TelegramBotService {
@@ -49,7 +49,7 @@ class TelegramBotService {
       } catch {
         await bot.api.sendMessage({
           chat_id: chatId,
-          text: chunk,
+          text: stripMarkdown(chunk),
         });
       }
     }
