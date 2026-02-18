@@ -54,6 +54,29 @@ class TelegramBotService {
       }
     }
   };
+
+  public sendMessageWithKeyboard = async (
+    chatId: string,
+    text: string,
+    buttons: { text: string; callback_data: string }[][],
+  ): Promise<void> => {
+    const bot = this.bot;
+    try {
+      const markdown = toTelegramMarkdown(text);
+      await bot.api.sendMessage({
+        chat_id: chatId,
+        text: markdown,
+        parse_mode: 'MarkdownV2',
+        reply_markup: { inline_keyboard: buttons },
+      });
+    } catch {
+      await bot.api.sendMessage({
+        chat_id: chatId,
+        text: stripMarkdown(text),
+        reply_markup: { inline_keyboard: buttons },
+      });
+    }
+  };
 }
 
 export { TelegramBotService };

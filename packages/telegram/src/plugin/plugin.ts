@@ -58,6 +58,48 @@ const createTelegramPlugin = (options: TelegramPluginOptions) =>
         });
       });
 
+      promptService.on('approval-requested', async (completion, request) => {
+        const chatId = telegramCompletions.get(completion.id);
+        if (!chatId) return;
+
+        try {
+          await botService.sendMessageWithKeyboard(
+            chatId,
+            `Approval required for **${request.toolName}**\n\n${request.reason}\n\nInput: \`${JSON.stringify(request.input)}\``,
+            [
+              [
+                { text: 'Approve', callback_data: `approve:${completion.id}:${request.toolCallId}` },
+                { text: 'Reject', callback_data: `reject:${completion.id}:${request.toolCallId}` },
+              ],
+            ],
+          );
+        } catch (error) {
+          console.error('[Telegram] Error sending approval request:', error);
+        }
+      });
+
+      botService.bot.on('callback_query', async (ctx) => {
+        const data = ctx.data;
+        if (!data) return;
+
+        const [action, promptId, toolCallId] = data.split(':');
+        if (!promptId || !toolCallId) return;
+
+        const completion = promptService.getActive(promptId);
+        if (!completion) {
+          await ctx.answer({ text: 'This approval request has expired.' });
+          return;
+        }
+
+        if (action === 'approve') {
+          await ctx.answer({ text: 'Approved' });
+          await completion.approve(toolCallId);
+        } else if (action === 'reject') {
+          await ctx.answer({ text: 'Rejected' });
+          await completion.reject(toolCallId, 'Rejected by user via Telegram');
+        }
+      });
+
       const handler = new TelegramMessageHandler(services, options, telegramCompletions);
 
       botService.bot.on('message', (ctx) => {
