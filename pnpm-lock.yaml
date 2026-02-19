@@ -10,7 +10,7 @@ importers:
     devDependencies:
       '@commitlint/cli':
         specifier: ^20.4.1
-        version: 20.4.1(@types/node@25.2.3)(typescript@5.9.3)
+        version: 20.4.1(@types/node@25.3.0)(typescript@5.9.3)
       '@commitlint/config-conventional':
         specifier: ^20.4.1
         version: 20.4.1
@@ -25,7 +25,7 @@ importers:
         version: 6.0.9(@pnpm/logger@5.2.0)
       '@vitest/coverage-v8':
         specifier: 4.0.18
-        version: 4.0.18(vitest@4.0.18(@types/node@25.2.3)(jiti@2.6.1)(msw@2.12.10(@types/node@25.2.3)(typescript@5.9.3))(tsx@4.21.0))
+        version: 4.0.18(vitest@4.0.18(@types/node@25.3.0)(jiti@2.6.1)(msw@2.12.10(@types/node@25.3.0)(typescript@5.9.3))(tsx@4.21.0))
       eslint:
         specifier: 9.39.2
         version: 9.39.2(jiti@2.6.1)
@@ -55,7 +55,7 @@ importers:
         version: 8.55.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
       vitest:
         specifier: 4.0.18
-        version: 4.0.18(@types/node@25.2.3)(jiti@2.6.1)(msw@2.12.10(@types/node@25.2.3)(typescript@5.9.3))(tsx@4.21.0)
+        version: 4.0.18(@types/node@25.3.0)(jiti@2.6.1)(msw@2.12.10(@types/node@25.3.0)(typescript@5.9.3))(tsx@4.21.0)
 
   packages/artifact:
     dependencies:
@@ -343,6 +343,37 @@ importers:
         specifier: 4.0.18
         version: 4.0.18(@types/node@25.2.3)(jiti@2.6.1)(msw@2.12.10(@types/node@25.2.3)(typescript@5.9.3))(tsx@4.21.0)
 
+  packages/interpreter:
+    dependencies:
+      '@morten-olsen/agentic-core':
+        specifier: workspace:*
+        version: link:../core
+      quickjs-emscripten:
+        specifier: ^0.32.0
+        version: 0.32.0
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+    devDependencies:
+      '@morten-olsen/agentic-configs':
+        specifier: workspace:*
+        version: link:../configs
+      '@morten-olsen/agentic-tests':
+        specifier: workspace:*
+        version: link:../tests
+      '@types/node':
+        specifier: 25.3.0
+        version: 25.3.0
+      '@vitest/coverage-v8':
+        specifier: 4.0.18
+        version: 4.0.18(vitest@4.0.18(@types/node@25.3.0)(jiti@2.6.1)(msw@2.12.10(@types/node@25.3.0)(typescript@5.9.3))(tsx@4.21.0))
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: 4.0.18
+        version: 4.0.18(@types/node@25.3.0)(jiti@2.6.1)(msw@2.12.10(@types/node@25.3.0)(typescript@5.9.3))(tsx@4.21.0)
+
   packages/location:
     dependencies:
       '@morten-olsen/agentic-core':
@@ -499,6 +530,9 @@ importers:
       '@morten-olsen/agentic-home-assistant':
         specifier: workspace:*
         version: link:../home-assistant
+      '@morten-olsen/agentic-interpreter':
+        specifier: workspace:*
+        version: link:../interpreter
       '@morten-olsen/agentic-location':
         specifier: workspace:*
         version: link:../location
@@ -1368,6 +1402,21 @@ packages:
     resolution: {integrity: sha512-wgm9Ehl2jpeqP3zw/7mo3kRHFp5MEDhqAdwy1fTGkHAwnkGOVsgpvQhL8B5n1qlb01jV3n/bI0ZfZp5lWA1k4w==}
     engines: {node: '>=18.0.0'}
 
+  '@jitl/quickjs-ffi-types@0.32.0':
+    resolution: {integrity: sha512-v9T+GQpmk43VDJ7d72sf0Nexhk+ArvtUihW27dy7lqAl0zBObFKtSBBIm5RBjwIhE8VwsPPm9PNuvPvNqLWUEg==}
+
+  '@jitl/quickjs-wasmfile-debug-asyncify@0.32.0':
+    resolution: {integrity: sha512-EX8zbXwGqCgAE764M+qvkHtyXDi/FUoMBea0JnES7vCM3P7a2+EOZOjGv85wtZ2sJhI1oJ+nekmqpOODFDY+hw==}
+
+  '@jitl/quickjs-wasmfile-debug-sync@0.32.0':
+    resolution: {integrity: sha512-LeYWrPGC1uNCTBWvibo3ZLJj0CSVNYUXvJpXMCmuQ5Sap2cCACc3uvGvYV4homHHBAzfw5akoTqMMS4YFRtw+Q==}
+
+  '@jitl/quickjs-wasmfile-release-asyncify@0.32.0':
+    resolution: {integrity: sha512-3oSwPfja12ICz4aIblB58cuY8JlEq5Txt8Cut4VLo+LH47QN+mzCnSgnbB03hWzg1LBcc+VyyI9UOag7a1NF+Q==}
+
+  '@jitl/quickjs-wasmfile-release-sync@0.32.0':
+    resolution: {integrity: sha512-BKNDI/TPBfGlLNGYpLrhcDGXmIk4xHm4MRAisOBnOzpXVn9HZWsfmMAc9WMBrAHjvvds6HOikKeaOBKdPdpVrg==}
+
   '@jridgewell/resolve-uri@3.1.2':
     resolution: {integrity: sha512-bRISgCIjP20/tbWSPWMEi54QVPRZExkuD9lJL+UIxUKtwVJA8wW1Trb1jMs1RFXo1CBTNZ/5hpC9QvmKWdopKw==}
     engines: {node: '>=6.0.0'}
@@ -1739,6 +1788,9 @@ packages:
 
   '@types/node@25.2.3':
     resolution: {integrity: sha512-m0jEgYlYz+mDJZ2+F4v8D1AyQb+QzsNqRuI7xg1VQX/KlKS0qT9r1Mo16yo5F/MtifXFgaofIFsdFMox2SxIbQ==}
+
+  '@types/node@25.3.0':
+    resolution: {integrity: sha512-4K3bqJpXpqfg2XKGK9bpDTc6xO/xoUP/RBWS7AtRMug6zZFaRekiLzjVtAoZMquxoAbzBvy5nxQ7veS5eYzf8A==}
 
   '@types/ssri@7.1.5':
     resolution: {integrity: sha512-odD/56S3B51liILSk5aXJlnYt99S6Rt9EFDDqGtJM26rKHApHcwyU/UoYHrzKkdkHMAIquGWCuHtQTbes+FRQw==}
@@ -3236,6 +3288,13 @@ packages:
     resolution: {integrity: sha512-ARhCpm70fzdcvNQfPoy49IaanKkTlRWF2JMzqhcJbhSFRZv7nPTvZJdcY7301IPmvW+/p0RgIWnQDLJxifsQ7g==}
     engines: {node: '>=8'}
 
+  quickjs-emscripten-core@0.32.0:
+    resolution: {integrity: sha512-QFnPfjFey8EqknSrSxe1hZrf1/8z7/6s1QzGOmKo6++02r7QRRX7ZoyNaZh7JuVjWsVW87KnQrbZqnHkOAzUyg==}
+
+  quickjs-emscripten@0.32.0:
+    resolution: {integrity: sha512-So0Sqw869y/S2oE3Nuc0uT3Dhqgvsj8FSrwBdsuTosVsG8ME5/OcudU1GxsrIFdFABgy17GHnTVO9TYV/bLQcA==}
+    engines: {node: '>=16.0.0'}
+
   rc@1.2.8:
     resolution: {integrity: sha512-y3bGgqKj3QBdxLbLkomlohkvsA8gdAiUQlSBJnBhfn+BPxg4bc62d8TcBW15wavDfgexCgccckhcZvywyQYPOw==}
     hasBin: true
@@ -3707,6 +3766,9 @@ packages:
   undici-types@7.16.0:
     resolution: {integrity: sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==}
 
+  undici-types@7.18.2:
+    resolution: {integrity: sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==}
+
   unique-string@2.0.0:
     resolution: {integrity: sha512-uNaeirEPvpZWSgzwsPGtU2zVSTrn/8L5q/IexZmH0eH6SA73CmAA5U4GwORTxQAZs95TAXLNqeLoPPNO5gZfWg==}
     engines: {node: '>=8'}
@@ -3919,11 +3981,11 @@ snapshots:
 
   '@bcoe/v8-coverage@1.0.2': {}
 
-  '@commitlint/cli@20.4.1(@types/node@25.2.3)(typescript@5.9.3)':
+  '@commitlint/cli@20.4.1(@types/node@25.3.0)(typescript@5.9.3)':
     dependencies:
       '@commitlint/format': 20.4.0
       '@commitlint/lint': 20.4.1
-      '@commitlint/load': 20.4.0(@types/node@25.2.3)(typescript@5.9.3)
+      '@commitlint/load': 20.4.0(@types/node@25.3.0)(typescript@5.9.3)
       '@commitlint/read': 20.4.0
       '@commitlint/types': 20.4.0
       tinyexec: 1.0.2
@@ -3970,14 +4032,14 @@ snapshots:
       '@commitlint/rules': 20.4.1
       '@commitlint/types': 20.4.0
 
-  '@commitlint/load@20.4.0(@types/node@25.2.3)(typescript@5.9.3)':
+  '@commitlint/load@20.4.0(@types/node@25.3.0)(typescript@5.9.3)':
     dependencies:
       '@commitlint/config-validator': 20.4.0
       '@commitlint/execute-rule': 20.0.0
       '@commitlint/resolve-extends': 20.4.0
       '@commitlint/types': 20.4.0
       cosmiconfig: 9.0.0(typescript@5.9.3)
-      cosmiconfig-typescript-loader: 6.2.0(@types/node@25.2.3)(cosmiconfig@9.0.0(typescript@5.9.3))(typescript@5.9.3)
+      cosmiconfig-typescript-loader: 6.2.0(@types/node@25.3.0)(cosmiconfig@9.0.0(typescript@5.9.3))(typescript@5.9.3)
       is-plain-obj: 4.1.0
       lodash.mergewith: 4.6.2
       picocolors: 1.1.1
@@ -4305,6 +4367,14 @@ snapshots:
     optionalDependencies:
       '@types/node': 25.2.3
 
+  '@inquirer/confirm@5.1.21(@types/node@25.3.0)':
+    dependencies:
+      '@inquirer/core': 10.3.2(@types/node@25.3.0)
+      '@inquirer/type': 3.0.10(@types/node@25.3.0)
+    optionalDependencies:
+      '@types/node': 25.3.0
+    optional: true
+
   '@inquirer/core@10.3.2(@types/node@25.2.3)':
     dependencies:
       '@inquirer/ansi': 1.0.2
@@ -4318,15 +4388,52 @@ snapshots:
     optionalDependencies:
       '@types/node': 25.2.3
 
+  '@inquirer/core@10.3.2(@types/node@25.3.0)':
+    dependencies:
+      '@inquirer/ansi': 1.0.2
+      '@inquirer/figures': 1.0.15
+      '@inquirer/type': 3.0.10(@types/node@25.3.0)
+      cli-width: 4.1.0
+      mute-stream: 2.0.0
+      signal-exit: 4.1.0
+      wrap-ansi: 6.2.0
+      yoctocolors-cjs: 2.1.3
+    optionalDependencies:
+      '@types/node': 25.3.0
+    optional: true
+
   '@inquirer/figures@1.0.15': {}
 
   '@inquirer/type@3.0.10(@types/node@25.2.3)':
     optionalDependencies:
       '@types/node': 25.2.3
 
+  '@inquirer/type@3.0.10(@types/node@25.3.0)':
+    optionalDependencies:
+      '@types/node': 25.3.0
+    optional: true
+
   '@isaacs/fs-minipass@4.0.1':
     dependencies:
       minipass: 7.1.2
+
+  '@jitl/quickjs-ffi-types@0.32.0': {}
+
+  '@jitl/quickjs-wasmfile-debug-asyncify@0.32.0':
+    dependencies:
+      '@jitl/quickjs-ffi-types': 0.32.0
+
+  '@jitl/quickjs-wasmfile-debug-sync@0.32.0':
+    dependencies:
+      '@jitl/quickjs-ffi-types': 0.32.0
+
+  '@jitl/quickjs-wasmfile-release-asyncify@0.32.0':
+    dependencies:
+      '@jitl/quickjs-ffi-types': 0.32.0
+
+  '@jitl/quickjs-wasmfile-release-sync@0.32.0':
+    dependencies:
+      '@jitl/quickjs-ffi-types': 0.32.0
 
   '@jridgewell/resolve-uri@3.1.2': {}
 
@@ -4722,7 +4829,7 @@ snapshots:
 
   '@types/convict@6.1.6':
     dependencies:
-      '@types/node': 25.2.3
+      '@types/node': 25.3.0
 
   '@types/deep-eql@4.0.2': {}
 
@@ -4736,9 +4843,13 @@ snapshots:
     dependencies:
       undici-types: 7.16.0
 
+  '@types/node@25.3.0':
+    dependencies:
+      undici-types: 7.18.2
+
   '@types/ssri@7.1.5':
     dependencies:
-      '@types/node': 25.2.3
+      '@types/node': 25.3.0
 
   '@types/statuses@2.0.6': {}
 
@@ -4849,6 +4960,20 @@ snapshots:
       tinyrainbow: 3.0.3
       vitest: 4.0.18(@types/node@25.2.3)(jiti@2.6.1)(msw@2.12.10(@types/node@25.2.3)(typescript@5.9.3))(tsx@4.21.0)
 
+  '@vitest/coverage-v8@4.0.18(vitest@4.0.18(@types/node@25.3.0)(jiti@2.6.1)(msw@2.12.10(@types/node@25.3.0)(typescript@5.9.3))(tsx@4.21.0))':
+    dependencies:
+      '@bcoe/v8-coverage': 1.0.2
+      '@vitest/utils': 4.0.18
+      ast-v8-to-istanbul: 0.3.11
+      istanbul-lib-coverage: 3.2.2
+      istanbul-lib-report: 3.0.1
+      istanbul-reports: 3.2.0
+      magicast: 0.5.2
+      obug: 2.1.1
+      std-env: 3.10.0
+      tinyrainbow: 3.0.3
+      vitest: 4.0.18(@types/node@25.3.0)(jiti@2.6.1)(msw@2.12.10(@types/node@25.3.0)(typescript@5.9.3))(tsx@4.21.0)
+
   '@vitest/expect@4.0.18':
     dependencies:
       '@standard-schema/spec': 1.1.0
@@ -4858,14 +4983,23 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.0.3
 
-  '@vitest/mocker@4.0.18(msw@2.12.10(@types/node@25.2.3)(typescript@5.9.3))(vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(tsx@4.21.0))':
+  '@vitest/mocker@4.0.18(msw@2.12.10(@types/node@25.2.3)(typescript@5.9.3))(vite@7.3.1(@types/node@25.3.0)(jiti@2.6.1)(tsx@4.21.0))':
     dependencies:
       '@vitest/spy': 4.0.18
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
       msw: 2.12.10(@types/node@25.2.3)(typescript@5.9.3)
-      vite: 7.3.1(@types/node@25.2.3)(jiti@2.6.1)(tsx@4.21.0)
+      vite: 7.3.1(@types/node@25.3.0)(jiti@2.6.1)(tsx@4.21.0)
+
+  '@vitest/mocker@4.0.18(msw@2.12.10(@types/node@25.3.0)(typescript@5.9.3))(vite@7.3.1(@types/node@25.3.0)(jiti@2.6.1)(tsx@4.21.0))':
+    dependencies:
+      '@vitest/spy': 4.0.18
+      estree-walker: 3.0.3
+      magic-string: 0.30.21
+    optionalDependencies:
+      msw: 2.12.10(@types/node@25.3.0)(typescript@5.9.3)
+      vite: 7.3.1(@types/node@25.3.0)(jiti@2.6.1)(tsx@4.21.0)
 
   '@vitest/pretty-format@4.0.18':
     dependencies:
@@ -5169,9 +5303,9 @@ snapshots:
 
   cookie@1.1.1: {}
 
-  cosmiconfig-typescript-loader@6.2.0(@types/node@25.2.3)(cosmiconfig@9.0.0(typescript@5.9.3))(typescript@5.9.3):
+  cosmiconfig-typescript-loader@6.2.0(@types/node@25.3.0)(cosmiconfig@9.0.0(typescript@5.9.3))(typescript@5.9.3):
     dependencies:
-      '@types/node': 25.2.3
+      '@types/node': 25.3.0
       cosmiconfig: 9.0.0(typescript@5.9.3)
       jiti: 2.6.1
       typescript: 5.9.3
@@ -6105,6 +6239,32 @@ snapshots:
     transitivePeerDependencies:
       - '@types/node'
 
+  msw@2.12.10(@types/node@25.3.0)(typescript@5.9.3):
+    dependencies:
+      '@inquirer/confirm': 5.1.21(@types/node@25.3.0)
+      '@mswjs/interceptors': 0.41.3
+      '@open-draft/deferred-promise': 2.2.0
+      '@types/statuses': 2.0.6
+      cookie: 1.1.1
+      graphql: 16.12.0
+      headers-polyfill: 4.0.3
+      is-node-process: 1.2.0
+      outvariant: 1.4.3
+      path-to-regexp: 6.3.0
+      picocolors: 1.1.1
+      rettime: 0.10.1
+      statuses: 2.0.2
+      strict-event-emitter: 0.5.1
+      tough-cookie: 6.0.0
+      type-fest: 5.4.4
+      until-async: 3.0.2
+      yargs: 17.7.2
+    optionalDependencies:
+      typescript: 5.9.3
+    transitivePeerDependencies:
+      - '@types/node'
+    optional: true
+
   mute-stream@2.0.0: {}
 
   nanoid@3.3.11: {}
@@ -6337,7 +6497,7 @@ snapshots:
       '@protobufjs/path': 1.1.2
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.0
-      '@types/node': 25.2.3
+      '@types/node': 25.3.0
       long: 5.3.2
 
   pump@3.0.3:
@@ -6350,6 +6510,18 @@ snapshots:
   queue-microtask@1.2.3: {}
 
   quick-lru@4.0.1: {}
+
+  quickjs-emscripten-core@0.32.0:
+    dependencies:
+      '@jitl/quickjs-ffi-types': 0.32.0
+
+  quickjs-emscripten@0.32.0:
+    dependencies:
+      '@jitl/quickjs-wasmfile-debug-asyncify': 0.32.0
+      '@jitl/quickjs-wasmfile-debug-sync': 0.32.0
+      '@jitl/quickjs-wasmfile-release-asyncify': 0.32.0
+      '@jitl/quickjs-wasmfile-release-sync': 0.32.0
+      quickjs-emscripten-core: 0.32.0
 
   rc@1.2.8:
     dependencies:
@@ -6917,6 +7089,8 @@ snapshots:
 
   undici-types@7.16.0: {}
 
+  undici-types@7.18.2: {}
+
   unique-string@2.0.0:
     dependencies:
       crypto-random-string: 2.0.0
@@ -6943,10 +7117,24 @@ snapshots:
       jiti: 2.6.1
       tsx: 4.21.0
 
+  vite@7.3.1(@types/node@25.3.0)(jiti@2.6.1)(tsx@4.21.0):
+    dependencies:
+      esbuild: 0.27.3
+      fdir: 6.5.0(picomatch@4.0.3)
+      picomatch: 4.0.3
+      postcss: 8.5.6
+      rollup: 4.57.1
+      tinyglobby: 0.2.15
+    optionalDependencies:
+      '@types/node': 25.3.0
+      fsevents: 2.3.3
+      jiti: 2.6.1
+      tsx: 4.21.0
+
   vitest@4.0.18(@types/node@25.2.3)(jiti@2.6.1)(msw@2.12.10(@types/node@25.2.3)(typescript@5.9.3))(tsx@4.21.0):
     dependencies:
       '@vitest/expect': 4.0.18
-      '@vitest/mocker': 4.0.18(msw@2.12.10(@types/node@25.2.3)(typescript@5.9.3))(vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(tsx@4.21.0))
+      '@vitest/mocker': 4.0.18(msw@2.12.10(@types/node@25.2.3)(typescript@5.9.3))(vite@7.3.1(@types/node@25.3.0)(jiti@2.6.1)(tsx@4.21.0))
       '@vitest/pretty-format': 4.0.18
       '@vitest/runner': 4.0.18
       '@vitest/snapshot': 4.0.18
@@ -6967,6 +7155,43 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 25.2.3
+    transitivePeerDependencies:
+      - jiti
+      - less
+      - lightningcss
+      - msw
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - terser
+      - tsx
+      - yaml
+
+  vitest@4.0.18(@types/node@25.3.0)(jiti@2.6.1)(msw@2.12.10(@types/node@25.3.0)(typescript@5.9.3))(tsx@4.21.0):
+    dependencies:
+      '@vitest/expect': 4.0.18
+      '@vitest/mocker': 4.0.18(msw@2.12.10(@types/node@25.3.0)(typescript@5.9.3))(vite@7.3.1(@types/node@25.3.0)(jiti@2.6.1)(tsx@4.21.0))
+      '@vitest/pretty-format': 4.0.18
+      '@vitest/runner': 4.0.18
+      '@vitest/snapshot': 4.0.18
+      '@vitest/spy': 4.0.18
+      '@vitest/utils': 4.0.18
+      es-module-lexer: 1.7.0
+      expect-type: 1.3.0
+      magic-string: 0.30.21
+      obug: 2.1.1
+      pathe: 2.0.3
+      picomatch: 4.0.3
+      std-env: 3.10.0
+      tinybench: 2.9.0
+      tinyexec: 1.0.2
+      tinyglobby: 0.2.15
+      tinyrainbow: 3.0.3
+      vite: 7.3.1(@types/node@25.3.0)(jiti@2.6.1)(tsx@4.21.0)
+      why-is-node-running: 2.3.0
+    optionalDependencies:
+      '@types/node': 25.3.0
     transitivePeerDependencies:
       - jiti
       - less

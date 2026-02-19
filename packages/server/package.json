@@ -33,6 +33,7 @@
     "@morten-olsen/agentic-time": "workspace:*",
     "@morten-olsen/agentic-location": "workspace:*",
     "@morten-olsen/agentic-home-assistant": "workspace:*",
+    "@morten-olsen/agentic-interpreter": "workspace:*",
     "@morten-olsen/agentic-blueprint": "workspace:*",
     "@morten-olsen/agentic-artifact": "workspace:*",
     "@morten-olsen/agentic-personality": "workspace:*",

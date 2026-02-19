@@ -12,6 +12,7 @@ import { createBlueprintPlugin } from '@morten-olsen/agentic-blueprint';
 import { locationPlugin } from '@morten-olsen/agentic-location';
 import { weatherPlugin } from '@morten-olsen/agentic-weather';
 import { createHomeAssistantPlugin } from '@morten-olsen/agentic-home-assistant';
+import { interpreterPlugin, InterpreterService } from '@morten-olsen/agentic-interpreter';
 import { timePlugin } from '@morten-olsen/agentic-time';
 import { todoPlugin } from '@morten-olsen/agentic-todo';
 import { usagePlugin } from '@morten-olsen/agentic-usage';
@@ -37,6 +38,20 @@ const startServer = async ({ config }: StartServerOptions) => {
   });
   const pluginService = services.get(PluginService);
 
+  const interpreterService = services.get(InterpreterService);
+  interpreterService.expose(
+    'fetch',
+    'fetch(url, options?) — HTTP request, returns {status, headers, body}',
+    async (url: unknown, options?: unknown) => {
+      const response = await fetch(url as string, options as RequestInit);
+      return {
+        status: response.status,
+        headers: Object.fromEntries(response.headers),
+        body: await response.text(),
+      };
+    },
+  );
+
   const plugins: Plugin<ZodType>[] = [
     createDatabasePlugin({
       location: config.database.location,
@@ -49,6 +64,7 @@ const startServer = async ({ config }: StartServerOptions) => {
     conversationPlugin,
     timePlugin,
     artifactPlugin,
+    interpreterPlugin,
   ];
 
   if (config.todo.enabled) {
@@ -136,6 +152,7 @@ const startServer = async ({ config }: StartServerOptions) => {
 
   console.log('[glados] Server started');
   console.log('[glados]   artifact: enabled');
+  console.log('[glados]   interpreter: enabled');
   console.log(`[glados]   todo: ${config.todo.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   personality: ${config.personality.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   daily-note: ${config.dailyNote.enabled ? 'enabled' : 'disabled'}`);

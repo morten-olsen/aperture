@@ -59,7 +59,8 @@
       "WebFetch(domain:pglite.dev)",
       "Bash(cat:*)",
       "mcp__plugin_context7_context7__query-docs",
-      "WebFetch(domain:open-meteo.com)"
+      "WebFetch(domain:open-meteo.com)",
+      "WebFetch(domain:sebastianwessel.github.io)"
     ]
   }
 }
