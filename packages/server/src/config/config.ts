@@ -221,6 +221,26 @@ const configSchema = convict({
       env: 'HOME_ASSISTANT_LOCATION_TRACKING',
     },
   },
+  blueprint: {
+    enabled: {
+      doc: 'Enable behavioural blueprints plugin',
+      format: Boolean,
+      default: true,
+      env: 'BLUEPRINT_ENABLED',
+    },
+    topN: {
+      doc: 'Maximum blueprints to surface in context per turn',
+      format: 'int',
+      default: 5,
+      env: 'BLUEPRINT_TOP_N',
+    },
+    maxDistance: {
+      doc: 'Cosine distance threshold for blueprint suggestions (lower = stricter)',
+      format: Number,
+      default: 0.7,
+      env: 'BLUEPRINT_MAX_DISTANCE',
+    },
+  },
   webFetch: {
     enabled: {
       doc: 'Enable web fetch plugin',

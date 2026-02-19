@@ -8,6 +8,7 @@ import { triggerPlugin } from '@morten-olsen/agentic-trigger';
 import { createCalendarPlugin, calendarPluginOptionsSchema } from '@morten-olsen/agentic-calendar';
 import { createTelegramPlugin, telegramPluginOptionsSchema } from '@morten-olsen/agentic-telegram';
 import { createWebFetchPlugin } from '@morten-olsen/agentic-web-fetch';
+import { createBlueprintPlugin } from '@morten-olsen/agentic-blueprint';
 import { locationPlugin } from '@morten-olsen/agentic-location';
 import { weatherPlugin } from '@morten-olsen/agentic-weather';
 import { createHomeAssistantPlugin } from '@morten-olsen/agentic-home-assistant';
@@ -107,6 +108,15 @@ const startServer = async ({ config }: StartServerOptions) => {
     );
   }
 
+  if (config.blueprint.enabled) {
+    plugins.push(
+      createBlueprintPlugin({
+        topN: config.blueprint.topN,
+        maxDistance: config.blueprint.maxDistance,
+      }),
+    );
+  }
+
   if (config.webFetch.enabled) {
     plugins.push(
       createWebFetchPlugin({
@@ -130,6 +140,7 @@ const startServer = async ({ config }: StartServerOptions) => {
   console.log(`[glados]   location: ${config.location.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   weather: ${config.weather.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   home-assistant: ${config.homeAssistant.enabled ? 'enabled' : 'disabled'}`);
+  console.log(`[glados]   blueprint: ${config.blueprint.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   web-fetch: ${config.webFetch.enabled ? 'enabled' : 'disabled'}`);
 
   return { services };

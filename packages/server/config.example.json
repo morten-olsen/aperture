@@ -41,6 +41,11 @@
   "trigger": {
     "enabled": true
   },
+  "blueprint": {
+    "enabled": true,
+    "topN": 5,
+    "maxDistance": 0.7
+  },
   "location": {
     "enabled": false
   },

@@ -71,6 +71,11 @@ Every config value can also be set via environment variables. **Env vars take pr
   },
   "trigger": {
     "enabled": true
+  },
+  "blueprint": {
+    "enabled": true,
+    "topN": 5,
+    "maxDistance": 0.7
   }
 }
 ```
@@ -124,6 +129,14 @@ Every config value can also be set via environment variables. **Env vars take pr
 | `CALENDAR_EXPANSION_PAST_MONTHS` | `1` | RRULE expansion window (past) |
 | `CALENDAR_EXPANSION_FUTURE_MONTHS` | `3` | RRULE expansion window (future) |
 
+#### Blueprint
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BLUEPRINT_ENABLED` | `true` | Enable the behavioural blueprints plugin |
+| `BLUEPRINT_TOP_N` | `5` | Maximum blueprints to surface in context per turn |
+| `BLUEPRINT_MAX_DISTANCE` | `0.7` | Cosine distance threshold for suggestions (lower = stricter) |
+
 #### Trigger
 
 | Variable | Default | Description |
@@ -136,6 +149,7 @@ The server always registers the **database** and **conversation** plugins. The r
 
 | Plugin | Config key | Default |
 |--------|-----------|---------|
+| Blueprint | `blueprint.enabled` | `true` |
 | Trigger | `trigger.enabled` | `true` |
 | Calendar | `calendar.enabled` | `false` |
 | Telegram | `telegram.enabled` | `false` |
@@ -149,6 +163,7 @@ All persistent state lives in a single SQLite database. In Docker, this is store
 - Trigger definitions and invocation records (`triggers_*` tables)
 - Calendar events and notes (`calendar_*` tables — re-synced on startup)
 - Telegram chat metadata (`telegram_chats` table)
+- Behavioural blueprints (`blueprint_blueprints` table)
 
 **Backup:** Copy the SQLite file from the Docker volume. The database uses WAL mode so it's safe to copy while the container is running.
 
