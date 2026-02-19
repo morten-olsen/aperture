@@ -15,6 +15,12 @@ const promptStoreDatabase = createDatabase({
       output: z.string(),
       created_at: z.string(),
       completed_at: z.string().nullable(),
+      input_tokens: z.number().nullable(),
+      output_tokens: z.number().nullable(),
+      total_tokens: z.number().nullable(),
+      reasoning_tokens: z.number().nullable(),
+      cost: z.number().nullable(),
+      resolved_model: z.string().nullable(),
     }),
   },
   migrations: {
@@ -32,6 +38,16 @@ const promptStoreDatabase = createDatabase({
           .addColumn('created_at', 'text', (cb) => cb.notNull())
           .addColumn('completed_at', 'text')
           .execute();
+      },
+    },
+    '2026-02-20-usage': {
+      up: async (db) => {
+        await db.schema.alterTable('db_prompts').addColumn('input_tokens', 'integer').execute();
+        await db.schema.alterTable('db_prompts').addColumn('output_tokens', 'integer').execute();
+        await db.schema.alterTable('db_prompts').addColumn('total_tokens', 'integer').execute();
+        await db.schema.alterTable('db_prompts').addColumn('reasoning_tokens', 'integer').execute();
+        await db.schema.alterTable('db_prompts').addColumn('cost', 'real').execute();
+        await db.schema.alterTable('db_prompts').addColumn('resolved_model', 'varchar(255)').execute();
       },
     },
   },

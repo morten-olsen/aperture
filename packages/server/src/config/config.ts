@@ -241,6 +241,14 @@ const configSchema = convict({
       env: 'BLUEPRINT_MAX_DISTANCE',
     },
   },
+  usage: {
+    enabled: {
+      doc: 'Enable usage tracking plugin',
+      format: Boolean,
+      default: true,
+      env: 'USAGE_ENABLED',
+    },
+  },
   webFetch: {
     enabled: {
       doc: 'Enable web fetch plugin',

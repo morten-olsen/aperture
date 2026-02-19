@@ -18,6 +18,7 @@ class PluginService {
       this.#plugins.add(plugin);
       await plugin.setup?.({
         services: this.#services,
+        secrets: this.#services.secrets,
       });
     }
   };

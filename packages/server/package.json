@@ -36,7 +36,8 @@
     "@morten-olsen/agentic-blueprint": "workspace:*",
     "@morten-olsen/agentic-artifact": "workspace:*",
     "@morten-olsen/agentic-personality": "workspace:*",
-    "@morten-olsen/agentic-todo": "workspace:*"
+    "@morten-olsen/agentic-todo": "workspace:*",
+    "@morten-olsen/agentic-usage": "workspace:*"
   },
   "devDependencies": {
     "@types/convict": "6.1.6",

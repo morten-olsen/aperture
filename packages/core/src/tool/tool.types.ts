@@ -2,12 +2,14 @@ import type { z, ZodType } from 'zod';
 
 import type { State } from '../state/state.js';
 import type { Services } from '../exports.js';
+import type { SecretsProvider } from '../secrets/secrets.types.js';
 
 type ToolInput<TInput extends ZodType> = {
   userId: string;
   input: z.input<TInput>;
   state: State;
   services: Services;
+  secrets: SecretsProvider;
 };
 
 type ApprovalRequest = {

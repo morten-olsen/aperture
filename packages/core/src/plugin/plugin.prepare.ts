@@ -55,6 +55,10 @@ class PluginPrepare {
   public get services() {
     return this.#services;
   }
+
+  public get secrets() {
+    return this.services.secrets;
+  }
 }
 
 export { PluginPrepare };

@@ -14,6 +14,7 @@ import { weatherPlugin } from '@morten-olsen/agentic-weather';
 import { createHomeAssistantPlugin } from '@morten-olsen/agentic-home-assistant';
 import { timePlugin } from '@morten-olsen/agentic-time';
 import { todoPlugin } from '@morten-olsen/agentic-todo';
+import { usagePlugin } from '@morten-olsen/agentic-usage';
 import type { Plugin } from '@morten-olsen/agentic-core';
 import type { ZodType } from 'zod';
 
@@ -117,6 +118,10 @@ const startServer = async ({ config }: StartServerOptions) => {
     );
   }
 
+  if (config.usage.enabled) {
+    plugins.push(usagePlugin);
+  }
+
   if (config.webFetch.enabled) {
     plugins.push(
       createWebFetchPlugin({
@@ -141,6 +146,7 @@ const startServer = async ({ config }: StartServerOptions) => {
   console.log(`[glados]   weather: ${config.weather.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   home-assistant: ${config.homeAssistant.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   blueprint: ${config.blueprint.enabled ? 'enabled' : 'disabled'}`);
+  console.log(`[glados]   usage: ${config.usage.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   web-fetch: ${config.webFetch.enabled ? 'enabled' : 'disabled'}`);
 
   return { services };

@@ -9,7 +9,7 @@ import { EventEmitter } from '../utils/utils.event-emitter.js';
 import { State } from '../state/state.js';
 
 import { contextToMessages, promptsToMessages } from './prompt.utils.js';
-import type { Prompt, PromptOutputText, PromptOutputTool } from './prompt.schema.js';
+import type { Prompt, PromptOutputText, PromptOutputTool, PromptUsage } from './prompt.schema.js';
 
 type ApprovalRequestedEvent = {
   toolCallId: string;
@@ -42,6 +42,7 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
   #state: State;
   #pendingBatchRemaining: OpenAI.Responses.ResponseFunctionToolCall[] = [];
   #pendingToolCallTools: Tool[] = [];
+  #usage: PromptUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
 
   constructor(options: PromptCompletionOptions) {
     super();
@@ -87,6 +88,10 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
 
   public get state() {
     return this.#state;
+  }
+
+  public get usage() {
+    return this.#usage;
   }
 
   #formatToolError = (toolName: string, error: unknown): string => {
@@ -143,6 +148,26 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
     });
   };
 
+  #accumulateUsage = (response: OpenAI.Responses.Response) => {
+    const { services } = this.#options;
+    if (response.usage) {
+      this.#usage.inputTokens += response.usage.input_tokens;
+      this.#usage.outputTokens += response.usage.output_tokens;
+      this.#usage.totalTokens += response.usage.total_tokens;
+      const reasoning = response.usage.output_tokens_details?.reasoning_tokens;
+      if (reasoning != null) {
+        this.#usage.reasoningTokens = (this.#usage.reasoningTokens ?? 0) + reasoning;
+      }
+    }
+    const usageExt = response.usage as unknown as Record<string, unknown> | undefined;
+    if (usageExt && typeof usageExt.cost === 'number') {
+      this.#usage.cost = (this.#usage.cost ?? 0) + usageExt.cost;
+    }
+    if (!this.#usage.resolvedModel) {
+      this.#usage.resolvedModel = services.config.models[this.#prompt.model];
+    }
+  };
+
   #evaluateApproval = async (tool: Tool, args: unknown, state: State): Promise<ApprovalRequest | undefined> => {
     if (!tool.requireApproval) {
       return undefined;
@@ -153,6 +178,7 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
         userId: this.userId,
         state,
         services: this.#options.services,
+        secrets: this.#options.services.secrets,
       });
     }
     return tool.requireApproval;
@@ -217,6 +243,7 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
         userId: this.userId,
         state,
         services: this.#options.services,
+        secrets: this.#options.services.secrets,
       });
 
       return {
@@ -251,6 +278,7 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
     };
 
     this.#prompt.output.push(textOutput);
+    this.#prompt.usage = this.#usage;
     this.#prompt.state = 'completed';
   };
 
@@ -298,6 +326,7 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
           userId: this.userId,
           state: this.#state,
           services: this.#options.services,
+          secrets: this.#options.services.secrets,
         });
         pendingOutput.result = { type: 'success', output: result };
       } catch (error) {
@@ -352,6 +381,7 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
       round += 1;
       const prepared = await this.#prepare();
       const response = await this.#callModel(prepared);
+      this.#accumulateUsage(response);
 
       const toolCalls = response.output.filter(
         (item): item is OpenAI.Responses.ResponseFunctionToolCall => item.type === 'function_call',

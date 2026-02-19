@@ -55,6 +55,17 @@ const promptOutputSchema = z.discriminatedUnion('type', [promptOutputTextSchema,
 
 type PromptOutput = z.input<typeof promptOutputSchema>;
 
+const promptUsageSchema = z.object({
+  inputTokens: z.number(),
+  outputTokens: z.number(),
+  totalTokens: z.number(),
+  reasoningTokens: z.number().optional(),
+  cost: z.number().optional(),
+  resolvedModel: z.string().optional(),
+});
+
+type PromptUsage = z.input<typeof promptUsageSchema>;
+
 const promptSchema = z.object({
   id: z.string(),
   userId: z.string(),
@@ -63,6 +74,7 @@ const promptSchema = z.object({
   state: z.enum(['running', 'completed', 'waiting_for_approval']),
   input: z.string().optional(),
   output: z.array(promptOutputSchema),
+  usage: promptUsageSchema.optional(),
 });
 
 type Prompt = z.input<typeof promptSchema>;
@@ -76,6 +88,7 @@ export type {
   PromptOutputTool,
   PromptOutput,
   Prompt,
+  PromptUsage,
 };
 
 export {
@@ -87,4 +100,5 @@ export {
   promptOutputToolSchema,
   promptOutputSchema,
   promptSchema,
+  promptUsageSchema,
 };

@@ -1,4 +1,5 @@
 import type { Config } from '../config/config.js';
+import { SecretsProviderMemory, type SecretsProvider } from '../secrets/secrets.js';
 
 const destroy = Symbol('destroy');
 const instanceKey = Symbol('instances');
@@ -9,15 +10,21 @@ type ServiceDependency<T> = new (services: Services) => T & {
 
 class Services {
   #config: Config;
+  #secrets: SecretsProvider;
   [instanceKey]: Map<ServiceDependency<unknown>, unknown>;
 
   constructor(config: Config) {
     this.#config = config;
+    this.#secrets = config.secrets || new SecretsProviderMemory();
     this[instanceKey] = new Map();
   }
 
   public get config() {
     return this.#config;
+  }
+
+  public get secrets(): SecretsProvider {
+    return this.#secrets;
   }
 
   public get = <T>(service: ServiceDependency<T>) => {
