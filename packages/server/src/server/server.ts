@@ -9,6 +9,7 @@ import { createCalendarPlugin, calendarPluginOptionsSchema } from '@morten-olsen
 import { createTelegramPlugin, telegramPluginOptionsSchema } from '@morten-olsen/agentic-telegram';
 import { createWebFetchPlugin } from '@morten-olsen/agentic-web-fetch';
 import { locationPlugin } from '@morten-olsen/agentic-location';
+import { weatherPlugin } from '@morten-olsen/agentic-weather';
 import { createHomeAssistantPlugin } from '@morten-olsen/agentic-home-assistant';
 import { timePlugin } from '@morten-olsen/agentic-time';
 import { todoPlugin } from '@morten-olsen/agentic-todo';
@@ -92,6 +93,10 @@ const startServer = async ({ config }: StartServerOptions) => {
     plugins.push(locationPlugin);
   }
 
+  if (config.weather.enabled) {
+    plugins.push(weatherPlugin);
+  }
+
   if (config.homeAssistant.enabled) {
     plugins.push(
       createHomeAssistantPlugin({
@@ -123,6 +128,7 @@ const startServer = async ({ config }: StartServerOptions) => {
   console.log(`[glados]   calendar: ${config.calendar.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   telegram: ${config.telegram.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   location: ${config.location.enabled ? 'enabled' : 'disabled'}`);
+  console.log(`[glados]   weather: ${config.weather.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   home-assistant: ${config.homeAssistant.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   web-fetch: ${config.webFetch.enabled ? 'enabled' : 'disabled'}`);
 

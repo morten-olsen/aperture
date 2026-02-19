@@ -44,6 +44,9 @@
   "location": {
     "enabled": false
   },
+  "weather": {
+    "enabled": true
+  },
   "homeAssistant": {
     "enabled": false,
     "url": "http://homeassistant.local:8123",

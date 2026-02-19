@@ -186,6 +186,14 @@ const configSchema = convict({
       env: 'LOCATION_ENABLED',
     },
   },
+  weather: {
+    enabled: {
+      doc: 'Enable weather plugin',
+      format: Boolean,
+      default: true,
+      env: 'WEATHER_ENABLED',
+    },
+  },
   homeAssistant: {
     enabled: {
       doc: 'Enable Home Assistant plugin',
