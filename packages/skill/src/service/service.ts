@@ -17,19 +17,22 @@ class SkillService {
 
   public prepare = (active: string[]) => {
     const activeSkills = Object.values(this.#skills).filter((skill) => active.includes(skill.id));
+    const inactiveSkills = Object.values(this.#skills).filter((skill) => !active.includes(skill.id));
 
-    const instructions = activeSkills.map((skill) => {
+    const activeInstructions = activeSkills.map((skill) => {
       if (skill.instruction) {
         return `active skill ${skill.id}:\n\n${skill.instruction}`;
       } else {
         return `active skill ${skill.id}`;
       }
     });
-    const tools = activeSkills.flatMap((skill) => skill.tools || []);
+    const activeTools = activeSkills.flatMap((skill) => skill.tools || []);
 
     return {
-      instructions,
-      tools,
+      activeSkills,
+      activeInstructions,
+      activeTools,
+      inactiveSkills,
     };
   };
 }

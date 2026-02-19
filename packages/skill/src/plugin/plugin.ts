@@ -12,16 +12,23 @@ const skillPlugin = createPlugin({
   prepare: async ({ context, tools, state, services }) => {
     const skillService = services.get(SkillService);
     const skillState = state.getState(skillPlugin);
-    const fromSkills = skillService.prepare(skillState?.active || []);
+    const { activeSkills, activeInstructions, activeTools, inactiveSkills } = skillService.prepare(
+      skillState?.active || [],
+    );
 
     context.items.push(
-      ...fromSkills.instructions.map((item) => ({
+      ...activeInstructions.map((item) => ({
         type: 'skill-instruction',
         content: item,
       })),
     );
-    tools.push(...fromSkills.tools);
-    tools.push(...Object.values(skillTools));
+    tools.push(...activeTools);
+    if (activeSkills.length > 0) {
+      tools.push(skillTools.deactivate);
+    }
+    if (inactiveSkills.length > 0) {
+      tools.push(skillTools.list, skillTools.activate);
+    }
   },
 });
 
