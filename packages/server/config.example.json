@@ -40,5 +40,19 @@
   },
   "trigger": {
     "enabled": true
+  },
+  "location": {
+    "enabled": false
+  },
+  "homeAssistant": {
+    "enabled": false,
+    "url": "http://homeassistant.local:8123",
+    "token": "",
+    "locationTracking": [
+      {
+        "entity": "person.john",
+        "userId": "john"
+      }
+    ]
   }
 }

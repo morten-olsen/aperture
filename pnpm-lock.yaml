@@ -247,6 +247,71 @@ importers:
         specifier: 4.0.18
         version: 4.0.18(@types/node@25.2.3)(jiti@2.6.1)(msw@2.12.10(@types/node@25.2.3)(typescript@5.9.3))(tsx@4.21.0)
 
+  packages/home-assistant:
+    dependencies:
+      '@morten-olsen/agentic-core':
+        specifier: workspace:*
+        version: link:../core
+      '@morten-olsen/agentic-location':
+        specifier: workspace:*
+        version: link:../location
+      home-assistant-js-websocket:
+        specifier: ^9.6.0
+        version: 9.6.0
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+    devDependencies:
+      '@morten-olsen/agentic-configs':
+        specifier: workspace:*
+        version: link:../configs
+      '@morten-olsen/agentic-tests':
+        specifier: workspace:*
+        version: link:../tests
+      '@types/node':
+        specifier: 25.2.3
+        version: 25.2.3
+      '@vitest/coverage-v8':
+        specifier: 4.0.18
+        version: 4.0.18(vitest@4.0.18(@types/node@25.2.3)(jiti@2.6.1)(msw@2.12.10(@types/node@25.2.3)(typescript@5.9.3))(tsx@4.21.0))
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: 4.0.18
+        version: 4.0.18(@types/node@25.2.3)(jiti@2.6.1)(msw@2.12.10(@types/node@25.2.3)(typescript@5.9.3))(tsx@4.21.0)
+
+  packages/location:
+    dependencies:
+      '@morten-olsen/agentic-core':
+        specifier: workspace:*
+        version: link:../core
+      '@morten-olsen/agentic-database':
+        specifier: workspace:*
+        version: link:../database
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+    devDependencies:
+      '@morten-olsen/agentic-configs':
+        specifier: workspace:*
+        version: link:../configs
+      '@morten-olsen/agentic-tests':
+        specifier: workspace:*
+        version: link:../tests
+      '@types/node':
+        specifier: 25.2.3
+        version: 25.2.3
+      '@vitest/coverage-v8':
+        specifier: 4.0.18
+        version: 4.0.18(vitest@4.0.18(@types/node@25.2.3)(jiti@2.6.1)(msw@2.12.10(@types/node@25.2.3)(typescript@5.9.3))(tsx@4.21.0))
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: 4.0.18
+        version: 4.0.18(@types/node@25.2.3)(jiti@2.6.1)(msw@2.12.10(@types/node@25.2.3)(typescript@5.9.3))(tsx@4.21.0)
+
   packages/notification:
     dependencies:
       '@morten-olsen/agentic-core':
@@ -332,6 +397,12 @@ importers:
       '@morten-olsen/agentic-database':
         specifier: workspace:*
         version: link:../database
+      '@morten-olsen/agentic-home-assistant':
+        specifier: workspace:*
+        version: link:../home-assistant
+      '@morten-olsen/agentic-location':
+        specifier: workspace:*
+        version: link:../location
       '@morten-olsen/agentic-telegram':
         specifier: workspace:*
         version: link:../telegram
@@ -2291,6 +2362,9 @@ packages:
 
   headers-polyfill@4.0.3:
     resolution: {integrity: sha512-IScLbePpkvO846sIwOtOTDjutRMWdXdJmXdMvk6gCBHxFO8d+QKOQedyZSxFTTFYRSmlgSTDtXqqq4pcenBXLQ==}
+
+  home-assistant-js-websocket@9.6.0:
+    resolution: {integrity: sha512-TK8HWW6UjCsUdjIBQRB2sBbEya0VniOBFqFjgqSznJiB7YriNgN8jghyThxOkgxwrnt2eN6oWoZMCTSp1o7H+w==}
 
   html-escaper@2.0.2:
     resolution: {integrity: sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg==}
@@ -5461,6 +5535,8 @@ snapshots:
       function-bind: 1.1.2
 
   headers-polyfill@4.0.3: {}
+
+  home-assistant-js-websocket@9.6.0: {}
 
   html-escaper@2.0.2: {}
 

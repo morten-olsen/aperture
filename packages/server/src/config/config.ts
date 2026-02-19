@@ -162,6 +162,41 @@ const configSchema = convict({
       env: 'EMBEDDINGS_DIMENSIONS',
     },
   },
+  location: {
+    enabled: {
+      doc: 'Enable location plugin',
+      format: Boolean,
+      default: false,
+      env: 'LOCATION_ENABLED',
+    },
+  },
+  homeAssistant: {
+    enabled: {
+      doc: 'Enable Home Assistant plugin',
+      format: Boolean,
+      default: false,
+      env: 'HOME_ASSISTANT_ENABLED',
+    },
+    url: {
+      doc: 'Home Assistant URL',
+      format: String,
+      default: '',
+      env: 'HOME_ASSISTANT_URL',
+    },
+    token: {
+      doc: 'Home Assistant long-lived access token',
+      format: String,
+      default: '',
+      env: 'HOME_ASSISTANT_TOKEN',
+      sensitive: true,
+    },
+    locationTracking: {
+      doc: 'Location tracking entries as JSON array of {entity, userId}',
+      format: 'json-array' as unknown as 'String',
+      default: [] as unknown[],
+      env: 'HOME_ASSISTANT_LOCATION_TRACKING',
+    },
+  },
   webFetch: {
     enabled: {
       doc: 'Enable web fetch plugin',

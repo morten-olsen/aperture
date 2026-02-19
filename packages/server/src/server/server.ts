@@ -6,6 +6,8 @@ import { triggerPlugin } from '@morten-olsen/agentic-trigger';
 import { createCalendarPlugin, calendarPluginOptionsSchema } from '@morten-olsen/agentic-calendar';
 import { createTelegramPlugin, telegramPluginOptionsSchema } from '@morten-olsen/agentic-telegram';
 import { createWebFetchPlugin } from '@morten-olsen/agentic-web-fetch';
+import { locationPlugin } from '@morten-olsen/agentic-location';
+import { createHomeAssistantPlugin } from '@morten-olsen/agentic-home-assistant';
 import { timePlugin } from '@morten-olsen/agentic-time';
 import type { Plugin } from '@morten-olsen/agentic-core';
 import type { ZodType } from 'zod';
@@ -74,6 +76,20 @@ const startServer = async ({ config }: StartServerOptions) => {
     );
   }
 
+  if (config.location.enabled) {
+    plugins.push(locationPlugin);
+  }
+
+  if (config.homeAssistant.enabled) {
+    plugins.push(
+      createHomeAssistantPlugin({
+        url: config.homeAssistant.url,
+        token: config.homeAssistant.token,
+        locationTracking: config.homeAssistant.locationTracking as { entity: string; userId: string }[],
+      }),
+    );
+  }
+
   if (config.webFetch.enabled) {
     plugins.push(
       createWebFetchPlugin({
@@ -91,6 +107,8 @@ const startServer = async ({ config }: StartServerOptions) => {
   console.log(`[glados]   trigger: ${config.trigger.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   calendar: ${config.calendar.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   telegram: ${config.telegram.enabled ? 'enabled' : 'disabled'}`);
+  console.log(`[glados]   location: ${config.location.enabled ? 'enabled' : 'disabled'}`);
+  console.log(`[glados]   home-assistant: ${config.homeAssistant.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   web-fetch: ${config.webFetch.enabled ? 'enabled' : 'disabled'}`);
 
   return { services };
