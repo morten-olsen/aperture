@@ -1,0 +1,32 @@
+{
+  "type": "module",
+  "main": "dist/exports.js",
+  "scripts": {
+    "build": "tsc --build",
+    "buld:dev": "tsc --build --watch --preserveWatchOutput",
+    "test:unit": "vitest --run --passWithNoTests",
+    "test": "pnpm run \"/^test:/\""
+  },
+  "packageManager": "pnpm@10.6.0",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": "./dist/exports.js"
+  },
+  "devDependencies": {
+    "@morten-olsen/agentic-configs": "workspace:*",
+    "@morten-olsen/agentic-tests": "workspace:*",
+    "@types/node": "25.2.3",
+    "@vitest/coverage-v8": "4.0.18",
+    "typescript": "5.9.3",
+    "vitest": "4.0.18"
+  },
+  "dependencies": {
+    "@morten-olsen/agentic-core": "workspace:*",
+    "@morten-olsen/agentic-database": "workspace:*",
+    "zod": "^4.3.6"
+  },
+  "name": "@morten-olsen/agentic-personality",
+  "version": "1.0.0"
+}
