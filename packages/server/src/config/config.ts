@@ -142,6 +142,14 @@ const configSchema = convict({
       env: 'PERSONALITY_ENABLED',
     },
   },
+  todo: {
+    enabled: {
+      doc: 'Enable todo plugin',
+      format: Boolean,
+      default: true,
+      env: 'TODO_ENABLED',
+    },
+  },
   trigger: {
     enabled: {
       doc: 'Enable trigger/scheduler plugin',

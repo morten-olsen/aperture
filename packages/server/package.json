@@ -33,7 +33,8 @@
     "@morten-olsen/agentic-location": "workspace:*",
     "@morten-olsen/agentic-home-assistant": "workspace:*",
     "@morten-olsen/agentic-artifact": "workspace:*",
-    "@morten-olsen/agentic-personality": "workspace:*"
+    "@morten-olsen/agentic-personality": "workspace:*",
+    "@morten-olsen/agentic-todo": "workspace:*"
   },
   "devDependencies": {
     "@types/convict": "6.1.6",

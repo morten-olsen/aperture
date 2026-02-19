@@ -11,6 +11,7 @@ import { createWebFetchPlugin } from '@morten-olsen/agentic-web-fetch';
 import { locationPlugin } from '@morten-olsen/agentic-location';
 import { createHomeAssistantPlugin } from '@morten-olsen/agentic-home-assistant';
 import { timePlugin } from '@morten-olsen/agentic-time';
+import { todoPlugin } from '@morten-olsen/agentic-todo';
 import type { Plugin } from '@morten-olsen/agentic-core';
 import type { ZodType } from 'zod';
 
@@ -46,6 +47,10 @@ const startServer = async ({ config }: StartServerOptions) => {
     timePlugin,
     artifactPlugin,
   ];
+
+  if (config.todo.enabled) {
+    plugins.push(todoPlugin);
+  }
 
   if (config.personality.enabled) {
     plugins.push(personalityPlugin);
@@ -111,6 +116,7 @@ const startServer = async ({ config }: StartServerOptions) => {
 
   console.log('[glados] Server started');
   console.log('[glados]   artifact: enabled');
+  console.log(`[glados]   todo: ${config.todo.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   personality: ${config.personality.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   daily-note: ${config.dailyNote.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   trigger: ${config.trigger.enabled ? 'enabled' : 'disabled'}`);
