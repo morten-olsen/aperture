@@ -1,0 +1,31 @@
+{
+  "type": "module",
+  "main": "dist/exports.js",
+  "scripts": {
+    "build": "tsc --build",
+    "build:dev": "tsc --build --watch --preserveWatchOutput",
+    "test:unit": "vitest --run --passWithNoTests",
+    "test": "pnpm run \"/^test:/\""
+  },
+  "packageManager": "pnpm@10.30.0+sha512.2b5753de015d480eeb88f5b5b61e0051f05b4301808a82ec8b840c9d2adf7748eb352c83f5c1593ca703ff1017295bc3fdd3119abb9686efc96b9fcb18200937",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": "./dist/exports.js"
+  },
+  "dependencies": {
+    "@morten-olsen/agentic-core": "workspace:*",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@morten-olsen/agentic-configs": "workspace:*",
+    "@morten-olsen/agentic-tests": "workspace:*",
+    "@types/node": "25.2.3",
+    "@vitest/coverage-v8": "4.0.18",
+    "typescript": "5.9.3",
+    "vitest": "4.0.18"
+  },
+  "name": "@morten-olsen/agentic-time",
+  "version": "1.0.0"
+}

@@ -5,6 +5,7 @@ import { triggerPlugin } from '@morten-olsen/agentic-trigger';
 import { createCalendarPlugin, calendarPluginOptionsSchema } from '@morten-olsen/agentic-calendar';
 import { createTelegramPlugin, telegramPluginOptionsSchema } from '@morten-olsen/agentic-telegram';
 import { createWebFetchPlugin } from '@morten-olsen/agentic-web-fetch';
+import { timePlugin } from '@morten-olsen/agentic-time';
 import type { Plugin } from '@morten-olsen/agentic-core';
 import type { ZodType } from 'zod';
 
@@ -37,6 +38,7 @@ const startServer = async ({ config }: StartServerOptions) => {
       },
     }),
     conversationPlugin,
+    timePlugin,
   ];
 
   if (config.trigger.enabled) {
