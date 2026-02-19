@@ -112,7 +112,12 @@ class TelegramMessageHandler {
     this.#enqueue(telegramChatId, async () => {
       try {
         if (text.trim() === '/new') {
-          await this.#handleNew(telegramChatId, 'admin');
+          const { users } = this.#options;
+          const user = users?.find((user) => user.chatId === telegramChatId);
+          if (!user) {
+            throw new Error('Telegram user not found');
+          }
+          await this.#handleNew(telegramChatId, user.userId);
           return;
         }
         await this.#processMessage(telegramChatId, text, meta);
