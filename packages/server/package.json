@@ -31,7 +31,8 @@
     "@morten-olsen/agentic-web-fetch": "workspace:*",
     "@morten-olsen/agentic-time": "workspace:*",
     "@morten-olsen/agentic-location": "workspace:*",
-    "@morten-olsen/agentic-home-assistant": "workspace:*"
+    "@morten-olsen/agentic-home-assistant": "workspace:*",
+    "@morten-olsen/agentic-artifact": "workspace:*"
   },
   "devDependencies": {
     "@types/convict": "6.1.6",

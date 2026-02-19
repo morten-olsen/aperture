@@ -1,4 +1,5 @@
 import { PluginService, Services } from '@morten-olsen/agentic-core';
+import { artifactPlugin } from '@morten-olsen/agentic-artifact';
 import { dailyNotePlugin } from '@morten-olsen/agentic-daily-note';
 import { createDatabasePlugin } from '@morten-olsen/agentic-database';
 import { conversationPlugin } from '@morten-olsen/agentic-conversation';
@@ -42,6 +43,7 @@ const startServer = async ({ config }: StartServerOptions) => {
     }),
     conversationPlugin,
     timePlugin,
+    artifactPlugin,
   ];
 
   if (config.dailyNote.enabled) {
@@ -103,6 +105,7 @@ const startServer = async ({ config }: StartServerOptions) => {
   await pluginService.register(...plugins);
 
   console.log('[glados] Server started');
+  console.log('[glados]   artifact: enabled');
   console.log(`[glados]   daily-note: ${config.dailyNote.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   trigger: ${config.trigger.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   calendar: ${config.calendar.enabled ? 'enabled' : 'disabled'}`);
