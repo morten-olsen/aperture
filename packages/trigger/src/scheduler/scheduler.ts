@@ -276,6 +276,12 @@ class TriggerScheduler {
 
     try {
       const prompt = await completion.run();
+
+      const lastTextOutput = [...prompt.output].reverse().find((o) => o.type === 'text');
+      if (lastTextOutput?.type === 'text' && lastTextOutput.content) {
+        await this.update(id, { continuation: lastTextOutput.content });
+      }
+
       await this.markInvoked(id);
       await this.recordInvocation(id, prompt.id);
       return prompt;

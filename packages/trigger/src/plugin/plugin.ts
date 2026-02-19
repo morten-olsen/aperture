@@ -59,7 +59,7 @@ const triggerPlugin = createPlugin({
 
     contextParts.push(
       'If you discover something the user should know, use the trigger.notify tool.',
-      'Before completing, use trigger.update with a "continuation" note for your next invocation.',
+      'Your final text output will automatically be saved as a continuation note for your next invocation.',
     );
 
     context.items.push({
