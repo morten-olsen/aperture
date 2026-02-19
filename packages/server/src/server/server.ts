@@ -1,5 +1,6 @@
 import { PluginService, Services } from '@morten-olsen/agentic-core';
 import { artifactPlugin } from '@morten-olsen/agentic-artifact';
+import { personalityPlugin } from '@morten-olsen/agentic-personality';
 import { dailyNotePlugin } from '@morten-olsen/agentic-daily-note';
 import { createDatabasePlugin } from '@morten-olsen/agentic-database';
 import { conversationPlugin } from '@morten-olsen/agentic-conversation';
@@ -45,6 +46,10 @@ const startServer = async ({ config }: StartServerOptions) => {
     timePlugin,
     artifactPlugin,
   ];
+
+  if (config.personality.enabled) {
+    plugins.push(personalityPlugin);
+  }
 
   if (config.dailyNote.enabled) {
     plugins.push(dailyNotePlugin);
@@ -106,6 +111,7 @@ const startServer = async ({ config }: StartServerOptions) => {
 
   console.log('[glados] Server started');
   console.log('[glados]   artifact: enabled');
+  console.log(`[glados]   personality: ${config.personality.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   daily-note: ${config.dailyNote.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   trigger: ${config.trigger.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   calendar: ${config.calendar.enabled ? 'enabled' : 'disabled'}`);

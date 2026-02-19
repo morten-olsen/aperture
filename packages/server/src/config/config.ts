@@ -134,6 +134,14 @@ const configSchema = convict({
       env: 'DAILY_NOTE_ENABLED',
     },
   },
+  personality: {
+    enabled: {
+      doc: 'Enable personality plugin',
+      format: Boolean,
+      default: true,
+      env: 'PERSONALITY_ENABLED',
+    },
+  },
   trigger: {
     enabled: {
       doc: 'Enable trigger/scheduler plugin',
