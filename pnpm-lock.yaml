@@ -65,6 +65,9 @@ importers:
       '@morten-olsen/agentic-database':
         specifier: workspace:*
         version: link:../database
+      '@morten-olsen/agentic-interpreter':
+        specifier: workspace:*
+        version: link:../interpreter
       zod:
         specifier: ^4.3.6
         version: 4.3.6

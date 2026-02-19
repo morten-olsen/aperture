@@ -31,7 +31,7 @@ describe('InterpreterService', () => {
 
   it('should expose host methods with auto-marshalling', async () => {
     const service = new InterpreterService();
-    service.expose('add', 'add two numbers', (a, b) => (a as number) + (b as number));
+    service.expose({ name: 'add', description: 'add two numbers', fn: (a, b) => (a as number) + (b as number) });
     const result = await service.execute({
       code: 'add(3, 4)',
     });
@@ -40,7 +40,11 @@ describe('InterpreterService', () => {
 
   it('should marshal host method return values', async () => {
     const service = new InterpreterService();
-    service.expose('getUser', 'get a user', () => ({ name: 'Alice', tags: ['admin', 'user'] }));
+    service.expose({
+      name: 'getUser',
+      description: 'get a user',
+      fn: () => ({ name: 'Alice', tags: ['admin', 'user'] }),
+    });
     const result = await service.execute({
       code: 'getUser()',
     });
@@ -88,10 +92,14 @@ describe('InterpreterService', () => {
 
   it('should support async exposed methods', async () => {
     const service = new InterpreterService();
-    service.expose('fetchData', 'fetch data from a URL', async (url) => {
-      // Simulate an async fetch
-      await new Promise((resolve) => setTimeout(resolve, 5));
-      return { status: 200, body: `response from ${url}` };
+    service.expose({
+      name: 'fetchData',
+      description: 'fetch data from a URL',
+      fn: async (url) => {
+        // Simulate an async fetch
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        return { status: 200, body: `response from ${url}` };
+      },
     });
     const result = await service.execute({
       code: `fetchData("https://example.com")`,

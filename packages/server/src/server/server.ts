@@ -39,10 +39,10 @@ const startServer = async ({ config }: StartServerOptions) => {
   const pluginService = services.get(PluginService);
 
   const interpreterService = services.get(InterpreterService);
-  interpreterService.expose(
-    'fetch',
-    'fetch(url, options?) — HTTP request, returns {status, headers, body}',
-    async (url: unknown, options?: unknown) => {
+  interpreterService.expose({
+    name: 'fetch',
+    description: 'fetch(url, options?) — HTTP request, returns {status, headers, body}',
+    fn: async (url: unknown, options?: unknown) => {
       const response = await fetch(url as string, options as RequestInit);
       return {
         status: response.status,
@@ -50,7 +50,7 @@ const startServer = async ({ config }: StartServerOptions) => {
         body: await response.text(),
       };
     },
-  );
+  });
 
   const plugins: Plugin<ZodType>[] = [
     createDatabasePlugin({

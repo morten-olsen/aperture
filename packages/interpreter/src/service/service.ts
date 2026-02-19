@@ -53,7 +53,9 @@ class InterpreterService {
   #methods: Record<string, ExposedMethodEntry> = {};
   #modules: Record<string, string> = {};
 
-  public expose = (name: string, description: string, fn: ExposedMethod) => {
+  // eslint-disable-next-line
+  public expose = (options: { name: string; description: string; fn: (...args: any[]) => unknown }) => {
+    const { name, description, fn } = options;
     this.#methods[name] = { fn, description };
   };
 
