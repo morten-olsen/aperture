@@ -126,6 +126,14 @@ const configSchema = convict({
       },
     },
   },
+  dailyNote: {
+    enabled: {
+      doc: 'Enable daily note plugin',
+      format: Boolean,
+      default: true,
+      env: 'DAILY_NOTE_ENABLED',
+    },
+  },
   trigger: {
     enabled: {
       doc: 'Enable trigger/scheduler plugin',

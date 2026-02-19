@@ -1,4 +1,5 @@
 import { PluginService, Services } from '@morten-olsen/agentic-core';
+import { dailyNotePlugin } from '@morten-olsen/agentic-daily-note';
 import { createDatabasePlugin } from '@morten-olsen/agentic-database';
 import { conversationPlugin } from '@morten-olsen/agentic-conversation';
 import { triggerPlugin } from '@morten-olsen/agentic-trigger';
@@ -41,6 +42,10 @@ const startServer = async ({ config }: StartServerOptions) => {
     timePlugin,
   ];
 
+  if (config.dailyNote.enabled) {
+    plugins.push(dailyNotePlugin);
+  }
+
   if (config.trigger.enabled) {
     plugins.push(triggerPlugin);
   }
@@ -82,6 +87,7 @@ const startServer = async ({ config }: StartServerOptions) => {
   await pluginService.register(...plugins);
 
   console.log('[glados] Server started');
+  console.log(`[glados]   daily-note: ${config.dailyNote.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   trigger: ${config.trigger.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   calendar: ${config.calendar.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   telegram: ${config.telegram.enabled ? 'enabled' : 'disabled'}`);
