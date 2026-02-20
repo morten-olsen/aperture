@@ -1,0 +1,643 @@
+{
+  "tools": [
+    {
+      "id": "conversation.create",
+      "description": "Create a new conversation",
+      "tag": "Conversations",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "User ID who owns the conversation"
+          }
+        },
+        "required": [
+          "userId"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "conversation.list",
+      "description": "List conversations for a user",
+      "tag": "Conversations",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "User ID to list conversations for"
+          }
+        },
+        "required": [
+          "userId"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "conversations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "conversations"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "conversation.get",
+      "description": "Get a conversation by ID including its prompt history",
+      "tag": "Conversations",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Conversation ID"
+          },
+          "userId": {
+            "type": "string",
+            "description": "User ID"
+          }
+        },
+        "required": [
+          "id",
+          "userId"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "prompts": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        "required": [
+          "id",
+          "prompts"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "conversation.delete",
+      "description": "Delete a conversation",
+      "tag": "Conversations",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Conversation ID to delete"
+          },
+          "userId": {
+            "type": "string",
+            "description": "User ID"
+          }
+        },
+        "required": [
+          "id",
+          "userId"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "deleted"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "prompt.get",
+      "description": "Get a single prompt by ID, including its full output history",
+      "tag": "Conversations",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Prompt ID"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "prompt.search",
+      "description": "Search and list prompts with optional filters for date range and pagination",
+      "tag": "Conversations",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "before": {
+            "description": "ISO date — return prompts created before this time",
+            "type": "string"
+          },
+          "after": {
+            "description": "ISO date — return prompts created after this time",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Max results (default 50)",
+            "type": "number"
+          },
+          "offset": {
+            "description": "Pagination offset (default 0)",
+            "type": "number"
+          }
+        },
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "prompts": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        "required": [
+          "prompts"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "trigger.create",
+      "description": "Create a new scheduled trigger. Triggers invoke the agent in the background on a schedule (one-time or recurring cron).",
+      "tag": "Triggers",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Human-readable name for the trigger"
+          },
+          "goal": {
+            "type": "string",
+            "description": "What the agent should accomplish when invoked"
+          },
+          "model": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "high"
+            ],
+            "description": "Model ID to use when invoking this trigger"
+          },
+          "scheduleType": {
+            "type": "string",
+            "enum": [
+              "once",
+              "cron"
+            ],
+            "description": "Type of schedule: \"once\" for a one-time trigger, \"cron\" for recurring"
+          },
+          "scheduleValue": {
+            "type": "string",
+            "description": "For once: ISO8601 datetime (e.g. \"2026-03-15T09:00:00Z\"). For cron: expression (e.g. \"0 9 * * 1-5\")"
+          },
+          "setupContext": {
+            "description": "Why this trigger exists (injected as context on invocation)",
+            "type": "string"
+          },
+          "maxInvocations": {
+            "description": "For recurring: stop after N invocations",
+            "type": "number"
+          },
+          "endsAt": {
+            "description": "For recurring: stop after this ISO8601 datetime",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "goal",
+          "model",
+          "scheduleType",
+          "scheduleValue"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "triggerId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "triggerId",
+          "name",
+          "status"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "trigger.list",
+      "description": "List triggers, optionally filtered by status.",
+      "tag": "Triggers",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "status": {
+            "description": "Filter by status",
+            "type": "string",
+            "enum": [
+              "active",
+              "paused",
+              "completed",
+              "failed"
+            ]
+          },
+          "limit": {
+            "description": "Maximum number of results (default 50)",
+            "type": "number"
+          }
+        },
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "triggers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "scheduleType": {
+                  "type": "string"
+                },
+                "scheduleValue": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "invocationCount": {
+                  "type": "number"
+                },
+                "nextInvocationAt": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "lastInvokedAt": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "scheduleType",
+                "scheduleValue",
+                "status",
+                "invocationCount",
+                "nextInvocationAt",
+                "lastInvokedAt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "triggers"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "trigger.update",
+      "description": "Update an existing trigger. Can change name, goal, schedule, status, or set a continuation note for the next invocation.",
+      "tag": "Triggers",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "triggerId": {
+            "type": "string",
+            "description": "ID of the trigger to update"
+          },
+          "name": {
+            "description": "New name",
+            "type": "string"
+          },
+          "goal": {
+            "description": "New goal",
+            "type": "string"
+          },
+          "model": {
+            "description": "New model ID",
+            "type": "string",
+            "enum": [
+              "normal",
+              "high"
+            ]
+          },
+          "scheduleType": {
+            "description": "New schedule type",
+            "type": "string",
+            "enum": [
+              "once",
+              "cron"
+            ]
+          },
+          "scheduleValue": {
+            "description": "New schedule value. For once: ISO8601 datetime. For cron: cron expression",
+            "type": "string"
+          },
+          "setupContext": {
+            "description": "New setup context",
+            "type": "string"
+          },
+          "maxInvocations": {
+            "description": "New max invocations",
+            "type": "number"
+          },
+          "endsAt": {
+            "description": "New end datetime",
+            "type": "string"
+          },
+          "status": {
+            "description": "New status (active or paused)",
+            "type": "string",
+            "enum": [
+              "active",
+              "paused"
+            ]
+          },
+          "continuation": {
+            "description": "Note for next invocation (null to clear)",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "triggerId"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "triggerId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "triggerId",
+          "name",
+          "status"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "trigger.delete",
+      "description": "Delete a trigger permanently. Removes the trigger and all associated records.",
+      "tag": "Triggers",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "triggerId": {
+            "type": "string",
+            "description": "ID of the trigger to delete"
+          }
+        },
+        "required": [
+          "triggerId"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "deleted"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "trigger.invoke",
+      "description": "Invoke a trigger immediately. Returns the trigger context so you can act on its goal directly in the current conversation.",
+      "tag": "Triggers",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "triggerId": {
+            "type": "string",
+            "description": "ID of the trigger to invoke"
+          }
+        },
+        "required": [
+          "triggerId"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "goal": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "setupContext": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "continuation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scheduleType": {
+            "type": "string"
+          },
+          "scheduleValue": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "invocationCount": {
+            "type": "number"
+          },
+          "lastInvokedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "goal",
+          "model",
+          "setupContext",
+          "continuation",
+          "scheduleType",
+          "scheduleValue",
+          "status",
+          "invocationCount",
+          "lastInvokedAt"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

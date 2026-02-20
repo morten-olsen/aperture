@@ -1,0 +1,45 @@
+{
+  "name": "@morten-olsen/agentic-expo",
+  "version": "1.0.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "start:web": "expo start --web",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "build": "echo 'Expo app — no tsc build step'",
+    "test:unit": "echo 'No tests yet'",
+    "storybook": "storybook dev -p 6006",
+    "storybook:build": "storybook build",
+    "generate": "tsx scripts/generate-tool-types.ts --server http://localhost:4000/api"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "2.1.2",
+    "@tamagui/config": "^1.120.3",
+    "@tanstack/react-query": "^5.80.7",
+    "eventsource-parser": "^3.0.1",
+    "expo": "~53.0.9",
+    "expo-constants": "~17.1.6",
+    "expo-linking": "~7.1.5",
+    "expo-router": "~5.0.7",
+    "expo-status-bar": "~2.2.3",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-native": "0.79.3",
+    "react-native-safe-area-context": "5.4.0",
+    "react-native-screens": "~4.11.1",
+    "react-native-sse": "^1.2.1",
+    "react-native-web": "~0.20.0",
+    "tamagui": "^1.120.3"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.27.4",
+    "@storybook/addon-actions": "^9.0.8",
+    "@storybook/react-native-web-vite": "^10.2.10",
+    "@tamagui/babel-plugin": "^1.120.3",
+    "@types/react": "^19.1.6",
+    "storybook": "^10.2.10",
+    "typescript": "5.9.3"
+  }
+}

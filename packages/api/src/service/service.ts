@@ -6,6 +6,10 @@ import type { Tool, Services } from '@morten-olsen/agentic-core';
 
 import type { ApiStartOptions, ToolExposureOptions } from './service.schemas.js';
 
+type SseConnection = {
+  send: (event: string, data: unknown) => void;
+};
+
 type ExposedTool = {
   tool: Tool;
   tag?: string;
@@ -15,11 +19,13 @@ class ApiService {
   #services: Services;
   #tools: Map<string, ExposedTool>;
   #fastify: FastifyInstance | null;
+  #connections: Map<string, Set<SseConnection>>;
 
   constructor(services: Services) {
     this.#services = services;
     this.#tools = new Map();
     this.#fastify = null;
+    this.#connections = new Map();
   }
 
   public get services() {
@@ -40,8 +46,31 @@ class ApiService {
     }
   };
 
+  public registerConnection = (userId: string, connection: SseConnection): (() => void) => {
+    let set = this.#connections.get(userId);
+    if (!set) {
+      set = new Set();
+      this.#connections.set(userId, set);
+    }
+    set.add(connection);
+    return () => {
+      set.delete(connection);
+      if (set.size === 0) {
+        this.#connections.delete(userId);
+      }
+    };
+  };
+
+  public broadcastToUser = (userId: string, event: string, data: unknown): void => {
+    const set = this.#connections.get(userId);
+    if (!set) return;
+    for (const connection of set) {
+      connection.send(event, data);
+    }
+  };
+
   public start = async (options: ApiStartOptions) => {
-    const { port, host, cors: corsConfig, prefix } = options;
+    const { port, host, prefix } = options;
 
     const fastify = Fastify({ logger: false });
     fastify.setValidatorCompiler(validatorCompiler);
@@ -56,11 +85,7 @@ class ApiService {
       },
     });
 
-    if (corsConfig) {
-      await fastify.register(cors, {
-        origin: corsConfig.origin,
-      });
-    }
+    await fastify.register(cors, { origin: true });
 
     const publicExact = new Set([`${prefix}/capabilities`, `${prefix}/tools`, `${prefix}/openapi.json`]);
     const publicPrefixes = [`${prefix}/docs`];
@@ -77,12 +102,14 @@ class ApiService {
     const { registerCapabilitiesRoutes } = await import('../routes/routes.capabilities.js');
     const { registerToolRoutes } = await import('../routes/routes.tools.js');
     const { registerPromptRoutes } = await import('../routes/routes.prompt.js');
+    const { registerEventsRoutes } = await import('../routes/routes.events.js');
 
     await fastify.register(
       async (app) => {
         registerCapabilitiesRoutes(app, this);
         registerToolRoutes(app, this);
         registerPromptRoutes(app, this);
+        registerEventsRoutes(app, this);
       },
       { prefix },
     );
@@ -109,4 +136,5 @@ class ApiService {
   };
 }
 
+export type { SseConnection };
 export { ApiService };

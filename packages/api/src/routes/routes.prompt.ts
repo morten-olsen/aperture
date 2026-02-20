@@ -7,7 +7,7 @@ import type { ApiService } from '../service/service.js';
 const registerPromptRoutes = (app: FastifyInstance, apiService: ApiService) => {
   app.post<{ Body: { input: string; model?: 'normal' | 'high'; conversationId?: string } }>(
     '/prompt',
-    async (request, reply) => {
+    async (request) => {
       const userId = request.headers['x-user-id'] as string;
       const { input, model, conversationId } = request.body as {
         input: string;
@@ -26,61 +26,36 @@ const registerPromptRoutes = (app: FastifyInstance, apiService: ApiService) => {
         completion = promptService.create({ userId, input, model });
       }
 
-      reply.raw.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
-      });
-
-      const send = (event: string, data: unknown) => {
-        reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-      };
-
+      const promptId = completion.id;
       let lastOutputLength = 0;
 
-      const abortController = new AbortController();
+      completion.on('updated', () => {
+        const output = completion.output;
+        for (let i = lastOutputLength; i < output.length; i++) {
+          apiService.broadcastToUser(userId, 'prompt.output', { promptId, ...output[i] });
+        }
+        lastOutputLength = output.length;
+      });
 
-      completion.on(
-        'updated',
-        () => {
-          const output = completion.output;
-          for (let i = lastOutputLength; i < output.length; i++) {
-            send('prompt.output', output[i]);
-          }
-          lastOutputLength = output.length;
-        },
-        { abortSignal: abortController.signal },
-      );
+      completion.on('approval-requested', (_comp, event) => {
+        apiService.broadcastToUser(userId, 'prompt.approval', { promptId, ...event });
+      });
 
-      completion.on(
-        'approval-requested',
-        (_comp, event) => {
-          send('prompt.approval', event);
-        },
-        { abortSignal: abortController.signal },
-      );
-
-      completion.on(
-        'completed',
-        () => {
-          send('prompt.completed', {
-            promptId: completion.id,
-            usage: completion.usage,
-          });
-          abortController.abort();
-          reply.raw.end();
-        },
-        { abortSignal: abortController.signal },
-      );
-
-      request.raw.on('close', () => {
-        abortController.abort();
+      completion.on('completed', () => {
+        apiService.broadcastToUser(userId, 'prompt.completed', {
+          promptId,
+          usage: completion.usage,
+        });
       });
 
       completion.run().catch((error: unknown) => {
-        send('prompt.error', { error: error instanceof Error ? error.message : String(error) });
-        reply.raw.end();
+        apiService.broadcastToUser(userId, 'prompt.error', {
+          promptId,
+          error: error instanceof Error ? error.message : String(error),
+        });
       });
+
+      return { promptId };
     },
   );
 

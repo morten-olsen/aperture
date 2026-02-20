@@ -4,6 +4,8 @@
       "Bash(done)",
       "Bash(grep:*)",
       "Bash(find:*)",
+      "Bash(npx:*)",
+      "Bash(git:*)",
       "Bash(pnpm --filter @morten-olsen/agentic-core add:*)",
       "Bash(pnpm --filter @morten-olsen/agentic-core build:*)",
       "Bash(pnpm vitest:*)",
@@ -62,7 +64,15 @@
       "WebFetch(domain:open-meteo.com)",
       "WebFetch(domain:sebastianwessel.github.io)",
       "Bash(npx tsc:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(for f in /Users/alice/Projects/private/incubator/glados/packages/*/package.json)",
+      "Bash(do jq -r '.name' \"$f\")",
+      "WebFetch(domain:docs.expo.dev)",
+      "WebFetch(domain:storybook.js.org)",
+      "WebFetch(domain:heyapi.dev)",
+      "WebFetch(domain:tanstack.com)",
+      "Bash(gh api:*)",
+      "Bash(curl:*)"
     ]
   }
 }

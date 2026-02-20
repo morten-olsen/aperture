@@ -46,6 +46,13 @@ export default tseslint.config(
   },
   ...compat.extends('plugin:prettier/recommended'),
   {
-    ignores: ['**/node_modules/', '**/dist/', '**/.turbo/', '**/generated/'],
+    ignores: [
+      '**/node_modules/',
+      '**/dist/',
+      '**/.turbo/',
+      '**/generated/',
+      'apps/expo/*.config.js',
+      'apps/expo/.storybook/',
+    ],
   },
 );

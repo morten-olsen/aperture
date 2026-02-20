@@ -25,7 +25,8 @@ const registerToolRoutes = (app: FastifyInstance, apiService: ApiService) => {
     }
 
     const { tool } = exposed;
-    const input = tool.input.parse(request.body);
+    const body = typeof request.body === 'object' && request.body !== null ? request.body : {};
+    const input = tool.input.parse({ ...body, userId });
     const state = State.fromInit({});
 
     // eslint-disable-next-line @typescript-eslint/no-empty-function
