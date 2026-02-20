@@ -1,6 +1,7 @@
 import { createPlugin, FileSystemService, PromptService } from '@morten-olsen/agentic-core';
 import { DatabaseService } from '@morten-olsen/agentic-database';
 import { NotificationService } from '@morten-olsen/agentic-notification';
+import { triggerPlugin } from '@morten-olsen/agentic-trigger';
 
 import { telegramPluginOptionsSchema, telegramStateSchema } from '../schemas/schemas.js';
 import { database } from '../database/database.js';
@@ -45,6 +46,10 @@ const telegramPlugin = createPlugin({
 
     const promptService = services.get(PromptService);
     promptService.on('created', (completion) => {
+      const triggerState = completion.state.getState(triggerPlugin);
+      if (triggerState?.from.id) {
+        return;
+      }
       completion.on('completed', async () => {
         const chatId = resolveChatId(completion.id, completion.userId);
         if (!chatId) return;
