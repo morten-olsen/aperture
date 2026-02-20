@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "outDir": "./dist"
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "src/**/*.test.ts"
+  ],
+  "extends": "@morten-olsen/agentic-configs/tsconfig.json"
+}

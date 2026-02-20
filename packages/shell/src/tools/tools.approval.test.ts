@@ -1,0 +1,336 @@
+import { describe, it, expect, beforeAll, afterAll, afterEach, beforeEach, vi } from 'vitest';
+import { http, HttpResponse } from 'msw';
+import { setupServer } from 'msw/node';
+import { PromptCompletion, Services, PluginService } from '@morten-olsen/agentic-core';
+
+import { createShellPlugin } from '../plugin/plugin.js';
+
+const TEST_BASE_URL = 'https://test.openai.com/v1';
+const RESPONSES_URL = `${TEST_BASE_URL}/responses`;
+
+const createTextApiResponse = (text: string) => ({
+  id: 'resp_test',
+  object: 'response',
+  created_at: Math.floor(Date.now() / 1000),
+  model: 'test-model',
+  status: 'completed',
+  output_text: text,
+  output: [
+    {
+      type: 'message',
+      id: 'msg_test',
+      status: 'completed',
+      role: 'assistant',
+      content: [{ type: 'output_text', text, annotations: [] }],
+    },
+  ],
+  error: null,
+  incomplete_details: null,
+  instructions: null,
+  metadata: null,
+  parallel_tool_calls: true,
+  temperature: 1,
+  tool_choice: 'auto',
+  top_p: 1,
+  max_output_tokens: null,
+  previous_response_id: null,
+  reasoning: null,
+  truncation: 'disabled',
+  tools: [],
+  usage: { input_tokens: 10, output_tokens: 5, total_tokens: 15, output_tokens_details: { reasoning_tokens: 0 } },
+  text: { format: { type: 'text' } },
+});
+
+const createToolCallApiResponse = (name: string, args: Record<string, unknown>, callId: string) => ({
+  id: 'resp_test',
+  object: 'response',
+  created_at: Math.floor(Date.now() / 1000),
+  model: 'test-model',
+  status: 'completed',
+  output_text: '',
+  output: [
+    {
+      type: 'function_call',
+      id: `fc_${callId}`,
+      call_id: callId,
+      name,
+      arguments: JSON.stringify(args),
+      status: 'completed',
+    },
+  ],
+  error: null,
+  incomplete_details: null,
+  instructions: null,
+  metadata: null,
+  parallel_tool_calls: true,
+  temperature: 1,
+  tool_choice: 'auto',
+  top_p: 1,
+  max_output_tokens: null,
+  previous_response_id: null,
+  reasoning: null,
+  truncation: 'disabled',
+  tools: [],
+  usage: { input_tokens: 10, output_tokens: 5, total_tokens: 15, output_tokens_details: { reasoning_tokens: 0 } },
+  text: { format: { type: 'text' } },
+});
+
+const server = setupServer();
+
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
+
+describe('shell approval gate flow', () => {
+  let services: Services;
+
+  beforeEach(async () => {
+    services = Services.mock();
+    const plugin = createShellPlugin();
+    await services.get(PluginService).register(plugin);
+  });
+
+  it('pauses for approval when executing a non-whitelisted command', async () => {
+    server.use(
+      http.post(RESPONSES_URL, () => {
+        return HttpResponse.json(createToolCallApiResponse('shell.execute', { command: 'ls -la' }, 'call_1'));
+      }),
+    );
+
+    const completion = new PromptCompletion({
+      services,
+      userId: 'user-1',
+      input: 'List files',
+    });
+
+    const approvalSpy = vi.fn();
+    completion.on('approval-requested', approvalSpy);
+
+    const result = await completion.run();
+
+    expect(result.state).toBe('waiting_for_approval');
+    expect(approvalSpy).toHaveBeenCalledOnce();
+    expect(approvalSpy.mock.calls[0][1]).toMatchObject({
+      toolCallId: 'call_1',
+      toolName: 'shell.execute',
+      reason: 'Command "ls -la" does not match any allowed pattern.',
+    });
+
+    const toolOutput = result.output[0];
+    expect(toolOutput).toMatchObject({
+      type: 'tool',
+      function: 'shell.execute',
+      result: { type: 'pending', reason: 'Command "ls -la" does not match any allowed pattern.' },
+    });
+  });
+
+  it('executes successfully after approval for non-whitelisted command', async () => {
+    let callCount = 0;
+    server.use(
+      http.post(RESPONSES_URL, () => {
+        callCount++;
+        if (callCount === 1) {
+          return HttpResponse.json(createToolCallApiResponse('shell.execute', { command: 'echo hello' }, 'call_1'));
+        }
+        return HttpResponse.json(createTextApiResponse('Command executed'));
+      }),
+    );
+
+    const completion = new PromptCompletion({
+      services,
+      userId: 'user-1',
+      input: 'Echo hello',
+    });
+
+    await completion.run();
+    expect(completion.prompt.state).toBe('waiting_for_approval');
+
+    await completion.approve('call_1');
+
+    expect(completion.prompt.state).toBe('completed');
+    expect(callCount).toBe(2);
+
+    const toolOutput = completion.prompt.output[0];
+    expect(toolOutput).toMatchObject({
+      type: 'tool',
+      function: 'shell.execute',
+      result: {
+        type: 'success',
+        output: {
+          command: 'echo hello',
+          exitCode: 0,
+        },
+      },
+    });
+  });
+
+  it('returns error after rejection for non-whitelisted command', async () => {
+    let callCount = 0;
+    server.use(
+      http.post(RESPONSES_URL, () => {
+        callCount++;
+        if (callCount === 1) {
+          return HttpResponse.json(createToolCallApiResponse('shell.execute', { command: 'rm -rf /' }, 'call_1'));
+        }
+        return HttpResponse.json(createTextApiResponse('I cannot run that command'));
+      }),
+    );
+
+    const completion = new PromptCompletion({
+      services,
+      userId: 'user-1',
+      input: 'Delete everything',
+    });
+
+    await completion.run();
+    expect(completion.prompt.state).toBe('waiting_for_approval');
+
+    await completion.reject('call_1', 'Not authorized');
+
+    expect(completion.prompt.state).toBe('completed');
+    expect(completion.prompt.output[0]).toMatchObject({
+      type: 'tool',
+      function: 'shell.execute',
+      result: { type: 'error', error: 'Not authorized' },
+    });
+  });
+
+  it('skips approval for whitelisted commands', async () => {
+    const { ShellService } = await import('../service/service.js');
+    const service = services.get(ShellService);
+    await service.addRule('user-1', 'echo *', 'allow');
+
+    let callCount = 0;
+    server.use(
+      http.post(RESPONSES_URL, () => {
+        callCount++;
+        if (callCount === 1) {
+          return HttpResponse.json(createToolCallApiResponse('shell.execute', { command: 'echo hello' }, 'call_1'));
+        }
+        return HttpResponse.json(createTextApiResponse('Done'));
+      }),
+    );
+
+    const completion = new PromptCompletion({
+      services,
+      userId: 'user-1',
+      input: 'Echo hello',
+    });
+
+    const approvalSpy = vi.fn();
+    completion.on('approval-requested', approvalSpy);
+
+    const result = await completion.run();
+
+    expect(result.state).toBe('completed');
+    expect(approvalSpy).not.toHaveBeenCalled();
+    expect(result.output[0]).toMatchObject({
+      type: 'tool',
+      function: 'shell.execute',
+      result: { type: 'success' },
+    });
+  });
+
+  it('does not skip approval when rule belongs to a different user', async () => {
+    const { ShellService } = await import('../service/service.js');
+    const service = services.get(ShellService);
+    await service.addRule('user-2', 'echo *', 'allow');
+
+    server.use(
+      http.post(RESPONSES_URL, () => {
+        return HttpResponse.json(createToolCallApiResponse('shell.execute', { command: 'echo hello' }, 'call_1'));
+      }),
+    );
+
+    const completion = new PromptCompletion({
+      services,
+      userId: 'user-1',
+      input: 'Echo hello',
+    });
+
+    const approvalSpy = vi.fn();
+    completion.on('approval-requested', approvalSpy);
+
+    const result = await completion.run();
+
+    expect(result.state).toBe('waiting_for_approval');
+    expect(approvalSpy).toHaveBeenCalledOnce();
+  });
+
+  it('fails with error for denied commands even after approval', async () => {
+    const { ShellService } = await import('../service/service.js');
+    const service = services.get(ShellService);
+    await service.addRule('user-1', 'rm *', 'deny');
+
+    let callCount = 0;
+    server.use(
+      http.post(RESPONSES_URL, () => {
+        callCount++;
+        if (callCount === 1) {
+          return HttpResponse.json(createToolCallApiResponse('shell.execute', { command: 'rm -rf /' }, 'call_1'));
+        }
+        return HttpResponse.json(createTextApiResponse('Cannot do that'));
+      }),
+    );
+
+    const completion = new PromptCompletion({
+      services,
+      userId: 'user-1',
+      input: 'Delete everything',
+    });
+
+    await completion.run();
+    expect(completion.prompt.state).toBe('waiting_for_approval');
+
+    await completion.approve('call_1');
+
+    expect(completion.prompt.state).toBe('completed');
+    expect(completion.prompt.output[0]).toMatchObject({
+      type: 'tool',
+      function: 'shell.execute',
+      result: { type: 'error' },
+    });
+  });
+
+  it('always requires approval for add-rule', async () => {
+    let callCount = 0;
+    server.use(
+      http.post(RESPONSES_URL, () => {
+        callCount++;
+        if (callCount === 1) {
+          return HttpResponse.json(
+            createToolCallApiResponse('shell.add-rule', { pattern: 'git *', type: 'allow' }, 'call_1'),
+          );
+        }
+        return HttpResponse.json(createTextApiResponse('Rule added'));
+      }),
+    );
+
+    const completion = new PromptCompletion({
+      services,
+      userId: 'user-1',
+      input: 'Allow git commands',
+    });
+
+    const approvalSpy = vi.fn();
+    completion.on('approval-requested', approvalSpy);
+
+    await completion.run();
+
+    expect(completion.prompt.state).toBe('waiting_for_approval');
+    expect(approvalSpy).toHaveBeenCalledOnce();
+    expect(approvalSpy.mock.calls[0][1]).toMatchObject({
+      toolName: 'shell.add-rule',
+      reason: 'Adding a rule modifies command execution permissions.',
+    });
+
+    await completion.approve('call_1');
+
+    expect(completion.prompt.state).toBe('completed');
+
+    const { ShellService } = await import('../service/service.js');
+    const service = services.get(ShellService);
+    const check = await service.checkCommand('user-1', 'git status');
+    expect(check).toEqual({ allowed: true });
+  });
+});

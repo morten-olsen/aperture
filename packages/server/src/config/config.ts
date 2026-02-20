@@ -249,6 +249,32 @@ const configSchema = convict({
       env: 'USAGE_ENABLED',
     },
   },
+  shell: {
+    enabled: {
+      doc: 'Enable shell plugin',
+      format: Boolean,
+      default: false,
+      env: 'SHELL_ENABLED',
+    },
+    timeout: {
+      doc: 'Default command timeout in milliseconds',
+      format: 'int',
+      default: 30000,
+      env: 'SHELL_TIMEOUT',
+    },
+    maxOutputLength: {
+      doc: 'Maximum characters returned per command',
+      format: 'int',
+      default: 50000,
+      env: 'SHELL_MAX_OUTPUT_LENGTH',
+    },
+    shell: {
+      doc: 'Shell to use for command execution',
+      format: String,
+      default: '/bin/sh',
+      env: 'SHELL_SHELL',
+    },
+  },
   webFetch: {
     enabled: {
       doc: 'Enable web fetch plugin',
