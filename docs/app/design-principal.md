@@ -6,7 +6,7 @@ Design language for the GLaDOS client app. These principles guide every componen
 
 The interface exists to serve the conversation. Chrome, controls, and decoration recede — the user's messages and the assistant's responses are the primary visual elements.
 
-- Backgrounds are neutral and muted; content carries the color
+- Backgrounds are ambient aura gradients; content carries the color
 - Controls appear when needed and stay out of the way otherwise
 - Information density is moderate — compact but not cramped
 
@@ -15,24 +15,36 @@ The interface exists to serve the conversation. Chrome, controls, and decoration
 The app feels dependable and unhurried. Status changes (streaming, loading, errors) are communicated clearly but without alarm. Transitions are smooth and purposeful.
 
 - Use opacity and subtle color shifts over bold flashes for state changes
-- Streaming indicator: three pulsing dots, not text — natural, not anxious
-- Errors are surfaced as inline banners in context, not disruptive modals
+- Streaming indicator: three pulsing dots with subtle glow, not text — natural, not anxious
+- Errors are surfaced as inline glass banners in context, not disruptive modals
 
-## 3. Depth Through Layering
+## 3. Depth Through Glass & Aura
 
-Surfaces are organized into distinct layers. Each layer has a clear role — background, content surface, elevated elements (cards, sheets), and overlays.
+Surfaces are organized as frosted glass panels floating over ambient light. The aura layer provides soft color; glass surfaces provide structure and hierarchy.
 
-- Background → Surface → Elevated → Overlay (four depth levels)
-- Chat bubbles are raised surfaces — white with a subtle 1px border (light mode) or tinted gray (dark mode)
-- In dark mode, lighter surfaces are "closer"; in light mode, white surfaces are "closer"
+- **Aura** (base layer): Soft gradient orbs positioned absolutely behind all content. Provides ambient color without competing with text.
+- **Glass** (surface layer): Semi-transparent frosted panels with backdrop blur (iOS/Web) or opacity overlay (Android). Three intensity levels control visual weight.
+- **Solid** (action layer): Primary action buttons (Connect, Approve, Send) remain solid `$accent` for clear affordance.
+
+Depth hierarchy: Background Base → Aura Orbs → Glass Surfaces → Solid Actions
+
+### Platform Strategy
+
+| Platform | Blur | Fallback |
+|----------|------|----------|
+| iOS | `BlurView` (expo-blur) with native blur | — |
+| Web | `BlurView` (expo-blur) with CSS backdrop-filter | — |
+| Android | No native blur API | RGBA overlay only — still reads as glass via semi-transparency and border |
 
 ## 4. Purposeful Color
 
-Color is used sparingly and intentionally. The base palette is neutral gray. Accent color (blue) is reserved for the user's own messages and primary actions — it signals identity and intent.
+Color is used sparingly and intentionally. The base palette is neutral. Accent color flows through user message gradients and primary actions. Aura orbs provide ambient environmental color.
 
-- **Accent (blue9)**: user chat bubble (solid, with white text), primary action buttons, interactive links
+- **User messages**: Blue-to-purple `LinearGradient` with subtle glow shadow — signals identity
+- **Accent (blue9)**: Primary action buttons, interactive links
+- **Aura orbs**: Blue, purple, pink — ambient only, never competing with content
 - **Semantic**: green (success), amber (warning), red (error) — used only for status
-- **Neutral**: gray scale for all chrome, text, borders, and assistant content
+- **Neutral**: Gray scale for all chrome, text, borders, and assistant content
 - Avoid decorative color; every colored element should communicate something
 
 ## 5. Native Typography
@@ -76,10 +88,11 @@ All spacing derives from a base-4 scale. Components use the token scale (`$2`, `
 
 The design must be usable by everyone. Contrast ratios, touch targets, and focus indicators are not afterthoughts.
 
-- Text contrast meets WCAG AA (4.5:1 for body, 3:1 for large text)
+- Text contrast meets WCAG AA (4.5:1 for body, 3:1 for large text) — verify against worst-case aura orb positions
 - Touch targets are at least 44x44pt (send button, back button, tool card tap area)
 - Interactive elements have visible focus states
 - Color is never the only way to convey information (e.g. tool status has dot + text)
+- Glass surfaces maintain sufficient contrast through `glassBackgroundIntense` on text-heavy areas (headers, input bars)
 
 ## 8. Responsive and Adaptive
 
@@ -91,6 +104,44 @@ The app runs on phones, tablets, and web. Layouts adapt using Tamagui media quer
 
 ---
 
+## Glass & Aura System
+
+### AuraBackground
+
+Renders 2-3 soft gradient orbs (LinearGradient from expo-linear-gradient) positioned absolutely behind content. Orbs are large circles with radial fade-to-transparent.
+
+| Variant | Description | Usage |
+|---------|-------------|-------|
+| `default` | Balanced 3-orb layout (blue top-left, purple center-right, pink bottom) | Conversation list, settings |
+| `login` | Dramatic, centered orbs with higher opacity | Login screen |
+| `chat` | Orbs at edges, calm center for readability | Chat screen |
+
+### GlassView
+
+Reusable frosted glass surface primitive. Wraps content with blur + semi-transparent overlay + 1px border.
+
+| Intensity | Blur | Overlay Opacity | Usage |
+|-----------|------|-----------------|-------|
+| `subtle` | 20 | Low (0.25) | Tool cards, list items, inactive buttons |
+| `medium` | 40 | Medium (0.45) | Login form, assistant bubbles |
+| `strong` | 60 | High (0.65) | Header bars, input bars, approval banners |
+
+Props: `intensity`, `children`, `borderRadius`, `padding`, `style`.
+
+### Glass Tokens
+
+| Token | Light | Dark | Purpose |
+|-------|-------|------|---------|
+| `glassBackground` | `rgba(255,255,255,0.45)` | `rgba(30,30,40,0.40)` | Default glass fill |
+| `glassBackgroundIntense` | `rgba(255,255,255,0.65)` | `rgba(30,30,40,0.60)` | Input bar, headers |
+| `glassBorder` | `rgba(255,255,255,0.25)` | `rgba(255,255,255,0.08)` | Glass panel border |
+| `auraBlue` | `#4F6DF5` | `#4F6DF5` | Orb color |
+| `auraPurple` | `#9B5DE5` | `#9B5DE5` | Orb color |
+| `auraPink` | `#F15BB5` | `#F15BB5` | Orb color |
+| `backgroundBase` | `#F0F0F5` | `#0A0A12` | Solid base under aura |
+
+---
+
 ## Color System
 
 ### Semantic Tokens
@@ -99,7 +150,8 @@ These tokens are defined in the Tamagui theme and adapt between light and dark m
 
 | Token | Light | Dark | Usage |
 |---|---|---|---|
-| `background` | `gray1` | `gray1` | App background |
+| `background` | `gray1` | `gray1` | Legacy — prefer `backgroundBase` |
+| `backgroundBase` | `#F0F0F5` | `#0A0A12` | App background (solid base under aura) |
 | `surface` | `white` | `gray2` | Content cards, inputs |
 | `surfaceHover` | `gray2` | `gray3` | Input field backgrounds, hover states |
 | `surfaceRaised` | `white` | `gray3` | Elevated cards, sheets |
@@ -117,12 +169,12 @@ These tokens are defined in the Tamagui theme and adapt between light and dark m
 
 | Token | Light | Dark | Usage |
 |---|---|---|---|
-| `chatUser` | `blue9` | `blue9` | User bubble background (solid accent) |
-| `chatUserText` | `#ffffff` | `#ffffff` | User bubble text (white on accent) |
-| `chatAssistant` | `#ffffff` | `gray3` | Assistant bubble background |
-| `chatAssistantBorder` | `gray3` | `gray5` | Assistant bubble border |
-| `chatTool` | `gray2` | `gray2` | Tool call card background |
-| `chatToolBorder` | `gray4` | `gray5` | Tool call card border |
+| `chatUser` | `blue9` | `blue9` | User bubble gradient start (legacy) |
+| `chatUserText` | `#ffffff` | `#ffffff` | User bubble text |
+| `chatAssistant` | `#ffffff` | `gray3` | Legacy — assistant uses GlassView |
+| `chatAssistantBorder` | `gray3` | `gray5` | Legacy — glass border replaces |
+| `chatTool` | `gray2` | `gray2` | Legacy — tool cards use GlassView |
+| `chatToolBorder` | `gray4` | `gray5` | Legacy — glass border replaces |
 
 ### Border Radii
 
@@ -130,6 +182,7 @@ These tokens are defined in the Tamagui theme and adapt between light and dark m
 |---|---|---|
 | `$bubble` | 20px | Chat message bubbles |
 | `$card` | 18px | Content cards |
+| `$glass` | 24px | Glass panels |
 | `$button` | 12px | Buttons |
 | `$input` | 22px | Input fields (pill shape) |
 | `$badge` | 8px | Badges, code blocks, bubble tail |
@@ -143,45 +196,53 @@ These tokens are defined in the Tamagui theme and adapt between light and dark m
 
 The `Page` component provides screen-level chrome with two variants:
 
-- **Large**: iOS-style large title (34px, -1 letter-spacing). Used for top-level screens (Conversations, Settings).
-- **Inline**: Compact nav bar (17px semibold). Used for detail screens (Conversation, pushed screens).
+- **Large**: iOS-style large title (34px, -1 letter-spacing) on aura background. Used for top-level screens (Conversations, Settings).
+- **Inline**: Compact nav bar (17px semibold) wrapped in `GlassView intensity="strong"` — frosted glass header. Used for detail screens.
 
-Both variants support optional back button (`onBack`) and right action slot.
+Both variants render `AuraBackground` as the first child. Both support optional back button (`onBack`) and right action slot.
 
 ### Chat Bubbles
 
-- **User**: solid `$chatUser` (blue9) background, white text, right-aligned, max 75% width. Bottom-right corner uses `$badge` radius (speech-tail effect).
-- **Assistant**: white bubble with 1px `$chatAssistantBorder`, left-aligned, max 88% width. Bottom-left corner uses `$badge` radius.
+- **User**: Blue-to-purple `LinearGradient` with glow shadow, right-aligned, max 75% width. Bottom-right corner uses `$badge` radius (speech-tail effect).
+- **Assistant**: `GlassView intensity="medium"`, left-aligned, max 88% width. Bottom-left corner uses `$badge` radius. Content rendered via MarkdownView.
 - **Smart spacing**: 3px gap between consecutive same-sender messages, 12px between turns — creates visual grouping.
 
 ### Tool Call Cards
 
-Compact, collapsible inline cards. Border-only style with `$chatToolBorder`. Status dot (green = completed, muted = pending). Mono font for function name. Tap anywhere to expand. Expanded view shows input/result in code blocks.
+`GlassView intensity="subtle"` with 14px border radius. Status dot (green = completed, muted = pending). Mono font for function name. Tap anywhere to expand. Expanded view shows input/result in tinted code blocks.
 
 ### Approval Banner
 
-Appears above the input bar when tool approval is needed. Small uppercase section label ("APPROVAL REQUIRED"), tool name in a code badge, description in body text. Primary action (Approve) is solid accent button; secondary (Reject) is ghost text.
+`GlassView intensity="strong"` spanning full width above input. Small uppercase section label ("APPROVAL REQUIRED"), tool name in glass badge, description in body text. Primary action (Approve) is solid accent button; secondary (Reject) is ghost text.
+
+### Input Bar
+
+`GlassView intensity="strong"` at bottom of chat. Inner input field uses subtle glass tint (`rgba(255,255,255,0.15)`). Send button: solid `$accent` when active, `GlassView intensity="subtle"` circle when inactive.
 
 ### Buttons
 
-- **Primary**: solid `$accent` background, white text, `$button` radius. Built with `Pressable` + styled views (not Tamagui `<Button>`).
+- **Primary**: solid `$accent` background, white text, `$button` radius. Built with `Pressable` + styled views.
 - **Ghost**: transparent, `$colorMuted` text — used for secondary actions like Reject.
 
 ### Inputs
 
-`$surfaceHover` background, no visible border, `$input` radius (pill shape). Uses RN `TextInput` inside a styled `XStack` shell for full control. System font at 16px with -0.1 letter-spacing.
+Subtle glass tint (`rgba(255,255,255,0.15)`) background, no visible border, `$input` radius (pill shape). Uses RN `TextInput` inside a styled `XStack` shell. System font at 16px with -0.1 letter-spacing.
 
 ### Send Button
 
-44x44pt circle. `$accent` background when text is entered, `$surfaceHover` when empty. Arrow icon (`↑`) in white/muted.
+44x44pt circle. `$accent` background when text is entered, glass circle when empty. Arrow icon (`↑`) in white/muted.
 
 ### Streaming Indicator
 
-Three 8px dots that pulse in sequence (one opaque, two faded). Positioned inline where the next assistant message would appear. No text.
+Three 8px dots that pulse in sequence (one opaque with glow shadow, two faded). Positioned inline where the next assistant message would appear. No text.
 
 ### Connection Status
 
-Pill-shaped badge with tinted background (`$successSurface` / `$dangerSurface`), status dot, and label text in the status color.
+Glass pill (`GlassView intensity="subtle"`) with status dot and label text in the status color.
+
+### Conversation List Items
+
+Each item wrapped in `GlassView intensity="subtle"` with `$card` radius. Items have horizontal/vertical margins so cards float over the aura background.
 
 ---
 
@@ -189,12 +250,16 @@ Pill-shaped badge with tinted background (`$successSurface` / `$dangerSurface`),
 
 - **No Tamagui prebuilt components** for visual style — we use `YStack`, `XStack`, `Text`, `View` as a Tailwind-like styling system, and RN `Pressable`/`TextInput` for interaction. Tamagui's `Button`, `Input`, `Circle`, etc. are avoided because their internal theming overrides our design tokens.
 - **System fonts only** — configured via `createFont()` in the Tamagui config. No web font downloads.
-- **Storybook** is the living documentation for the design system. All components and full-screen compositions have stories. Theme toggle (light/dark) is available in the Storybook toolbar.
+- **Glass components** use `expo-blur` (BlurView) on iOS/Web and RGBA overlay on Android.
+- **Aura gradients** use `expo-linear-gradient` (LinearGradient) for soft radial orbs.
+- **Storybook** is the living documentation for the design system. All components and full-screen compositions have stories. Theme toggle (light/dark) is available in the Storybook toolbar. The preview decorator renders components on `AuraBackground` for accurate visual context.
 
 ---
 
 ## File Reference
 
 - Theme config: `apps/expo/src/theme/tamagui.config.ts`
+- Glass component: `apps/expo/src/components/glass/glass-view.tsx`
+- Aura component: `apps/expo/src/components/aura/aura-background.tsx`
 - Components: `apps/expo/src/components/`
 - Storybook: `pnpm --filter @morten-olsen/agentic-expo storybook`

@@ -2,6 +2,9 @@ import { TextInput, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { YStack, XStack, Text, useTheme } from 'tamagui';
 
+import { AuraBackground } from '../aura/aura-background.tsx';
+import { GlassView } from '../glass/glass-view.tsx';
+
 type LoginScreenProps = {
   serverUrl: string;
   onServerUrlChange: (v: string) => void;
@@ -27,7 +30,7 @@ const Field = ({
   const theme = useTheme();
   return (
     <XStack
-      backgroundColor="$surfaceHover"
+      backgroundColor="rgba(255,255,255,0.15)"
       borderRadius="$input"
       height={48}
       paddingHorizontal={16}
@@ -69,13 +72,15 @@ const LoginScreen = ({
   return (
     <YStack
       flex={1}
-      backgroundColor="$background"
+      backgroundColor="$backgroundBase"
       alignItems="center"
       justifyContent="center"
       padding="$5"
       paddingTop={insets.top}
       paddingBottom={insets.bottom}
     >
+      <AuraBackground variant="login" />
+
       <YStack width="100%" maxWidth={400} gap="$6">
         <YStack alignItems="center" gap="$2">
           <Text fontFamily="$heading" fontSize={42} fontWeight="700" letterSpacing={-1.2} color="$color">
@@ -86,29 +91,33 @@ const LoginScreen = ({
           </Text>
         </YStack>
 
-        <YStack gap="$3">
-          <Field value={serverUrl} onChangeText={onServerUrlChange} placeholder="Server URL" />
-          <Field value={userId} onChangeText={onUserIdChange} placeholder="Username" />
-          <Field value={password} onChangeText={onPasswordChange} placeholder="Password" secureTextEntry />
-        </YStack>
-
-        <Pressable
-          onPress={isConnecting ? undefined : onConnect}
-          style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
-        >
-          <YStack
-            backgroundColor="$accent"
-            borderRadius="$button"
-            height={50}
-            alignItems="center"
-            justifyContent="center"
-            opacity={isConnecting ? 0.6 : 1}
-          >
-            <Text color="$accentText" fontSize={17} fontWeight="600">
-              {isConnecting ? 'Connecting...' : 'Connect'}
-            </Text>
+        <GlassView intensity="medium" borderRadius={24} padding={24}>
+          <YStack gap="$3">
+            <Field value={serverUrl} onChangeText={onServerUrlChange} placeholder="Server URL" />
+            <Field value={userId} onChangeText={onUserIdChange} placeholder="Username" />
+            <Field value={password} onChangeText={onPasswordChange} placeholder="Password" secureTextEntry />
           </YStack>
-        </Pressable>
+
+          <YStack height={20} />
+
+          <Pressable
+            onPress={isConnecting ? undefined : onConnect}
+            style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+          >
+            <YStack
+              backgroundColor="$accent"
+              borderRadius="$button"
+              height={50}
+              alignItems="center"
+              justifyContent="center"
+              opacity={isConnecting ? 0.6 : 1}
+            >
+              <Text color="$accentText" fontSize={17} fontWeight="600">
+                {isConnecting ? 'Connecting...' : 'Connect'}
+              </Text>
+            </YStack>
+          </Pressable>
+        </GlassView>
       </YStack>
     </YStack>
   );

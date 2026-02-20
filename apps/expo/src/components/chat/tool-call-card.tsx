@@ -3,6 +3,8 @@ import { Pressable } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { Settings, ChevronDown, ChevronRight } from '@tamagui/lucide-icons';
 
+import { GlassView } from '../glass/glass-view.tsx';
+
 const needsQuoting = /[:#{}[\],&*?|>!'"%@`]/;
 
 const quoteString = (str: string, pad: string): string => {
@@ -90,7 +92,7 @@ const ToolCallRow = ({ data }: ToolCallCardProps) => {
               <Text fontSize={11} color="$colorMuted" fontWeight="500" letterSpacing={0.5} textTransform="uppercase">
                 Input
               </Text>
-              <YStack backgroundColor="$background" borderRadius="$badge" padding="$2">
+              <YStack backgroundColor="rgba(0,0,0,0.05)" borderRadius="$badge" padding="$2">
                 <Text fontSize={12} fontFamily="$mono" lineHeight={18} color="$colorSubtle">
                   {toYaml(data.input)}
                 </Text>
@@ -102,7 +104,7 @@ const ToolCallRow = ({ data }: ToolCallCardProps) => {
               <Text fontSize={11} color="$colorMuted" fontWeight="500" letterSpacing={0.5} textTransform="uppercase">
                 Result
               </Text>
-              <YStack backgroundColor="$background" borderRadius="$badge" padding="$2">
+              <YStack backgroundColor="rgba(0,0,0,0.05)" borderRadius="$badge" padding="$2">
                 <Text fontSize={12} fontFamily="$mono" lineHeight={18} color="$colorSubtle">
                   {toYaml(data.result)}
                 </Text>
@@ -125,14 +127,14 @@ const ToolCallGroup = ({ tools }: ToolCallGroupProps) => {
   const label = tools.length === 1 ? (tools[0].function ?? 'tool call') : `${tools.length} tool calls`;
 
   return (
-    <YStack
+    <GlassView
+      intensity="subtle"
       borderRadius={14}
-      borderWidth={1}
-      borderColor="$chatToolBorder"
-      backgroundColor="$chatTool"
-      overflow="hidden"
-      alignSelf={expanded ? 'stretch' : 'flex-start'}
-      maxWidth={expanded ? '100%' : '88%'}
+      padding={0}
+      style={{
+        alignSelf: expanded ? 'stretch' : 'flex-start',
+        maxWidth: expanded ? '100%' : '88%',
+      }}
     >
       <Pressable onPress={() => setExpanded(!expanded)}>
         <XStack paddingHorizontal={12} paddingVertical={8} alignItems="center" gap={8}>
@@ -148,17 +150,16 @@ const ToolCallGroup = ({ tools }: ToolCallGroupProps) => {
       {expanded && (
         <YStack paddingHorizontal={12} paddingBottom={8} gap={2}>
           {tools.map((tool, i) => (
-            <YStack key={i} borderTopWidth={i > 0 ? 1 : 0} borderTopColor="$chatToolBorder" paddingTop={i > 0 ? 4 : 0}>
+            <YStack key={i} borderTopWidth={i > 0 ? 1 : 0} borderTopColor="$glassBorder" paddingTop={i > 0 ? 4 : 0}>
               <ToolCallRow data={tool} />
             </YStack>
           ))}
         </YStack>
       )}
-    </YStack>
+    </GlassView>
   );
 };
 
-// Keep single-card export for backwards compat with stories
 const ToolCallCard = ({ data }: ToolCallCardProps) => <ToolCallGroup tools={[data]} />;
 
 export type { ToolCallData, ToolCallCardProps, ToolCallGroupProps };

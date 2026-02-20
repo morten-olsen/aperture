@@ -3,17 +3,21 @@ import { Pressable, Modal, Platform, KeyboardAvoidingView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { YStack, XStack, Text } from 'tamagui';
+import { YStack, XStack, Text, useThemeName } from 'tamagui';
 import { Plus } from '@tamagui/lucide-icons';
 
 import { useToolQuery, useToolInvoke } from '../src/hooks/use-tools';
 import { useSession } from '../src/hooks/use-session';
 import { ConversationList } from '../src/components/conversation-list/conversation-list';
+import { AuraBackground } from '../src/components/aura/aura-background';
+import { GlassView } from '../src/components/glass/glass-view';
 
 type MenuPosition = { top: number; left: number };
 
 const AvatarMenu = ({ onLogout }: { onLogout: () => void }) => {
   const { userId } = useSession();
+  const themeName = useThemeName();
+  const isDark = themeName === 'dark';
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState<MenuPosition>({ top: 0, left: 0 });
   const avatarRef = useRef<{ measure: (cb: (...args: number[]) => void) => void }>(null);
@@ -34,7 +38,9 @@ const AvatarMenu = ({ onLogout }: { onLogout: () => void }) => {
           width={42}
           height={42}
           borderRadius="$full"
-          backgroundColor="$accentSurface"
+          backgroundColor={isDark ? 'rgba(79,109,245,0.2)' : '$accentSurface'}
+          borderWidth={isDark ? 1 : 0}
+          borderColor="rgba(79,109,245,0.15)"
           alignItems="center"
           justifyContent="center"
         >
@@ -46,40 +52,36 @@ const AvatarMenu = ({ onLogout }: { onLogout: () => void }) => {
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={{ flex: 1 }} onPress={() => setOpen(false)}>
-          <YStack
-            position="absolute"
-            top={position.top}
-            left={position.left}
-            backgroundColor="$surfaceRaised"
-            borderRadius="$card"
-            paddingVertical="$2"
-            shadowColor="black"
-            shadowOpacity={0.15}
-            shadowRadius={12}
-            shadowOffset={{ width: 0, height: 4 }}
-            minWidth={160}
-            borderWidth={1}
-            borderColor="$borderSubtle"
+          <GlassView
+            intensity="strong"
+            borderRadius={18}
+            padding={0}
+            style={{
+              position: 'absolute',
+              top: position.top,
+              left: position.left,
+              minWidth: 160,
+            }}
           >
-            <YStack paddingHorizontal="$4" paddingVertical="$2">
+            <YStack paddingHorizontal={16} paddingVertical={8}>
               <Text fontSize={13} color="$colorSubtle" fontWeight="500">
                 {userId}
               </Text>
             </YStack>
-            <YStack height={1} backgroundColor="$borderSubtle" marginVertical="$1" />
+            <YStack height={1} backgroundColor="$glassBorder" marginVertical={4} />
             <Pressable
               onPress={() => {
                 setOpen(false);
                 onLogout();
               }}
             >
-              <YStack paddingHorizontal="$4" paddingVertical="$2.5">
+              <YStack paddingHorizontal={16} paddingVertical={10}>
                 <Text fontSize={15} color="$danger" fontWeight="500">
                   Sign Out
                 </Text>
               </YStack>
             </Pressable>
-          </YStack>
+          </GlassView>
         </Pressable>
       </Modal>
     </>
@@ -105,25 +107,29 @@ const ConversationsRoute = () => {
   }, [session]);
 
   const content = (
-    <YStack flex={1} backgroundColor="$background" paddingTop={insets.top} paddingBottom={insets.bottom}>
+    <YStack flex={1} backgroundColor="$backgroundBase" paddingTop={insets.top} paddingBottom={insets.bottom}>
       <Stack.Screen options={{ headerShown: false }} />
+      <AuraBackground />
 
       <YStack paddingHorizontal="$5" paddingTop="$4" paddingBottom="$2">
         <XStack justifyContent="space-between" alignItems="center" height={52}>
           <YStack width={42} />
           <AvatarMenu onLogout={handleLogout} />
           <Pressable onPress={handleCreate} disabled={createConversation.isPending}>
-            <XStack
-              width={42}
-              height={42}
-              borderRadius="$full"
-              backgroundColor="$surfaceHover"
-              alignItems="center"
-              justifyContent="center"
-              opacity={createConversation.isPending ? 0.5 : 1}
+            <GlassView
+              intensity="subtle"
+              borderRadius={9999}
+              padding={0}
+              style={{
+                width: 42,
+                height: 42,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: createConversation.isPending ? 0.5 : 1,
+              }}
             >
               <Plus size={24} color="$accent" />
-            </XStack>
+            </GlassView>
           </Pressable>
         </XStack>
       </YStack>

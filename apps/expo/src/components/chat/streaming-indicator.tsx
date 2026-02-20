@@ -21,6 +21,10 @@ const StreamingIndicator = () => {
           borderRadius="$full"
           backgroundColor="$colorMuted"
           opacity={step === i ? 0.9 : 0.25}
+          shadowColor="$auraBlue"
+          shadowOpacity={step === i ? 0.6 : 0}
+          shadowRadius={6}
+          shadowOffset={{ width: 0, height: 0 }}
         />
       ))}
     </XStack>

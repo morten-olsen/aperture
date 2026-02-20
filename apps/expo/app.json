@@ -4,6 +4,7 @@
     "slug": "aperture",
     "version": "1.0.0",
     "scheme": "aperture",
+    "userInterfaceStyle": "automatic",
     "runtimeVersion": {
       "policy": "appVersion"
     },
