@@ -6,6 +6,7 @@ All functionality beyond the core agent loop is provided by plugins. Each plugin
 
 | Plugin | Package | Description |
 |--------|---------|-------------|
+| [API](./api/) | `agentic-api` | HTTP API via Fastify with tool exposure, SSE prompts, and OpenAPI docs |
 | [Artifact](./artifact/) | `agentic-artifact` | Stores and retrieves large structured data produced by tools |
 | [Blueprint](./blueprint/) | `agentic-blueprint` | Reusable behavioral patterns with embedding-based semantic search |
 | [Calendar](./calendar/) | `agentic-calendar` | CalDAV calendar sync with recurring event expansion and agenda injection |
@@ -44,4 +45,4 @@ All functionality beyond the core agent loop is provided by plugins. Each plugin
 - Home Assistant, Telegram
 
 **Infrastructure** — foundational services used by other plugins:
-- Conversation, Database, Notification
+- API, Conversation, Database, Notification

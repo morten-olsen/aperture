@@ -100,6 +100,17 @@ class ConversationService {
     return conversation;
   };
 
+  public list = async (userId: string) => {
+    const repo = this.#repo();
+    return repo.list(userId);
+  };
+
+  public delete = async (id: string) => {
+    const repo = this.#repo();
+    await repo.delete(id);
+    this.#cache.delete(id);
+  };
+
   public getActive = async (userId: string) => {
     const repo = this.#repo();
     const user = await repo.getUser(userId);

@@ -39,6 +39,16 @@ class PluginService {
     return instance?.config;
   };
 
+  public start = async () => {
+    for (const [, { plugin, config }] of this.#plugins) {
+      await plugin.ready?.({
+        config,
+        services: this.#services,
+        secrets: this.#services.secrets,
+      });
+    }
+  };
+
   public toArray = () => {
     return Array.from(this.#plugins);
   };

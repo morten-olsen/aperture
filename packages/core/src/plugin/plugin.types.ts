@@ -19,6 +19,7 @@ type Plugin<TState extends ZodType = ZodUnknown, TConfig extends ZodType = ZodUn
   readonly state: TState;
   readonly config: TConfig;
   readonly setup?: (input: PluginSetupInput<TConfig>) => Promise<void>;
+  readonly ready?: (input: PluginSetupInput<TConfig>) => Promise<void>;
   readonly prepare?: (input: PluginPrepare<TConfig>) => Promise<void>;
   readonly tools?: Tool[];
 };

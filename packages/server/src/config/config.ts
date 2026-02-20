@@ -309,6 +309,32 @@ const configSchema = convict({
       env: 'FILES_LOCATION',
     },
   },
+  api: {
+    enabled: {
+      doc: 'Enable REST API',
+      format: Boolean,
+      default: true,
+      env: 'API_ENABLED',
+    },
+    port: {
+      doc: 'API server port',
+      format: 'int',
+      default: 3000,
+      env: 'API_PORT',
+    },
+    host: {
+      doc: 'API server host',
+      format: String,
+      default: '0.0.0.0',
+      env: 'API_HOST',
+    },
+    corsOrigin: {
+      doc: 'CORS origin (empty to disable)',
+      format: String,
+      default: '',
+      env: 'API_CORS_ORIGIN',
+    },
+  },
   webFetch: {
     enabled: {
       doc: 'Enable web fetch plugin',

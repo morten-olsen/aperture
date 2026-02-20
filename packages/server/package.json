@@ -21,6 +21,7 @@
   "dependencies": {
     "convict": "6.2.4",
     "zod": "^4.3.6",
+    "@morten-olsen/agentic-api": "workspace:*",
     "@morten-olsen/agentic-core": "workspace:*",
     "@morten-olsen/agentic-daily-note": "workspace:*",
     "@morten-olsen/agentic-database": "workspace:*",

@@ -193,11 +193,11 @@ describe('ShellService', () => {
 
     it('truncates output exceeding maxOutputLength', async () => {
       service.configure({ maxOutputLength: 20 });
-      await service.addRule(USER_A, 'sh *', 'allow');
+      await service.addRule(USER_A, 'echo *', 'allow');
 
       const result = await service.execute({
         userId: USER_A,
-        command: 'sh -c "printf \'%0.sa\' {1..100}"',
+        command: 'echo aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
       });
 
       expect(result.truncated).toBe(true);

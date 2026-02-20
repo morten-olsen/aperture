@@ -1,10 +1,11 @@
 import { FileSystemProviderDisk, PluginService, Services } from '@morten-olsen/agentic-core';
+import { apiPlugin, ApiService } from '@morten-olsen/agentic-api';
 import { artifactPlugin } from '@morten-olsen/agentic-artifact';
 import { personalityPlugin } from '@morten-olsen/agentic-personality';
 import { dailyNotePlugin } from '@morten-olsen/agentic-daily-note';
 import { databasePlugin } from '@morten-olsen/agentic-database';
-import { conversationPlugin } from '@morten-olsen/agentic-conversation';
-import { triggerPlugin } from '@morten-olsen/agentic-trigger';
+import { conversationPlugin, conversationApiTools } from '@morten-olsen/agentic-conversation';
+import { triggerPlugin, triggerTools } from '@morten-olsen/agentic-trigger';
 import { calendarPlugin, calendarPluginOptionsSchema } from '@morten-olsen/agentic-calendar';
 import { telegramPlugin, telegramPluginOptionsSchema } from '@morten-olsen/agentic-telegram';
 import { filesystemPlugin } from '@morten-olsen/agentic-filesystem';
@@ -162,6 +163,22 @@ const startServer = async ({ config }: StartServerOptions) => {
     });
   }
 
+  if (config.api.enabled) {
+    const apiService = services.get(ApiService);
+    apiService.exposeTools(conversationApiTools, { tag: 'Conversations' });
+    if (config.trigger.enabled) {
+      apiService.exposeTools(triggerTools, { tag: 'Triggers' });
+    }
+    await pluginService.register(apiPlugin, {
+      port: config.api.port,
+      host: config.api.host,
+      prefix: '/api',
+      cors: config.api.corsOrigin ? { origin: config.api.corsOrigin } : undefined,
+    });
+  }
+
+  await pluginService.start();
+
   console.log('[glados] Server started');
   console.log('[glados]   artifact: enabled');
   console.log('[glados]   interpreter: enabled');
@@ -180,6 +197,7 @@ const startServer = async ({ config }: StartServerOptions) => {
   console.log(`[glados]   ssh: ${config.ssh.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   filesystem: ${config.files.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   web-fetch: ${config.webFetch.enabled ? 'enabled' : 'disabled'}`);
+  console.log(`[glados]   api: ${config.api.enabled ? `enabled (port ${config.api.port})` : 'disabled'}`);
 
   return { services };
 };

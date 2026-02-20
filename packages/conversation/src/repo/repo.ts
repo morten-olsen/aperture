@@ -135,6 +135,17 @@ class ConversationRepo {
     return row as UserRow | undefined;
   };
 
+  public delete = async (id: string) => {
+    const db = await this.#getDb();
+    await db.deleteFrom('conversation_prompts').where('conversation_id', '=', id).execute();
+    await db.deleteFrom('conversation_conversations').where('id', '=', id).execute();
+    await db
+      .updateTable('conversation_users')
+      .set({ active_conversation_id: null })
+      .where('active_conversation_id', '=', id)
+      .execute();
+  };
+
   public setActiveConversation = async (userId: string, conversationId: string | null) => {
     const db = await this.#getDb();
     await db

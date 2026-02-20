@@ -96,9 +96,45 @@ Columns: `id`, `user_id`, `state` (JSON string, nullable), `created_at`, `update
 
 Columns: `conversation_id`, `prompt_id`. Ordered by `rowid ASC`.
 
-## Tools
+## API-Only Tools
 
-This plugin does not expose any tools. All functionality is accessed programmatically through `ConversationService`.
+The conversation plugin exports a set of tools designed for **REST clients only** — they are not injected into the agent's tool list during `prepare()`. The agent operates within a conversation, not across them, so it has no need to create or list conversations.
+
+These tools are exported as `conversationApiTools` and wired to the API by the server package:
+
+```typescript
+import { conversationApiTools } from '@morten-olsen/agentic-conversation';
+
+apiService.exposeTools(conversationApiTools, { tag: 'Conversations' });
+```
+
+### `conversation.create`
+
+Creates a new conversation for the current user.
+
+- **Input**: `{}` (userId comes from the `X-User-Id` header)
+- **Output**: `{ id: string }`
+
+### `conversation.list`
+
+Lists conversations for the current user, ordered by most recently updated.
+
+- **Input**: `{ limit?: number, offset?: number }`
+- **Output**: `{ conversations: [{ id, createdAt, updatedAt }] }`
+
+### `conversation.get`
+
+Retrieves a conversation with its full prompt history. Useful for rehydrating a chat UI on reconnection.
+
+- **Input**: `{ conversationId: string }`
+- **Output**: `{ id, createdAt, updatedAt, prompts: Prompt[] }`
+
+### `conversation.delete`
+
+Deletes a conversation and its prompt associations. The prompts themselves are retained in the prompt store.
+
+- **Input**: `{ conversationId: string }`
+- **Output**: `{ deleted: boolean }`
 
 ## Dependencies
 
