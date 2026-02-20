@@ -1,6 +1,6 @@
 # Shell Plugin
 
-The shell plugin lets agents execute shell commands with safety controls. A database-backed rule system controls which commands the agent may run, supporting both allow (whitelist) and deny (blacklist) patterns per user. Allowed commands execute freely, denied commands fail immediately, and unmatched commands pause for human approval.
+The shell plugin lets agents execute shell commands with safety controls. It registers as a **skill** that can be activated per conversation. A database-backed rule system controls which commands the agent may run, supporting both allow (whitelist) and deny (blacklist) patterns per user. Allowed commands execute freely, denied commands fail immediately, and unmatched commands pause for human approval.
 
 ## Registration
 
@@ -142,4 +142,5 @@ Disabled by default. Configure via environment variables or config file:
 
 - `@morten-olsen/agentic-core` — plugin, tool, and services types
 - `@morten-olsen/agentic-database` — database creation and DatabaseService
+- `@morten-olsen/agentic-skill` — skill registration
 - `zod` — schema validation

@@ -275,6 +275,26 @@ const configSchema = convict({
       env: 'SHELL_SHELL',
     },
   },
+  ssh: {
+    enabled: {
+      doc: 'Enable SSH plugin',
+      format: Boolean,
+      default: false,
+      env: 'SSH_ENABLED',
+    },
+    timeout: {
+      doc: 'Default SSH command timeout in milliseconds',
+      format: 'int',
+      default: 30000,
+      env: 'SSH_TIMEOUT',
+    },
+    maxOutputLength: {
+      doc: 'Maximum characters returned per SSH command',
+      format: 'int',
+      default: 50000,
+      env: 'SSH_MAX_OUTPUT_LENGTH',
+    },
+  },
   webFetch: {
     enabled: {
       doc: 'Enable web fetch plugin',

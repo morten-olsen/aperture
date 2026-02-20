@@ -8,6 +8,7 @@ import { triggerPlugin } from '@morten-olsen/agentic-trigger';
 import { createCalendarPlugin, calendarPluginOptionsSchema } from '@morten-olsen/agentic-calendar';
 import { createTelegramPlugin, telegramPluginOptionsSchema } from '@morten-olsen/agentic-telegram';
 import { createShellPlugin } from '@morten-olsen/agentic-shell';
+import { createSshPlugin } from '@morten-olsen/agentic-ssh';
 import { createWebFetchPlugin } from '@morten-olsen/agentic-web-fetch';
 import { createBlueprintPlugin } from '@morten-olsen/agentic-blueprint';
 import { locationPlugin } from '@morten-olsen/agentic-location';
@@ -149,6 +150,15 @@ const startServer = async ({ config }: StartServerOptions) => {
     );
   }
 
+  if (config.ssh.enabled) {
+    plugins.push(
+      createSshPlugin({
+        timeout: config.ssh.timeout,
+        maxOutputLength: config.ssh.maxOutputLength,
+      }),
+    );
+  }
+
   if (config.webFetch.enabled) {
     plugins.push(
       createWebFetchPlugin({
@@ -176,6 +186,7 @@ const startServer = async ({ config }: StartServerOptions) => {
   console.log(`[glados]   blueprint: ${config.blueprint.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   usage: ${config.usage.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   shell: ${config.shell.enabled ? 'enabled' : 'disabled'}`);
+  console.log(`[glados]   ssh: ${config.ssh.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   web-fetch: ${config.webFetch.enabled ? 'enabled' : 'disabled'}`);
 
   return { services };

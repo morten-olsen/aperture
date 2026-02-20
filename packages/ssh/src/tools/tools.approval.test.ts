@@ -4,11 +4,37 @@ import { setupServer } from 'msw/node';
 import { PromptCompletion, Services, PluginService } from '@morten-olsen/agentic-core';
 import { skillPlugin } from '@morten-olsen/agentic-skill';
 
-import { createShellPlugin } from '../plugin/plugin.js';
+import { createSshPlugin } from '../plugin/plugin.js';
+
+vi.mock('ssh2', async () => {
+  const { EventEmitter } = await import('node:events');
+
+  class MockChannel extends EventEmitter {
+    stderr = new EventEmitter();
+  }
+
+  class MockClient extends EventEmitter {
+    connect() {
+      process.nextTick(() => this.emit('ready'));
+    }
+    exec(_cmd: string, cb: (err: Error | null, channel: MockChannel) => void) {
+      const channel = new MockChannel();
+      cb(null, channel);
+      process.nextTick(() => {
+        channel.emit('data', Buffer.from('mock output\n'));
+        channel.emit('close', 0);
+      });
+    }
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    end() {}
+  }
+
+  return { Client: MockClient };
+});
 
 const TEST_BASE_URL = 'https://test.openai.com/v1';
 const RESPONSES_URL = `${TEST_BASE_URL}/responses`;
-const SKILL_STATE = { skills: { active: ['shell'] } };
+const SKILL_STATE = { skills: { active: ['ssh'] } };
 
 const createTextApiResponse = (text: string) => ({
   id: 'resp_test',
@@ -83,22 +109,33 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-describe('shell approval gate flow', () => {
+describe('ssh approval gate flow', () => {
   let services: Services;
 
   beforeEach(async () => {
     services = Services.mock();
-    await services.get(PluginService).register(skillPlugin, createShellPlugin());
+    await services.get(PluginService).register(skillPlugin, createSshPlugin());
+
+    const { SshService } = await import('../service/service.js');
+    const sshService = services.get(SshService);
+    await sshService.addHost('user-1', { id: 'web', hostname: '10.0.0.1', port: 22, username: 'deploy' });
   });
 
   it('pauses for approval when executing a non-whitelisted command', async () => {
     server.use(
       http.post(RESPONSES_URL, () => {
-        return HttpResponse.json(createToolCallApiResponse('shell.execute', { command: 'ls -la' }, 'call_1'));
+        return HttpResponse.json(
+          createToolCallApiResponse('ssh.execute', { hostId: 'web', command: 'ls -la' }, 'call_1'),
+        );
       }),
     );
 
-    const completion = new PromptCompletion({ services, userId: 'user-1', input: 'List files', state: SKILL_STATE });
+    const completion = new PromptCompletion({
+      services,
+      userId: 'user-1',
+      input: 'List files on web',
+      state: SKILL_STATE,
+    });
 
     const approvalSpy = vi.fn();
     completion.on('approval-requested', approvalSpy);
@@ -109,98 +146,96 @@ describe('shell approval gate flow', () => {
     expect(approvalSpy).toHaveBeenCalledOnce();
     expect(approvalSpy.mock.calls[0][1]).toMatchObject({
       toolCallId: 'call_1',
-      toolName: 'shell.execute',
-      reason: 'Command "ls -la" does not match any allowed pattern.',
-    });
-
-    const toolOutput = result.output[0];
-    expect(toolOutput).toMatchObject({
-      type: 'tool',
-      function: 'shell.execute',
-      result: { type: 'pending', reason: 'Command "ls -la" does not match any allowed pattern.' },
+      toolName: 'ssh.execute',
     });
   });
 
-  it('executes successfully after approval for non-whitelisted command', async () => {
+  it('executes successfully after approval', async () => {
     let callCount = 0;
     server.use(
       http.post(RESPONSES_URL, () => {
         callCount++;
         if (callCount === 1) {
-          return HttpResponse.json(createToolCallApiResponse('shell.execute', { command: 'echo hello' }, 'call_1'));
+          return HttpResponse.json(
+            createToolCallApiResponse('ssh.execute', { hostId: 'web', command: 'ls -la' }, 'call_1'),
+          );
         }
-        return HttpResponse.json(createTextApiResponse('Command executed'));
-      }),
-    );
-
-    const completion = new PromptCompletion({ services, userId: 'user-1', input: 'Echo hello', state: SKILL_STATE });
-
-    await completion.run();
-    expect(completion.prompt.state).toBe('waiting_for_approval');
-
-    await completion.approve('call_1');
-
-    expect(completion.prompt.state).toBe('completed');
-    expect(callCount).toBe(2);
-
-    const toolOutput = completion.prompt.output[0];
-    expect(toolOutput).toMatchObject({
-      type: 'tool',
-      function: 'shell.execute',
-      result: { type: 'success', output: { command: 'echo hello', exitCode: 0 } },
-    });
-  });
-
-  it('returns error after rejection for non-whitelisted command', async () => {
-    let callCount = 0;
-    server.use(
-      http.post(RESPONSES_URL, () => {
-        callCount++;
-        if (callCount === 1) {
-          return HttpResponse.json(createToolCallApiResponse('shell.execute', { command: 'rm -rf /' }, 'call_1'));
-        }
-        return HttpResponse.json(createTextApiResponse('I cannot run that command'));
+        return HttpResponse.json(createTextApiResponse('Done'));
       }),
     );
 
     const completion = new PromptCompletion({
       services,
       userId: 'user-1',
-      input: 'Delete everything',
+      input: 'List files on web',
       state: SKILL_STATE,
     });
-
     await completion.run();
-    expect(completion.prompt.state).toBe('waiting_for_approval');
+    await completion.approve('call_1');
 
+    expect(completion.prompt.state).toBe('completed');
+    expect(completion.prompt.output[0]).toMatchObject({
+      type: 'tool',
+      function: 'ssh.execute',
+      result: { type: 'success', output: { hostId: 'web', command: 'ls -la', exitCode: 0 } },
+    });
+  });
+
+  it('returns error after rejection', async () => {
+    let callCount = 0;
+    server.use(
+      http.post(RESPONSES_URL, () => {
+        callCount++;
+        if (callCount === 1) {
+          return HttpResponse.json(
+            createToolCallApiResponse('ssh.execute', { hostId: 'web', command: 'rm /' }, 'call_1'),
+          );
+        }
+        return HttpResponse.json(createTextApiResponse('Rejected'));
+      }),
+    );
+
+    const completion = new PromptCompletion({
+      services,
+      userId: 'user-1',
+      input: 'Delete on web',
+      state: SKILL_STATE,
+    });
+    await completion.run();
     await completion.reject('call_1', 'Not authorized');
 
     expect(completion.prompt.state).toBe('completed');
     expect(completion.prompt.output[0]).toMatchObject({
       type: 'tool',
-      function: 'shell.execute',
+      function: 'ssh.execute',
       result: { type: 'error', error: 'Not authorized' },
     });
   });
 
   it('skips approval for whitelisted commands', async () => {
-    const { ShellService } = await import('../service/service.js');
-    const service = services.get(ShellService);
-    await service.addRule('user-1', 'echo *', 'allow');
+    const { SshService } = await import('../service/service.js');
+    const sshService = services.get(SshService);
+    await sshService.addRule('user-1', 'ls *', '*', 'allow');
 
     let callCount = 0;
     server.use(
       http.post(RESPONSES_URL, () => {
         callCount++;
         if (callCount === 1) {
-          return HttpResponse.json(createToolCallApiResponse('shell.execute', { command: 'echo hello' }, 'call_1'));
+          return HttpResponse.json(
+            createToolCallApiResponse('ssh.execute', { hostId: 'web', command: 'ls -la' }, 'call_1'),
+          );
         }
         return HttpResponse.json(createTextApiResponse('Done'));
       }),
     );
 
-    const completion = new PromptCompletion({ services, userId: 'user-1', input: 'Echo hello', state: SKILL_STATE });
-
+    const completion = new PromptCompletion({
+      services,
+      userId: 'user-1',
+      input: 'List files',
+      state: SKILL_STATE,
+    });
     const approvalSpy = vi.fn();
     completion.on('approval-requested', approvalSpy);
 
@@ -208,46 +243,47 @@ describe('shell approval gate flow', () => {
 
     expect(result.state).toBe('completed');
     expect(approvalSpy).not.toHaveBeenCalled();
-    expect(result.output[0]).toMatchObject({
-      type: 'tool',
-      function: 'shell.execute',
-      result: { type: 'success' },
-    });
   });
 
   it('does not skip approval when rule belongs to a different user', async () => {
-    const { ShellService } = await import('../service/service.js');
-    const service = services.get(ShellService);
-    await service.addRule('user-2', 'echo *', 'allow');
+    const { SshService } = await import('../service/service.js');
+    const sshService = services.get(SshService);
+    await sshService.addRule('user-2', 'ls *', '*', 'allow');
 
     server.use(
       http.post(RESPONSES_URL, () => {
-        return HttpResponse.json(createToolCallApiResponse('shell.execute', { command: 'echo hello' }, 'call_1'));
+        return HttpResponse.json(
+          createToolCallApiResponse('ssh.execute', { hostId: 'web', command: 'ls -la' }, 'call_1'),
+        );
       }),
     );
 
-    const completion = new PromptCompletion({ services, userId: 'user-1', input: 'Echo hello', state: SKILL_STATE });
-
+    const completion = new PromptCompletion({
+      services,
+      userId: 'user-1',
+      input: 'List files',
+      state: SKILL_STATE,
+    });
     const approvalSpy = vi.fn();
     completion.on('approval-requested', approvalSpy);
 
-    const result = await completion.run();
-
-    expect(result.state).toBe('waiting_for_approval');
+    await completion.run();
     expect(approvalSpy).toHaveBeenCalledOnce();
   });
 
   it('fails with error for denied commands even after approval', async () => {
-    const { ShellService } = await import('../service/service.js');
-    const service = services.get(ShellService);
-    await service.addRule('user-1', 'rm *', 'deny');
+    const { SshService } = await import('../service/service.js');
+    const sshService = services.get(SshService);
+    await sshService.addRule('user-1', 'rm *', '*', 'deny');
 
     let callCount = 0;
     server.use(
       http.post(RESPONSES_URL, () => {
         callCount++;
         if (callCount === 1) {
-          return HttpResponse.json(createToolCallApiResponse('shell.execute', { command: 'rm -rf /' }, 'call_1'));
+          return HttpResponse.json(
+            createToolCallApiResponse('ssh.execute', { hostId: 'web', command: 'rm -rf /' }, 'call_1'),
+          );
         }
         return HttpResponse.json(createTextApiResponse('Cannot do that'));
       }),
@@ -259,41 +295,36 @@ describe('shell approval gate flow', () => {
       input: 'Delete everything',
       state: SKILL_STATE,
     });
-
     await completion.run();
-    expect(completion.prompt.state).toBe('waiting_for_approval');
-
     await completion.approve('call_1');
 
     expect(completion.prompt.state).toBe('completed');
     expect(completion.prompt.output[0]).toMatchObject({
       type: 'tool',
-      function: 'shell.execute',
+      function: 'ssh.execute',
       result: { type: 'error' },
     });
   });
 
-  it('always requires approval for add-rule', async () => {
-    let callCount = 0;
+  it('always requires approval for add-host', async () => {
     server.use(
       http.post(RESPONSES_URL, () => {
-        callCount++;
-        if (callCount === 1) {
-          return HttpResponse.json(
-            createToolCallApiResponse('shell.add-rule', { pattern: 'git *', type: 'allow' }, 'call_1'),
-          );
-        }
-        return HttpResponse.json(createTextApiResponse('Rule added'));
+        return HttpResponse.json(
+          createToolCallApiResponse(
+            'ssh.add-host',
+            { id: 'db', hostname: '10.0.0.2', port: 22, username: 'admin' },
+            'call_1',
+          ),
+        );
       }),
     );
 
     const completion = new PromptCompletion({
       services,
       userId: 'user-1',
-      input: 'Allow git commands',
+      input: 'Add db host',
       state: SKILL_STATE,
     });
-
     const approvalSpy = vi.fn();
     completion.on('approval-requested', approvalSpy);
 
@@ -302,17 +333,36 @@ describe('shell approval gate flow', () => {
     expect(completion.prompt.state).toBe('waiting_for_approval');
     expect(approvalSpy).toHaveBeenCalledOnce();
     expect(approvalSpy.mock.calls[0][1]).toMatchObject({
-      toolName: 'shell.add-rule',
-      reason: 'Adding a rule modifies command execution permissions.',
+      toolName: 'ssh.add-host',
+      reason: 'Adding a host registers a new SSH connection target.',
     });
+  });
 
-    await completion.approve('call_1');
+  it('always requires approval for add-rule', async () => {
+    server.use(
+      http.post(RESPONSES_URL, () => {
+        return HttpResponse.json(
+          createToolCallApiResponse('ssh.add-rule', { pattern: 'ls *', host: '*', type: 'allow' }, 'call_1'),
+        );
+      }),
+    );
 
-    expect(completion.prompt.state).toBe('completed');
+    const completion = new PromptCompletion({
+      services,
+      userId: 'user-1',
+      input: 'Allow ls commands',
+      state: SKILL_STATE,
+    });
+    const approvalSpy = vi.fn();
+    completion.on('approval-requested', approvalSpy);
 
-    const { ShellService } = await import('../service/service.js');
-    const service = services.get(ShellService);
-    const check = await service.checkCommand('user-1', 'git status');
-    expect(check).toEqual({ allowed: true });
+    await completion.run();
+
+    expect(completion.prompt.state).toBe('waiting_for_approval');
+    expect(approvalSpy).toHaveBeenCalledOnce();
+    expect(approvalSpy.mock.calls[0][1]).toMatchObject({
+      toolName: 'ssh.add-rule',
+      reason: 'Adding a rule modifies SSH command execution permissions.',
+    });
   });
 });

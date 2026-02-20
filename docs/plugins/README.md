@@ -18,6 +18,7 @@ All functionality beyond the core agent loop is provided by plugins. Each plugin
 | [Notification](./notification/) | `agentic-notification` | Event-based notification delivery system |
 | [Personality](./personality/) | `agentic-personality` | Per-user personality/tone configuration injected into every prompt |
 | [Shell](./shell/) | `agentic-shell` | Shell command execution with per-user allow/deny rules |
+| [SSH](./ssh/) | `agentic-ssh` | Remote command execution via SSH with per-user hosts, rules, and key pairs |
 | [Skill](./skill/) | `agentic-skill` | Dynamic capability bundles activated/deactivated per conversation |
 | [Telegram](./telegram/) | `agentic-telegram` | Telegram bot interface via Gramio with MarkdownV2 formatting |
 | [Time](./time/) | `agentic-time` | Injects current local time and timezone into prompt context |
@@ -33,7 +34,10 @@ All functionality beyond the core agent loop is provided by plugins. Each plugin
 - Time, Location
 
 **Tool providers** — give the agent new capabilities:
-- Artifact, Blueprint, Calendar, Daily Note, Interpreter, Personality, Shell, Skill, Todo, Trigger, Usage, Weather, Web Fetch
+- Artifact, Blueprint, Calendar, Daily Note, Interpreter, Personality, Skill, Todo, Trigger, Usage, Weather, Web Fetch
+
+**Skill-based** — register as skills activated per conversation (depend on the Skill plugin):
+- Shell, SSH
 
 **Integration bridges** — connect to external systems:
 - Home Assistant, Telegram
