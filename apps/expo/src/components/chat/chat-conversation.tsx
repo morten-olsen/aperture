@@ -1,8 +1,12 @@
 import { useCallback, useRef, useState } from 'react';
 import { FlatList, TextInput, Pressable, type TextInput as RNTextInput } from 'react-native';
 import { YStack, XStack, Text, useTheme } from 'tamagui';
+import Animated, { SlideInDown } from 'react-native-reanimated';
 
 import type { ApprovalRequest } from '../../hooks/use-prompt.ts';
+
+import { AnimatedChatItem } from '../animation/animated-chat-item.tsx';
+import { GlassView } from '../glass/glass-view.tsx';
 
 import { ApprovalBanner } from './approval-banner.tsx';
 import { ChatMessage } from './chat-message.tsx';
@@ -48,6 +52,7 @@ type ChatConversationProps = {
   onSend?: (text: string) => void;
   onApprove?: () => void;
   onReject?: () => void;
+  contentTopInset?: number;
 };
 
 const ChatConversation = ({
@@ -58,6 +63,7 @@ const ChatConversation = ({
   onSend,
   onApprove,
   onReject,
+  contentTopInset = 0,
 }: ChatConversationProps) => {
   const [text, setText] = useState('');
   const inputRef = useRef<RNTextInput>(null);
@@ -80,7 +86,9 @@ const ChatConversation = ({
 
       return (
         <YStack marginTop={sameSender ? 3 : 12}>
-          {item.kind === 'tools' ? <ToolCallGroup tools={item.entries} /> : <ChatMessage data={item.entry} />}
+          <AnimatedChatItem kind={item.kind} role={item.kind === 'message' ? item.entry.role : undefined}>
+            {item.kind === 'tools' ? <ToolCallGroup tools={item.entries} /> : <ChatMessage data={item.entry} />}
+          </AnimatedChatItem>
         </YStack>
       );
     },
@@ -93,11 +101,13 @@ const ChatConversation = ({
         data={displayItems}
         keyExtractor={(_, index) => String(index)}
         renderItem={renderItem}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: contentTopInset + 16, paddingBottom: 8 }}
       />
 
       {pendingApproval && onApprove && onReject && (
-        <ApprovalBanner approval={pendingApproval} onApprove={onApprove} onReject={onReject} />
+        <Animated.View entering={SlideInDown.springify().damping(18).stiffness(200)}>
+          <ApprovalBanner approval={pendingApproval} onApprove={onApprove} onReject={onReject} />
+        </Animated.View>
       )}
 
       {isStreaming && (
@@ -108,63 +118,81 @@ const ChatConversation = ({
 
       {error && (
         <XStack paddingHorizontal="$4" paddingVertical="$2">
-          <YStack
-            flex={1}
-            paddingHorizontal="$3"
-            paddingVertical="$2"
-            backgroundColor="$dangerSurface"
+          <GlassView
+            intensity="medium"
             borderRadius={14}
+            padding={0}
+            style={{ flex: 1, borderColor: 'rgba(239,68,68,0.3)' }}
           >
-            <Text fontSize={14} color="$danger">
-              {error}
-            </Text>
-          </YStack>
+            <YStack paddingHorizontal={12} paddingVertical={8}>
+              <Text fontSize={14} color="$danger">
+                {error}
+              </Text>
+            </YStack>
+          </GlassView>
         </XStack>
       )}
 
-      <XStack paddingHorizontal={12} paddingVertical={10} gap={8} alignItems="flex-end">
-        <XStack
-          flex={1}
-          backgroundColor="$surfaceHover"
-          borderRadius="$input"
-          paddingHorizontal={16}
-          alignItems="center"
-          minHeight={44}
-        >
-          <TextInput
-            ref={inputRef}
-            style={{
-              flex: 1,
-              fontSize: 16,
-              letterSpacing: -0.1,
-              fontFamily:
-                '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-              color: theme.color?.val,
-              paddingVertical: 11,
-            }}
-            value={text}
-            onChangeText={setText}
-            placeholder="Message..."
-            placeholderTextColor={theme.colorMuted?.val}
-            onSubmitEditing={handleSend}
-            returnKeyType="send"
-          />
-        </XStack>
-        <Pressable onPress={canSend ? handleSend : undefined}>
-          <XStack
-            width={44}
-            height={44}
-            borderRadius="$full"
-            backgroundColor={canSend ? '$accent' : '$surfaceHover'}
-            alignItems="center"
-            justifyContent="center"
-          >
-            <Text fontSize={22} fontWeight="500" color={canSend ? '$accentText' : '$colorMuted'} marginTop={-2}>
-              ↑
-            </Text>
+      <YStack paddingHorizontal={12} paddingBottom={8}>
+        <GlassView intensity="strong" borderRadius={9999} padding={0}>
+          <XStack paddingHorizontal={6} paddingVertical={6} gap={8} alignItems="flex-end">
+            <XStack
+              flex={1}
+              backgroundColor="rgba(255,255,255,0.15)"
+              borderRadius="$input"
+              paddingHorizontal={16}
+              alignItems="center"
+              minHeight={44}
+            >
+              <TextInput
+                ref={inputRef}
+                style={{
+                  flex: 1,
+                  fontSize: 16,
+                  letterSpacing: -0.1,
+                  fontFamily:
+                    '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                  color: theme.color?.val,
+                  paddingVertical: 11,
+                }}
+                value={text}
+                onChangeText={setText}
+                placeholder="Message..."
+                placeholderTextColor={theme.colorMuted?.val}
+                onSubmitEditing={handleSend}
+                returnKeyType="send"
+              />
+            </XStack>
+            <Pressable onPress={canSend ? handleSend : undefined}>
+              {canSend ? (
+                <XStack
+                  width={44}
+                  height={44}
+                  borderRadius="$full"
+                  backgroundColor="$accent"
+                  alignItems="center"
+                  justifyContent="center"
+                >
+                  <Text fontSize={22} fontWeight="500" color="$accentText" marginTop={-2}>
+                    ↑
+                  </Text>
+                </XStack>
+              ) : (
+                <GlassView
+                  intensity="subtle"
+                  borderRadius={9999}
+                  padding={0}
+                  style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Text fontSize={22} fontWeight="500" color="$colorMuted" marginTop={-2}>
+                    ↑
+                  </Text>
+                </GlassView>
+              )}
+            </Pressable>
           </XStack>
-        </Pressable>
-      </XStack>
+        </GlassView>
+      </YStack>
     </YStack>
   );
 };

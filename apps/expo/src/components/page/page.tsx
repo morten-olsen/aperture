@@ -3,6 +3,9 @@ import { KeyboardAvoidingView, Platform, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { YStack, XStack, Text } from 'tamagui';
 
+import { AuraBackground } from '../aura/aura-background.tsx';
+import { GlassView } from '../glass/glass-view.tsx';
+
 type PageProps = {
   title: string;
   variant?: 'large' | 'inline';
@@ -16,7 +19,9 @@ const Page = ({ title, variant = 'large', onBack, leftAction, rightAction, child
   const insets = useSafeAreaInsets();
 
   const content = (
-    <YStack flex={1} backgroundColor="$background" paddingTop={insets.top} paddingBottom={insets.bottom}>
+    <YStack flex={1} backgroundColor="$backgroundBase" paddingTop={insets.top} paddingBottom={insets.bottom}>
+      <AuraBackground />
+
       {variant === 'large' ? (
         <YStack paddingHorizontal="$5" paddingTop="$4" paddingBottom="$2" gap="$2">
           {(onBack || leftAction || rightAction) && (
@@ -43,19 +48,21 @@ const Page = ({ title, variant = 'large', onBack, leftAction, rightAction, child
           </Text>
         </YStack>
       ) : (
-        <XStack paddingHorizontal="$5" paddingVertical="$3" alignItems="center" gap="$3">
-          {onBack && (
-            <Pressable onPress={onBack} hitSlop={12}>
-              <Text fontSize={22} color="$accent" marginTop={-1}>
-                ‹
-              </Text>
-            </Pressable>
-          )}
-          <Text fontFamily="$heading" fontSize={17} fontWeight="600" letterSpacing={-0.2} flex={1} color="$color">
-            {title}
-          </Text>
-          {rightAction}
-        </XStack>
+        <GlassView intensity="strong" borderRadius={0} padding={0}>
+          <XStack paddingHorizontal="$5" paddingVertical="$3" alignItems="center" gap="$3">
+            {onBack && (
+              <Pressable onPress={onBack} hitSlop={12}>
+                <Text fontSize={22} color="$accent" marginTop={-1}>
+                  ‹
+                </Text>
+              </Pressable>
+            )}
+            <Text fontFamily="$heading" fontSize={17} fontWeight="600" letterSpacing={-0.2} flex={1} color="$color">
+              {title}
+            </Text>
+            {rightAction}
+          </XStack>
+        </GlassView>
       )}
       {children}
     </YStack>

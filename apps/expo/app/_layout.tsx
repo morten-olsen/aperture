@@ -1,18 +1,33 @@
 import { useEffect, useMemo } from 'react';
-import { useColorScheme } from 'react-native';
-import { Slot, useRouter, useSegments } from 'expo-router';
+import { StyleSheet, useColorScheme } from 'react-native';
+import { useFonts } from 'expo-font';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { TamaguiProvider } from 'tamagui';
+import { TamaguiProvider, Theme, YStack } from 'tamagui';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { PlusJakartaSans_400Regular } from '@expo-google-fonts/plus-jakarta-sans/400Regular';
+import { PlusJakartaSans_500Medium } from '@expo-google-fonts/plus-jakarta-sans/500Medium';
+import { PlusJakartaSans_600SemiBold } from '@expo-google-fonts/plus-jakarta-sans/600SemiBold';
+import { PlusJakartaSans_700Bold } from '@expo-google-fonts/plus-jakarta-sans/700Bold';
 
 import { tamaguiConfig } from '../src/theme/tamagui.config';
 import { AgenticClient } from '../src/client/client';
 import { createSseConnection } from '../src/client/client.sse';
+import { AuraBackground } from '../src/components/aura/aura-background';
 import { AgenticClientProvider } from '../src/hooks/use-client';
 import { useEventStream } from '../src/hooks/use-event-stream';
 import { SessionProvider, useSession } from '../src/hooks/use-session';
 
 const queryClient = new QueryClient();
+
+const transparentScreen = { backgroundColor: 'transparent' };
+
+const screenOptions = {
+  headerShown: false,
+  animation: 'fade' as const,
+  animationDuration: 200,
+  contentStyle: transparentScreen,
+};
 
 const EventStreamConnector = () => {
   useEventStream();
@@ -71,24 +86,39 @@ const InnerLayout = () => {
   if (isLoggedIn) {
     return (
       <AuthenticatedProviders>
-        <Slot />
+        <Stack screenOptions={screenOptions} />
       </AuthenticatedProviders>
     );
   }
 
-  return <Slot />;
+  return <Stack screenOptions={screenOptions} />;
 };
 
 const RootLayout = () => {
   const colorScheme = useColorScheme();
+  const [fontsLoaded] = useFonts({
+    PlusJakartaSans: PlusJakartaSans_400Regular,
+    PlusJakartaSansMedium: PlusJakartaSans_500Medium,
+    PlusJakartaSansSemiBold: PlusJakartaSans_600SemiBold,
+    PlusJakartaSansBold: PlusJakartaSans_700Bold,
+  });
+
+  if (!fontsLoaded) return null;
 
   return (
     <SafeAreaProvider>
       <SessionProvider>
-        <TamaguiProvider config={tamaguiConfig} defaultTheme={colorScheme === 'dark' ? 'dark' : 'light'}>
-          <QueryClientProvider client={queryClient}>
-            <InnerLayout />
-          </QueryClientProvider>
+        <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
+          <Theme name={colorScheme === 'dark' ? 'dark' : 'light'}>
+            <QueryClientProvider client={queryClient}>
+              <YStack flex={1} backgroundColor="$backgroundBase">
+                <AuraBackground />
+                <YStack flex={1} style={StyleSheet.absoluteFill}>
+                  <InnerLayout />
+                </YStack>
+              </YStack>
+            </QueryClientProvider>
+          </Theme>
         </TamaguiProvider>
       </SessionProvider>
     </SafeAreaProvider>

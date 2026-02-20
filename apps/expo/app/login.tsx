@@ -23,7 +23,7 @@ const LoginRoute = () => {
 
   return (
     <>
-      <Stack.Screen options={{ headerShown: false }} />
+      <Stack.Screen options={{ headerShown: false, animation: 'fade' }} />
       <LoginScreen
         serverUrl={serverUrl}
         onServerUrlChange={setServerUrl}

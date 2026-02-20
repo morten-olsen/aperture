@@ -10,6 +10,7 @@ module.exports = (api) => {
           config: './src/theme/tamagui.config.ts',
         },
       ],
+      'react-native-reanimated/plugin',
     ],
   };
 };

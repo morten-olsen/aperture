@@ -1,6 +1,8 @@
 import { FlatList } from 'react-native';
 import { YStack, Text } from 'tamagui';
 
+import { AnimatedListItem } from '../animation/animated-list-item.tsx';
+
 import { ConversationListItem } from './conversation-list-item.tsx';
 
 type Conversation = {
@@ -31,8 +33,10 @@ const ConversationList = ({ conversations, onSelect, onRefresh, isRefreshing = f
   <FlatList
     data={conversations}
     keyExtractor={(item) => item.id}
-    renderItem={({ item }) => (
-      <ConversationListItem id={item.id} updatedAt={item.updatedAt} onPress={() => onSelect(item.id)} />
+    renderItem={({ item, index }) => (
+      <AnimatedListItem index={index}>
+        <ConversationListItem id={item.id} updatedAt={item.updatedAt} onPress={() => onSelect(item.id)} />
+      </AnimatedListItem>
     )}
     onRefresh={onRefresh}
     refreshing={isRefreshing}

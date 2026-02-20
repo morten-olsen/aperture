@@ -73,7 +73,7 @@ const InlineRenderer = ({ segments, color }: { segments: InlineSegment[]; color:
               key={i}
               fontFamily="$mono"
               fontSize={14}
-              backgroundColor="$surfaceHover"
+              backgroundColor="rgba(255,255,255,0.15)"
               paddingHorizontal={5}
               borderRadius={4}
               color={color}
@@ -179,7 +179,12 @@ const BlockRenderer = ({ block, color }: { block: Block; color: string }): React
     }
     case 'code':
       return (
-        <YStack backgroundColor="$surfaceHover" borderRadius="$badge" paddingHorizontal={14} paddingVertical={12}>
+        <YStack
+          backgroundColor="rgba(255,255,255,0.12)"
+          borderRadius="$badge"
+          paddingHorizontal={14}
+          paddingVertical={12}
+        >
           <Text fontFamily="$mono" fontSize={14} lineHeight={20} color={color}>
             {block.text}
           </Text>

@@ -1,8 +1,10 @@
 import React from 'react';
 import type { Preview } from '@storybook/react-native-web-vite';
 import { TamaguiProvider, Theme, YStack } from 'tamagui';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { tamaguiConfig } from '../src/theme/tamagui.config.ts';
+import { AuraBackground } from '../src/components/aura/aura-background.tsx';
 
 const preview: Preview = {
   parameters: {
@@ -27,13 +29,16 @@ const preview: Preview = {
   },
   decorators: [
     (Story, context) => (
-      <TamaguiProvider config={tamaguiConfig}>
-        <Theme name={context.globals.theme ?? 'light'}>
-          <YStack backgroundColor="$background" style={{ minHeight: '100dvh' }}>
-            <Story />
-          </YStack>
-        </Theme>
-      </TamaguiProvider>
+      <SafeAreaProvider>
+        <TamaguiProvider config={tamaguiConfig}>
+          <Theme name={context.globals.theme ?? 'light'}>
+            <YStack backgroundColor="$backgroundBase" style={{ minHeight: '100dvh' }}>
+              <AuraBackground />
+              <Story />
+            </YStack>
+          </Theme>
+        </TamaguiProvider>
+      </SafeAreaProvider>
     ),
   ],
 };

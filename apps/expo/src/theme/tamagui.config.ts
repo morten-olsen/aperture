@@ -1,11 +1,15 @@
 import { config } from '@tamagui/config/v3';
 import { createFont, createTamagui, createTokens } from 'tamagui';
 
-// System font stack — prioritize platform native fonts over Inter
-const systemFamily =
-  '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
-const systemDisplayFamily =
-  '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+// Use Plus Jakarta Sans on Android, system fonts elsewhere
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const isAndroid = require('react-native').Platform.OS === 'android';
+const systemFamily = isAndroid
+  ? 'PlusJakartaSans'
+  : '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+const systemDisplayFamily = isAndroid
+  ? 'PlusJakartaSansBold'
+  : '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 const monoFamily = '"SF Mono", Menlo, Monaco, "Cascadia Mono", Consolas, monospace';
 
 const bodyFont = createFont({
@@ -168,6 +172,7 @@ const tokens = createTokens({
     button: 12,
     input: 22,
     badge: 8,
+    glass: 24,
     full: 9999,
   },
 });
@@ -210,6 +215,15 @@ const lightThemeExtensions = {
   chatAssistantBorder: config.themes.light.gray3,
   chatTool: config.themes.light.gray2,
   chatToolBorder: config.themes.light.gray4,
+
+  // Glass & Aura
+  glassBackground: 'rgba(255,255,255,0.45)',
+  glassBackgroundIntense: 'rgba(255,255,255,0.65)',
+  glassBorder: 'rgba(255,255,255,0.25)',
+  auraBlue: '#4F6DF5',
+  auraPurple: '#9B5DE5',
+  auraPink: '#F15BB5',
+  backgroundBase: '#EDEEF6',
 } as const;
 
 const darkThemeExtensions = {
@@ -248,6 +262,15 @@ const darkThemeExtensions = {
   chatAssistantBorder: config.themes.dark.gray5,
   chatTool: config.themes.dark.gray2,
   chatToolBorder: config.themes.dark.gray5,
+
+  // Glass & Aura
+  glassBackground: 'rgba(30,30,40,0.40)',
+  glassBackgroundIntense: 'rgba(30,30,40,0.60)',
+  glassBorder: 'rgba(255,255,255,0.08)',
+  auraBlue: '#4F6DF5',
+  auraPurple: '#9B5DE5',
+  auraPink: '#F15BB5',
+  backgroundBase: '#0A0A12',
 } as const;
 
 const themes = {
@@ -278,4 +301,4 @@ declare module 'tamagui' {
   interface TamaguiCustomConfig extends Conf {}
 }
 
-export { tamaguiConfig };
+export { tamaguiConfig, tamaguiConfig as config };

@@ -5,10 +5,13 @@ import { Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { YStack, XStack } from 'tamagui';
 import { ArrowLeft } from '@tamagui/lucide-icons';
+import Animated from 'react-native-reanimated';
 
 import { useToolQuery } from '../../src/hooks/use-tools';
 import { usePrompt, type PromptOutput } from '../../src/hooks/use-prompt';
+import { useMountAnimation } from '../../src/hooks/use-mount-animation';
 import { ChatConversation } from '../../src/components/chat/chat-conversation';
+import { GlassView } from '../../src/components/glass/glass-view';
 
 type HistoryEntry = {
   type: string;
@@ -62,15 +65,22 @@ const ChatScreen = () => {
     [send, id],
   );
 
+  const headerAnim = useMountAnimation({ translateY: -10, duration: 300, delay: 200 });
+  const headerHeight = insets.top + 12 + 24 + 12;
+
   const content = (
-    <YStack flex={1} backgroundColor="$background" paddingTop={insets.top} paddingBottom={insets.bottom}>
+    <YStack flex={1} paddingBottom={insets.bottom}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <XStack paddingHorizontal="$4" paddingVertical="$3" borderBottomWidth={1} borderBottomColor="$borderSubtle">
-        <Pressable onPress={() => router.back()} hitSlop={12}>
-          <ArrowLeft size={24} color="$accent" />
-        </Pressable>
-      </XStack>
+      <Animated.View style={[{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }, headerAnim.style]}>
+        <GlassView intensity="strong" borderRadius={0} padding={0}>
+          <XStack paddingHorizontal={16} paddingTop={insets.top + 12} paddingBottom={12}>
+            <Pressable onPress={() => router.back()} hitSlop={12}>
+              <ArrowLeft size={24} color="$accent" />
+            </Pressable>
+          </XStack>
+        </GlassView>
+      </Animated.View>
 
       <ChatConversation
         messages={allMessages}
@@ -80,6 +90,7 @@ const ChatScreen = () => {
         onSend={handleSend}
         onApprove={pendingApproval ? () => approve(pendingApproval.toolCallId) : undefined}
         onReject={pendingApproval ? () => reject(pendingApproval.toolCallId) : undefined}
+        contentTopInset={headerHeight}
       />
     </YStack>
   );
