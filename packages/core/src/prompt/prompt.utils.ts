@@ -21,6 +21,13 @@ const promptsToMessages = (prompts: Prompt[]) => {
           content: output.content,
         });
       }
+      if (output.type === 'file') {
+        const desc = output.description ? ` — ${output.description}` : '';
+        messages.push({
+          role: 'assistant',
+          content: `[File sent to user: "${output.path}"${desc}]`,
+        });
+      }
       if (output.type === 'tool') {
         messages.push({
           type: 'function_call',

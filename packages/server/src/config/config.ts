@@ -295,6 +295,20 @@ const configSchema = convict({
       env: 'SSH_MAX_OUTPUT_LENGTH',
     },
   },
+  files: {
+    enabled: {
+      doc: 'Enable filesystem plugin',
+      format: Boolean,
+      default: true,
+      env: 'FILES_ENABLED',
+    },
+    location: {
+      doc: 'Directory for persistent file storage',
+      format: String,
+      default: './data/files',
+      env: 'FILES_LOCATION',
+    },
+  },
   webFetch: {
     enabled: {
       doc: 'Enable web fetch plugin',

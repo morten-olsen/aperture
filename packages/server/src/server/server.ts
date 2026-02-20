@@ -1,4 +1,4 @@
-import { PluginService, Services } from '@morten-olsen/agentic-core';
+import { FileSystemProviderDisk, PluginService, Services } from '@morten-olsen/agentic-core';
 import { artifactPlugin } from '@morten-olsen/agentic-artifact';
 import { personalityPlugin } from '@morten-olsen/agentic-personality';
 import { dailyNotePlugin } from '@morten-olsen/agentic-daily-note';
@@ -7,6 +7,7 @@ import { conversationPlugin } from '@morten-olsen/agentic-conversation';
 import { triggerPlugin } from '@morten-olsen/agentic-trigger';
 import { calendarPlugin, calendarPluginOptionsSchema } from '@morten-olsen/agentic-calendar';
 import { telegramPlugin, telegramPluginOptionsSchema } from '@morten-olsen/agentic-telegram';
+import { filesystemPlugin } from '@morten-olsen/agentic-filesystem';
 import { shellPlugin } from '@morten-olsen/agentic-shell';
 import { sshPlugin } from '@morten-olsen/agentic-ssh';
 import { webFetchPlugin } from '@morten-olsen/agentic-web-fetch';
@@ -35,6 +36,7 @@ const startServer = async ({ config }: StartServerOptions) => {
       normal: config.model.normal,
       high: config.model.high || config.model.normal,
     },
+    fileSystem: config.files.location ? new FileSystemProviderDisk(config.files.location) : undefined,
   });
   const pluginService = services.get(PluginService);
 
@@ -64,6 +66,10 @@ const startServer = async ({ config }: StartServerOptions) => {
   await pluginService.register(timePlugin, undefined);
   await pluginService.register(artifactPlugin, undefined);
   await pluginService.register(interpreterPlugin, undefined);
+
+  if (config.files.enabled) {
+    await pluginService.register(filesystemPlugin, undefined);
+  }
 
   if (config.todo.enabled) {
     await pluginService.register(todoPlugin, undefined);
@@ -172,6 +178,7 @@ const startServer = async ({ config }: StartServerOptions) => {
   console.log(`[glados]   usage: ${config.usage.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   shell: ${config.shell.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   ssh: ${config.ssh.enabled ? 'enabled' : 'disabled'}`);
+  console.log(`[glados]   filesystem: ${config.files.enabled ? 'enabled' : 'disabled'}`);
   console.log(`[glados]   web-fetch: ${config.webFetch.enabled ? 'enabled' : 'disabled'}`);
 
   return { services };

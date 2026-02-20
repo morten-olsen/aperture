@@ -55,6 +55,17 @@ class TelegramBotService {
     }
   };
 
+  public sendDocument = async (chatId: string, data: Buffer, filename: string, caption?: string): Promise<void> => {
+    const bot = this.bot;
+    const name = filename.split('/').pop() || filename;
+    const blob = new File([new Uint8Array(data)], name);
+    await bot.api.sendDocument({
+      chat_id: chatId,
+      document: blob,
+      caption,
+    });
+  };
+
   public sendMessageWithKeyboard = async (
     chatId: string,
     text: string,

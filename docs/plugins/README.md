@@ -12,6 +12,7 @@ All functionality beyond the core agent loop is provided by plugins. Each plugin
 | [Conversation](./conversation/) | `agentic-conversation` | Multi-turn conversation history, persistence, and state management |
 | [Daily Note](./daily-note/) | `agentic-daily-note` | Per-day memory system with automatic today-note context injection |
 | [Database](./database/) | `agentic-database` | Type-safe SQLite with per-plugin migration tracking (foundation layer) |
+| [Filesystem](./filesystem/) | `agentic-filesystem` | Virtual per-user file system for producing, consuming, and delivering files |
 | [Home Assistant](./home-assistant/) | `agentic-home-assistant` | WebSocket integration with Home Assistant for entity tracking |
 | [Interpreter](./interpreter/) | `agentic-interpreter` | Sandboxed JavaScript execution via QuickJS |
 | [Location](./location/) | `agentic-location` | User location tracking with automatic context injection |
@@ -34,7 +35,7 @@ All functionality beyond the core agent loop is provided by plugins. Each plugin
 - Time, Location
 
 **Tool providers** — give the agent new capabilities:
-- Artifact, Blueprint, Calendar, Daily Note, Interpreter, Personality, Skill, Todo, Trigger, Usage, Weather, Web Fetch
+- Artifact, Blueprint, Calendar, Daily Note, Filesystem, Interpreter, Personality, Skill, Todo, Trigger, Usage, Weather, Web Fetch
 
 **Skill-based** — register as skills activated per conversation (depend on the Skill plugin):
 - Shell, SSH

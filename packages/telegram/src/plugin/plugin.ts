@@ -1,4 +1,4 @@
-import { createPlugin, PromptService } from '@morten-olsen/agentic-core';
+import { createPlugin, FileSystemService, PromptService } from '@morten-olsen/agentic-core';
 import { DatabaseService } from '@morten-olsen/agentic-database';
 import { NotificationService } from '@morten-olsen/agentic-notification';
 
@@ -61,6 +61,19 @@ const telegramPlugin = createPlugin({
             await botService.sendMessage(chatId, responseText);
           } catch (error) {
             console.error('[Telegram] Error sending response:', error);
+          }
+        }
+
+        const fileOutputs = completion.prompt.output.filter((o) => o.type === 'file');
+        for (const fileOutput of fileOutputs) {
+          try {
+            const fs = services.get(FileSystemService);
+            const result = await fs.read(completion.userId, fileOutput.path);
+            if (result) {
+              await botService.sendDocument(chatId, result.data, fileOutput.path, fileOutput.description);
+            }
+          } catch (error) {
+            console.error('[Telegram] Error sending file:', error);
           }
         }
       });

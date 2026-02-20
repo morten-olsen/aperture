@@ -9,7 +9,7 @@ import { EventEmitter } from '../utils/utils.event-emitter.js';
 import { State } from '../state/state.js';
 
 import { contextToMessages, promptsToMessages } from './prompt.utils.js';
-import type { Prompt, PromptOutputText, PromptOutputTool, PromptUsage } from './prompt.schema.js';
+import type { Prompt, PromptOutputFile, PromptOutputText, PromptOutputTool, PromptUsage } from './prompt.schema.js';
 
 type ApprovalRequestedEvent = {
   toolCallId: string;
@@ -104,6 +104,20 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
     return `Error in tool "${toolName}": ${String(error)}`;
   };
 
+  #createAddFileOutput = (): ((file: { path: string; mimeType?: string; description?: string }) => void) => {
+    return (file) => {
+      const fileOutput: PromptOutputFile = {
+        type: 'file',
+        path: file.path,
+        mimeType: file.mimeType,
+        description: file.description,
+        start: new Date().toISOString(),
+        end: new Date().toISOString(),
+      };
+      this.#prompt.output.push(fileOutput);
+    };
+  };
+
   #prepare = async () => {
     const { userId, services, history = [] } = this.#options;
     const pluginService = services.get(PluginService);
@@ -178,6 +192,7 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
         state,
         services: this.#options.services,
         secrets: this.#options.services.secrets,
+        addFileOutput: this.#createAddFileOutput(),
       });
     }
     return tool.requireApproval;
@@ -243,6 +258,7 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
         state,
         services: this.#options.services,
         secrets: this.#options.services.secrets,
+        addFileOutput: this.#createAddFileOutput(),
       });
 
       return {
@@ -326,6 +342,7 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
           state: this.#state,
           services: this.#options.services,
           secrets: this.#options.services.secrets,
+          addFileOutput: this.#createAddFileOutput(),
         });
         pendingOutput.result = { type: 'success', output: result };
       } catch (error) {

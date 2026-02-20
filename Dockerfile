@@ -27,9 +27,10 @@ RUN groupadd --gid 1001 glados && \
 
 COPY --from=builder --chown=glados:glados /app .
 
-RUN mkdir -p /data && chown glados:glados /data
+RUN mkdir -p /data/files && chown glados:glados /data /data/files
 VOLUME /data
 ENV DATABASE_LOCATION=/data/db.sqlite
+ENV FILES_LOCATION=/data/files
 
 USER glados
 

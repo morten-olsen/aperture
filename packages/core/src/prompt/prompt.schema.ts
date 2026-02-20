@@ -51,7 +51,20 @@ const promptOutputToolSchema = promptOutputBase.extend({
 
 type PromptOutputTool = z.input<typeof promptOutputToolSchema>;
 
-const promptOutputSchema = z.discriminatedUnion('type', [promptOutputTextSchema, promptOutputToolSchema]);
+const promptOutputFileSchema = promptOutputBase.extend({
+  type: z.literal('file'),
+  path: z.string(),
+  mimeType: z.string().optional(),
+  description: z.string().optional(),
+});
+
+type PromptOutputFile = z.input<typeof promptOutputFileSchema>;
+
+const promptOutputSchema = z.discriminatedUnion('type', [
+  promptOutputTextSchema,
+  promptOutputToolSchema,
+  promptOutputFileSchema,
+]);
 
 type PromptOutput = z.input<typeof promptOutputSchema>;
 
@@ -81,6 +94,7 @@ type Prompt = z.input<typeof promptSchema>;
 
 export type {
   PromptOutputText,
+  PromptOutputFile,
   PromptOutputToolResultSuccess,
   PromptOutputToolResultError,
   PromptOutputToolResultPending,
@@ -93,6 +107,7 @@ export type {
 
 export {
   promptOutputTextSchema,
+  promptOutputFileSchema,
   promptOutputToolResultSuccessSchema,
   promptOutputToolResultErrorSchema,
   promptOutputToolResultPendingSchema,

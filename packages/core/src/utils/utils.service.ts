@@ -1,4 +1,5 @@
 import type { Config } from '../config/config.js';
+import { FileSystemProviderMemory, type FileSystemProvider } from '../filesystem/filesystem.js';
 import { SecretsProviderMemory, type SecretsProvider } from '../secrets/secrets.js';
 
 const destroy = Symbol('destroy');
@@ -11,11 +12,13 @@ type ServiceDependency<T> = new (services: Services) => T & {
 class Services {
   #config: Config;
   #secrets: SecretsProvider;
+  #fileSystem: FileSystemProvider;
   [instanceKey]: Map<ServiceDependency<unknown>, unknown>;
 
   constructor(config: Config) {
     this.#config = config;
     this.#secrets = config.secrets || new SecretsProviderMemory();
+    this.#fileSystem = config.fileSystem || new FileSystemProviderMemory();
     this[instanceKey] = new Map();
   }
 
@@ -25,6 +28,10 @@ class Services {
 
   public get secrets(): SecretsProvider {
     return this.#secrets;
+  }
+
+  public get fileSystem(): FileSystemProvider {
+    return this.#fileSystem;
   }
 
   public get = <T>(service: ServiceDependency<T>) => {
