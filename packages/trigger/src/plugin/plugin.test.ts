@@ -34,7 +34,7 @@ describe('triggerPlugin', () => {
   describe('setup', () => {
     it('runs migrations without error', async () => {
       const pluginService = services.get(PluginService);
-      await pluginService.register(triggerPlugin);
+      await pluginService.register(triggerPlugin, undefined);
     });
 
     it('calls start() on the scheduler', async () => {
@@ -42,7 +42,7 @@ describe('triggerPlugin', () => {
       const startSpy = vi.spyOn(scheduler, 'start');
 
       const pluginService = services.get(PluginService);
-      await pluginService.register(triggerPlugin);
+      await pluginService.register(triggerPlugin, undefined);
 
       expect(startSpy).toHaveBeenCalled();
     });
@@ -51,7 +51,7 @@ describe('triggerPlugin', () => {
   describe('prepare (normal session)', () => {
     it('adds standard trigger tools when not in trigger session', async () => {
       const pluginService = services.get(PluginService);
-      await pluginService.register(triggerPlugin);
+      await pluginService.register(triggerPlugin, undefined);
 
       const prepare = createPrepare();
       await triggerPlugin.prepare?.(prepare);
@@ -69,7 +69,7 @@ describe('triggerPlugin', () => {
   describe('prepare (trigger-invoked session)', () => {
     it('adds trigger context and pre-bound tools', async () => {
       const pluginService = services.get(PluginService);
-      await pluginService.register(triggerPlugin);
+      await pluginService.register(triggerPlugin, undefined);
 
       const scheduler = services.get(TriggerScheduler);
       const trigger = await scheduler.create({
@@ -103,7 +103,7 @@ describe('triggerPlugin', () => {
 
     it('includes continuation in context when present', async () => {
       const pluginService = services.get(PluginService);
-      await pluginService.register(triggerPlugin);
+      await pluginService.register(triggerPlugin, undefined);
 
       const scheduler = services.get(TriggerScheduler);
       const trigger = await scheduler.create({

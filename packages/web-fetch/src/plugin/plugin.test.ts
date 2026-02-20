@@ -3,9 +3,9 @@ import { Services, PluginService, State, PluginPrepare } from '@morten-olsen/age
 
 import { WebFetchService } from '../service/service.js';
 
-import { createWebFetchPlugin } from './plugin.js';
+import { webFetchPlugin } from './plugin.js';
 
-describe('createWebFetchPlugin', () => {
+describe('webFetchPlugin', () => {
   let services: Services;
 
   beforeEach(() => {
@@ -28,15 +28,17 @@ describe('createWebFetchPlugin', () => {
 
   describe('setup', () => {
     it('runs migrations without error', async () => {
-      const plugin = createWebFetchPlugin();
       const pluginService = services.get(PluginService);
-      await pluginService.register(plugin);
+      await pluginService.register(webFetchPlugin, {});
     });
 
     it('configures the service with provided options', async () => {
-      const plugin = createWebFetchPlugin({ maxCharacters: 10_000, defaultMode: 'html', userAgent: 'Custom/1.0' });
       const pluginService = services.get(PluginService);
-      await pluginService.register(plugin);
+      await pluginService.register(webFetchPlugin, {
+        maxCharacters: 10_000,
+        defaultMode: 'html',
+        userAgent: 'Custom/1.0',
+      });
 
       // Service is configured — verify by checking it doesn't throw when accessed
       const webFetchService = services.get(WebFetchService);
@@ -46,12 +48,11 @@ describe('createWebFetchPlugin', () => {
 
   describe('prepare', () => {
     it('adds all web-fetch tools', async () => {
-      const plugin = createWebFetchPlugin();
       const pluginService = services.get(PluginService);
-      await pluginService.register(plugin);
+      await pluginService.register(webFetchPlugin, {});
 
       const prepare = createPrepare();
-      await plugin.prepare?.(prepare);
+      await webFetchPlugin.prepare?.(prepare);
 
       const toolIds = prepare.tools.map((t) => t.id);
       expect(toolIds).toContain('web-fetch.fetch');
@@ -61,12 +62,11 @@ describe('createWebFetchPlugin', () => {
     });
 
     it('adds context about web fetching capabilities', async () => {
-      const plugin = createWebFetchPlugin();
       const pluginService = services.get(PluginService);
-      await pluginService.register(plugin);
+      await pluginService.register(webFetchPlugin, {});
 
       const prepare = createPrepare();
-      await plugin.prepare?.(prepare);
+      await webFetchPlugin.prepare?.(prepare);
 
       const contextContent = prepare.context.items.map((i) => i.content).join('\n');
       expect(contextContent).toContain('web-fetch');

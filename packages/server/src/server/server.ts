@@ -2,24 +2,22 @@ import { PluginService, Services } from '@morten-olsen/agentic-core';
 import { artifactPlugin } from '@morten-olsen/agentic-artifact';
 import { personalityPlugin } from '@morten-olsen/agentic-personality';
 import { dailyNotePlugin } from '@morten-olsen/agentic-daily-note';
-import { createDatabasePlugin } from '@morten-olsen/agentic-database';
+import { databasePlugin } from '@morten-olsen/agentic-database';
 import { conversationPlugin } from '@morten-olsen/agentic-conversation';
 import { triggerPlugin } from '@morten-olsen/agentic-trigger';
-import { createCalendarPlugin, calendarPluginOptionsSchema } from '@morten-olsen/agentic-calendar';
-import { createTelegramPlugin, telegramPluginOptionsSchema } from '@morten-olsen/agentic-telegram';
-import { createShellPlugin } from '@morten-olsen/agentic-shell';
-import { createSshPlugin } from '@morten-olsen/agentic-ssh';
-import { createWebFetchPlugin } from '@morten-olsen/agentic-web-fetch';
-import { createBlueprintPlugin } from '@morten-olsen/agentic-blueprint';
+import { calendarPlugin, calendarPluginOptionsSchema } from '@morten-olsen/agentic-calendar';
+import { telegramPlugin, telegramPluginOptionsSchema } from '@morten-olsen/agentic-telegram';
+import { shellPlugin } from '@morten-olsen/agentic-shell';
+import { sshPlugin } from '@morten-olsen/agentic-ssh';
+import { webFetchPlugin } from '@morten-olsen/agentic-web-fetch';
+import { blueprintPlugin } from '@morten-olsen/agentic-blueprint';
 import { locationPlugin } from '@morten-olsen/agentic-location';
 import { weatherPlugin } from '@morten-olsen/agentic-weather';
-import { createHomeAssistantPlugin } from '@morten-olsen/agentic-home-assistant';
+import { homeAssistantPlugin } from '@morten-olsen/agentic-home-assistant';
 import { interpreterPlugin, InterpreterService } from '@morten-olsen/agentic-interpreter';
 import { timePlugin } from '@morten-olsen/agentic-time';
 import { todoPlugin } from '@morten-olsen/agentic-todo';
 import { usagePlugin } from '@morten-olsen/agentic-usage';
-import type { Plugin } from '@morten-olsen/agentic-core';
-import type { ZodType } from 'zod';
 
 import type { ServerConfig } from '../config/config.js';
 
@@ -54,122 +52,109 @@ const startServer = async ({ config }: StartServerOptions) => {
     },
   });
 
-  const plugins: Plugin<ZodType>[] = [
-    createDatabasePlugin({
-      location: config.database.location,
-      embeddings: {
-        provider: config.embeddings.provider as 'openai' | 'local',
-        model: config.embeddings.model,
-        dimensions: config.embeddings.dimensions,
-      },
-    }),
-    conversationPlugin,
-    timePlugin,
-    artifactPlugin,
-    interpreterPlugin,
-  ];
+  await pluginService.register(databasePlugin, {
+    location: config.database.location,
+    embeddings: {
+      provider: config.embeddings.provider as 'openai' | 'local',
+      model: config.embeddings.model,
+      dimensions: config.embeddings.dimensions,
+    },
+  });
+  await pluginService.register(conversationPlugin, undefined);
+  await pluginService.register(timePlugin, undefined);
+  await pluginService.register(artifactPlugin, undefined);
+  await pluginService.register(interpreterPlugin, undefined);
 
   if (config.todo.enabled) {
-    plugins.push(todoPlugin);
+    await pluginService.register(todoPlugin, undefined);
   }
 
   if (config.personality.enabled) {
-    plugins.push(personalityPlugin);
+    await pluginService.register(personalityPlugin, undefined);
   }
 
   if (config.dailyNote.enabled) {
-    plugins.push(dailyNotePlugin);
+    await pluginService.register(dailyNotePlugin, undefined);
   }
 
   if (config.trigger.enabled) {
-    plugins.push(triggerPlugin);
+    await pluginService.register(triggerPlugin, undefined);
   }
 
   if (config.calendar.enabled) {
-    const calendarOptions = calendarPluginOptionsSchema.parse({
-      sources: config.calendar.sources,
-      defaultSyncIntervalMinutes: config.calendar.defaultSyncIntervalMinutes,
-      injectTodayAgenda: config.calendar.injectTodayAgenda,
-      expansionWindow: {
-        pastMonths: config.calendar.expansionWindow.pastMonths,
-        futureMonths: config.calendar.expansionWindow.futureMonths,
-      },
-    });
-    plugins.push(createCalendarPlugin(calendarOptions));
+    await pluginService.register(
+      calendarPlugin,
+      calendarPluginOptionsSchema.parse({
+        sources: config.calendar.sources,
+        defaultSyncIntervalMinutes: config.calendar.defaultSyncIntervalMinutes,
+        injectTodayAgenda: config.calendar.injectTodayAgenda,
+        expansionWindow: {
+          pastMonths: config.calendar.expansionWindow.pastMonths,
+          futureMonths: config.calendar.expansionWindow.futureMonths,
+        },
+      }),
+    );
   }
 
   if (config.telegram.enabled) {
-    plugins.push(
-      createTelegramPlugin(
-        telegramPluginOptionsSchema.parse({
-          token: config.telegram.token,
-          users: config.telegram.users,
-        }),
-      ),
+    await pluginService.register(
+      telegramPlugin,
+      telegramPluginOptionsSchema.parse({
+        token: config.telegram.token,
+        users: config.telegram.users,
+      }),
     );
   }
 
   if (config.location.enabled) {
-    plugins.push(locationPlugin);
+    await pluginService.register(locationPlugin, undefined);
   }
 
   if (config.weather.enabled) {
-    plugins.push(weatherPlugin);
+    await pluginService.register(weatherPlugin, undefined);
   }
 
   if (config.homeAssistant.enabled) {
-    plugins.push(
-      createHomeAssistantPlugin({
-        url: config.homeAssistant.url,
-        token: config.homeAssistant.token,
-        locationTracking: config.homeAssistant.locationTracking as { entity: string; userId: string }[],
-      }),
-    );
+    await pluginService.register(homeAssistantPlugin, {
+      url: config.homeAssistant.url,
+      token: config.homeAssistant.token,
+      locationTracking: config.homeAssistant.locationTracking as { entity: string; userId: string }[],
+    });
   }
 
   if (config.blueprint.enabled) {
-    plugins.push(
-      createBlueprintPlugin({
-        topN: config.blueprint.topN,
-        maxDistance: config.blueprint.maxDistance,
-      }),
-    );
+    await pluginService.register(blueprintPlugin, {
+      topN: config.blueprint.topN,
+      maxDistance: config.blueprint.maxDistance,
+    });
   }
 
   if (config.usage.enabled) {
-    plugins.push(usagePlugin);
+    await pluginService.register(usagePlugin, undefined);
   }
 
   if (config.shell.enabled) {
-    plugins.push(
-      createShellPlugin({
-        timeout: config.shell.timeout,
-        maxOutputLength: config.shell.maxOutputLength,
-        shell: config.shell.shell,
-      }),
-    );
+    await pluginService.register(shellPlugin, {
+      timeout: config.shell.timeout,
+      maxOutputLength: config.shell.maxOutputLength,
+      shell: config.shell.shell,
+    });
   }
 
   if (config.ssh.enabled) {
-    plugins.push(
-      createSshPlugin({
-        timeout: config.ssh.timeout,
-        maxOutputLength: config.ssh.maxOutputLength,
-      }),
-    );
+    await pluginService.register(sshPlugin, {
+      timeout: config.ssh.timeout,
+      maxOutputLength: config.ssh.maxOutputLength,
+    });
   }
 
   if (config.webFetch.enabled) {
-    plugins.push(
-      createWebFetchPlugin({
-        maxCharacters: config.webFetch.maxCharacters,
-        defaultMode: config.webFetch.defaultMode as 'html' | 'markdown' | 'links',
-        userAgent: config.webFetch.userAgent,
-      }),
-    );
+    await pluginService.register(webFetchPlugin, {
+      maxCharacters: config.webFetch.maxCharacters,
+      defaultMode: config.webFetch.defaultMode as 'html' | 'markdown' | 'links',
+      userAgent: config.webFetch.userAgent,
+    });
   }
-
-  await pluginService.register(...plugins);
 
   console.log('[glados] Server started');
   console.log('[glados]   artifact: enabled');

@@ -1,30 +1,42 @@
-import type { ZodType } from 'zod';
+import type { z, ZodType } from 'zod';
 
 import type { Services } from '../utils/utils.service.js';
 
 import type { Plugin } from './plugin.js';
 
+type PluginInstance = {
+  plugin: Plugin<ZodType, ZodType>;
+  config: unknown;
+};
+
 class PluginService {
   #services: Services;
-  #plugins: Set<Plugin<ZodType>>;
+  #plugins: Map<string, PluginInstance>;
 
   constructor(services: Services) {
     this.#services = services;
-    this.#plugins = new Set();
+    this.#plugins = new Map();
   }
 
-  public register = async (...plugins: Plugin<ZodType>[]) => {
-    for (const plugin of plugins) {
-      this.#plugins.add(plugin);
-      await plugin.setup?.({
-        services: this.#services,
-        secrets: this.#services.secrets,
-      });
-    }
+  public register = async <TConfig extends ZodType>(plugin: Plugin<ZodType, TConfig>, config: z.infer<TConfig>) => {
+    this.#plugins.set(plugin.id, {
+      plugin: plugin as Plugin<ZodType, ZodType>,
+      config,
+    });
+    await plugin.setup?.({
+      config,
+      services: this.#services,
+      secrets: this.#services.secrets,
+    });
   };
 
-  public has = (plugin: Plugin<ZodType>) => {
-    return this.#plugins.has(plugin);
+  public has = (plugin: string | Plugin<ZodType>) => {
+    return this.#plugins.has(typeof plugin === 'string' ? plugin : plugin.id);
+  };
+
+  public getConfig = (plugin: string | Plugin<ZodType>) => {
+    const instance = this.#plugins.get(typeof plugin === 'string' ? plugin : plugin.id);
+    return instance?.config;
   };
 
   public toArray = () => {

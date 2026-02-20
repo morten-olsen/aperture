@@ -10,6 +10,7 @@ import { ConversationService } from '../service/service.js';
 
 const conversationPlugin = createPlugin({
   id: 'conversation',
+  config: z.unknown(),
   state: z.unknown(),
   setup: async ({ services }) => {
     const databaseService = services.get(DatabaseService);

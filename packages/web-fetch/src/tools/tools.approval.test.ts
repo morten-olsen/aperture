@@ -3,7 +3,7 @@ import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { PromptCompletion, Services, PluginService } from '@morten-olsen/agentic-core';
 
-import { createWebFetchPlugin } from '../plugin/plugin.js';
+import { webFetchPlugin } from '../plugin/plugin.js';
 
 const TEST_BASE_URL = 'https://test.openai.com/v1';
 const RESPONSES_URL = `${TEST_BASE_URL}/responses`;
@@ -87,8 +87,7 @@ describe('web-fetch approval gate flow', () => {
 
   beforeEach(async () => {
     services = Services.mock();
-    const plugin = createWebFetchPlugin();
-    await services.get(PluginService).register(plugin);
+    await services.get(PluginService).register(webFetchPlugin, {});
   });
 
   it('pauses for approval when fetching a non-whitelisted domain', async () => {

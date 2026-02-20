@@ -8,6 +8,7 @@ const interpreterPlugin = createPlugin({
   id: 'interpreter',
   name: 'Interpreter',
   description: 'Execute JavaScript code in a sandboxed environment',
+  config: z.unknown(),
   state: z.unknown(),
   prepare: async ({ tools, services }) => {
     const interpreterService = services.get(InterpreterService);

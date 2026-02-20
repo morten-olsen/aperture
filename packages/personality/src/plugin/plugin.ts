@@ -8,6 +8,7 @@ import { personalityTools } from '../tools/tools.js';
 
 const personalityPlugin = createPlugin({
   id: 'personality',
+  config: z.unknown(),
   state: z.unknown(),
   setup: async ({ services }) => {
     const databaseService = services.get(DatabaseService);

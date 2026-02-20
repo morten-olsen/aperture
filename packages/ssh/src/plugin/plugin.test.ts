@@ -4,9 +4,9 @@ import { SkillService } from '@morten-olsen/agentic-skill';
 
 import { SshService } from '../service/service.js';
 
-import { createSshPlugin } from './plugin.js';
+import { sshPlugin } from './plugin.js';
 
-describe('createSshPlugin', () => {
+describe('sshPlugin', () => {
   let services: Services;
 
   beforeEach(() => {
@@ -15,24 +15,21 @@ describe('createSshPlugin', () => {
 
   describe('setup', () => {
     it('runs migrations without error', async () => {
-      const plugin = createSshPlugin();
       const pluginService = services.get(PluginService);
-      await pluginService.register(plugin);
+      await pluginService.register(sshPlugin, {});
     });
 
     it('configures the service with provided options', async () => {
-      const plugin = createSshPlugin({ timeout: 10_000 });
       const pluginService = services.get(PluginService);
-      await pluginService.register(plugin);
+      await pluginService.register(sshPlugin, { timeout: 10_000 });
 
       const sshService = services.get(SshService);
       expect(sshService).toBeDefined();
     });
 
     it('registers an ssh skill', async () => {
-      const plugin = createSshPlugin();
       const pluginService = services.get(PluginService);
-      await pluginService.register(plugin);
+      await pluginService.register(sshPlugin, {});
 
       const skillService = services.get(SkillService);
       const skill = skillService.skills.find((s) => s.id === 'ssh');

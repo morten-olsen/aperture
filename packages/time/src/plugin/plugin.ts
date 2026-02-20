@@ -5,6 +5,7 @@ const timePlugin = createPlugin({
   id: 'time',
   name: 'Time',
   description: 'Provides the current time as context',
+  config: z.unknown(),
   state: z.unknown(),
   prepare: async ({ context }) => {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;

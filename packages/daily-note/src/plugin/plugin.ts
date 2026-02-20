@@ -8,6 +8,7 @@ import { dailyNoteTools } from '../tools/tools.js';
 
 const dailyNotePlugin = createPlugin({
   id: 'daily-note',
+  config: z.unknown(),
   state: z.unknown(),
   setup: async ({ services }) => {
     const databaseService = services.get(DatabaseService);

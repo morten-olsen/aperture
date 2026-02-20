@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { Services, PluginService } from '@morten-olsen/agentic-core';
-import { DatabaseService, createDatabasePlugin, PromptStoreService } from '@morten-olsen/agentic-database';
+import { DatabaseService, databasePlugin, PromptStoreService } from '@morten-olsen/agentic-database';
 
 import { conversationDatabase } from '../database/database.js';
 import { ConversationRepo } from '../repo/repo.js';
@@ -60,11 +60,9 @@ describe('ConversationService', () => {
 
     // Setup databases (like databasePlugin + conversationPlugin would)
     const pluginService = services.get(PluginService);
-    await pluginService.register(
-      createDatabasePlugin({
-        location: ':memory:',
-      }),
-    );
+    await pluginService.register(databasePlugin, {
+      location: ':memory:',
+    });
 
     const dbService = services.get(DatabaseService);
     await dbService.get(conversationDatabase);

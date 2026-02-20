@@ -6,6 +6,7 @@ import { skillTools } from '../tools/tools.js';
 
 const skillPlugin = createPlugin({
   id: 'skills',
+  config: z.unknown(),
   state: z.object({
     active: z.array(z.string()),
   }),

@@ -5,6 +5,7 @@ import { weatherTools } from '../tools/tools.js';
 
 const weatherPlugin = createPlugin({
   id: 'weather',
+  config: z.unknown(),
   state: z.unknown(),
   prepare: async ({ tools }) => {
     tools.push(...weatherTools);

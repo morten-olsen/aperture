@@ -7,6 +7,7 @@ const usagePlugin = createPlugin({
   id: 'usage',
   name: 'Usage',
   description: 'Token usage and cost tracking',
+  config: z.unknown(),
   state: z.unknown(),
   prepare: async ({ tools }) => {
     tools.push(...usageTools);

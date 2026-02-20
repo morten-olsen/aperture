@@ -154,13 +154,14 @@ describe('PromptCompletion', () => {
     const plugin = createPlugin({
       id: 'test',
       name: 'Test Plugin',
+      config: z.unknown(),
       state: z.unknown(),
       prepare: async (prepare) => {
         prepare.tools.push(echoTool);
       },
     });
 
-    await services.get(PluginService).register(plugin);
+    await services.get(PluginService).register(plugin, undefined);
 
     let callCount = 0;
     server.use(
@@ -213,13 +214,14 @@ describe('PromptCompletion', () => {
     const plugin = createPlugin({
       id: 'test',
       name: 'Test Plugin',
+      config: z.unknown(),
       state: z.unknown(),
       prepare: async (prepare) => {
         prepare.tools.push(failingTool);
       },
     });
 
-    await services.get(PluginService).register(plugin);
+    await services.get(PluginService).register(plugin, undefined);
 
     let callCount = 0;
     server.use(
@@ -272,13 +274,14 @@ describe('PromptCompletion', () => {
     const plugin = createPlugin({
       id: 'test',
       name: 'Test Plugin',
+      config: z.unknown(),
       state: z.unknown(),
       prepare: async (prepare) => {
         prepare.tools.push(realTool);
       },
     });
 
-    await services.get(PluginService).register(plugin);
+    await services.get(PluginService).register(plugin, undefined);
 
     let callCount = 0;
     server.use(
@@ -324,13 +327,14 @@ describe('PromptCompletion', () => {
     const plugin = createPlugin({
       id: 'test',
       name: 'Test Plugin',
+      config: z.unknown(),
       state: z.unknown(),
       prepare: async (prepare) => {
         prepare.tools.push(strictTool);
       },
     });
 
-    await services.get(PluginService).register(plugin);
+    await services.get(PluginService).register(plugin, undefined);
 
     let callCount = 0;
     server.use(
@@ -400,13 +404,14 @@ describe('PromptCompletion', () => {
     const plugin = createPlugin({
       id: 'test',
       name: 'Test Plugin',
+      config: z.unknown(),
       state: z.unknown(),
       prepare: async (prepare) => {
         prepare.tools.push(addTool);
       },
     });
 
-    await services.get(PluginService).register(plugin);
+    await services.get(PluginService).register(plugin, undefined);
 
     let callCount = 0;
     const capturedBodies: unknown[] = [];
@@ -461,7 +466,7 @@ describe('PromptCompletion', () => {
         },
       });
 
-      await services.get(PluginService).register(plugin);
+      await services.get(PluginService).register(plugin, undefined);
 
       server.use(
         http.post(RESPONSES_URL, () => {
@@ -518,7 +523,7 @@ describe('PromptCompletion', () => {
         },
       });
 
-      await services.get(PluginService).register(plugin);
+      await services.get(PluginService).register(plugin, undefined);
 
       let callCount = 0;
       server.use(
@@ -565,7 +570,7 @@ describe('PromptCompletion', () => {
         },
       });
 
-      await services.get(PluginService).register(plugin);
+      await services.get(PluginService).register(plugin, undefined);
 
       let callCount = 0;
       server.use(
@@ -621,7 +626,7 @@ describe('PromptCompletion', () => {
         },
       });
 
-      await services.get(PluginService).register(plugin);
+      await services.get(PluginService).register(plugin, undefined);
 
       let callCount = 0;
       server.use(
@@ -672,7 +677,7 @@ describe('PromptCompletion', () => {
         },
       });
 
-      await services.get(PluginService).register(plugin);
+      await services.get(PluginService).register(plugin, undefined);
 
       let callCount = 0;
       server.use(
@@ -729,7 +734,7 @@ describe('PromptCompletion', () => {
         },
       });
 
-      await services.get(PluginService).register(plugin);
+      await services.get(PluginService).register(plugin, undefined);
 
       let callCount = 0;
       server.use(
@@ -822,7 +827,7 @@ describe('PromptCompletion', () => {
         },
       });
 
-      await services.get(PluginService).register(plugin);
+      await services.get(PluginService).register(plugin, undefined);
 
       let callCount = 0;
       server.use(
@@ -884,7 +889,7 @@ describe('PromptCompletion', () => {
         },
       });
 
-      await services.get(PluginService).register(plugin);
+      await services.get(PluginService).register(plugin, undefined);
 
       let callCount = 0;
       server.use(
@@ -939,7 +944,7 @@ describe('PromptCompletion', () => {
         },
       });
 
-      await services.get(PluginService).register(plugin);
+      await services.get(PluginService).register(plugin, undefined);
 
       let callCount = 0;
       server.use(
@@ -992,7 +997,7 @@ describe('PromptCompletion', () => {
         },
       });
 
-      await services.get(PluginService).register(plugin);
+      await services.get(PluginService).register(plugin, undefined);
 
       let callCount = 0;
       server.use(
@@ -1044,7 +1049,7 @@ describe('PromptCompletion', () => {
         },
       });
 
-      await services.get(PluginService).register(plugin);
+      await services.get(PluginService).register(plugin, undefined);
 
       let callCount = 0;
       server.use(
@@ -1121,7 +1126,7 @@ describe('PromptCompletion', () => {
         },
       });
 
-      await services.get(PluginService).register(plugin);
+      await services.get(PluginService).register(plugin, undefined);
 
       let callCount = 0;
       const capturedBodies: unknown[] = [];

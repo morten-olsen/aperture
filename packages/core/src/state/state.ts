@@ -13,12 +13,15 @@ class State {
     this.#states = options.initial;
   }
 
-  public setState = <TState extends ZodType>(plugin: Plugin<TState>, state: z.input<TState>) => {
+  public setState = <TState extends ZodType, TConfig extends ZodType>(
+    plugin: Plugin<TState, TConfig>,
+    state: z.input<TState>,
+  ) => {
     const parsed = plugin.state.parse(state);
     this.#states[plugin.id] = parsed;
   };
 
-  public getState = <TState extends ZodType>(plugin: Plugin<TState>) => {
+  public getState = <TState extends ZodType, TConfig extends ZodType>(plugin: Plugin<TState, TConfig>) => {
     const state = this.#states[plugin.id];
     if (!state) {
       return undefined;

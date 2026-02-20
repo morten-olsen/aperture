@@ -14,14 +14,17 @@ const myPlugin = createPlugin({
   id: 'my-plugin',
   name: 'My Plugin',
   description: 'Does useful things',
+  config: z.object({
+    apiUrl: z.string(),
+  }),
   state: z.object({
     counter: z.number(),
   }),
-  setup: async ({ services }) => {
-    // One-time initialization
+  setup: async ({ config, services }) => {
+    // One-time initialization; config is typed as { apiUrl: string }
   },
-  prepare: async ({ context, tools, state, services }) => {
-    // Called before each prompt
+  prepare: async ({ config, context, tools, state, services }) => {
+    // Called before each prompt; config is the same typed value
   },
 });
 
@@ -35,9 +38,10 @@ export { myPlugin };
 | `id` | Yes | Unique identifier. Used as the state storage key. |
 | `name` | No | Human-readable name. |
 | `description` | No | Description of what the plugin does. |
+| `config` | Yes | Zod schema defining the plugin's configuration shape. Use `z.unknown()` if you don't need config. The inferred type is passed to both `setup` and `prepare`. |
 | `state` | Yes | Zod schema defining the shape of this plugin's state. Use `z.unknown()` if you don't need state. |
-| `setup` | No | Async function called once when the plugin is registered. |
-| `prepare` | No | Async function called before each prompt in the agent loop. |
+| `setup` | No | Async function called once when the plugin is registered. Receives `config`. |
+| `prepare` | No | Async function called before each prompt in the agent loop. Receives `config`. |
 | `tools` | No | Static list of tools (prefer adding tools dynamically in `prepare` instead). |
 
 ## Lifecycle
@@ -54,8 +58,12 @@ export { myPlugin };
 ```typescript
 const myPlugin = createPlugin({
   id: 'my-plugin',
+  config: z.object({
+    dbPath: z.string(),
+  }),
   state: z.unknown(),
-  setup: async ({ services }) => {
+  setup: async ({ config, services }) => {
+    // config.dbPath is typed as string
     // Run database migrations on startup
     const databaseService = services.get(DatabaseService);
     const db = await databaseService.get(myDatabase);
@@ -74,12 +82,13 @@ const myPlugin = createPlugin({
 
 ### Preparation (`prepare`)
 
-`prepare()` is called before every prompt in the agent loop. The framework creates a `PluginPrepare` object that the plugin can modify. Each registered plugin's `prepare()` is called in order.
+`prepare()` is called before every prompt in the agent loop. The framework creates a shared `PluginPrepareContext` that accumulates tools, context, and state across all plugins. Each plugin receives its own `PluginPrepare` view (via `PluginPrepareContext.forPlugin(config)`) with a typed `config` getter and shared access to the mutable collections. Each registered plugin's `prepare()` is called in order.
 
 The `PluginPrepare` object exposes:
 
 | Property | Type | Description |
 |----------|------|-------------|
+| `config` | `z.infer<TConfig>` | The plugin's typed configuration, as passed during registration. |
 | `context` | `Context` | System context. Push items to `context.items[]` to add system instructions. |
 | `tools` | `Tool[]` | Available tools. Push tools to make them available for this prompt. |
 | `state` | `State` | Plugin state manager. Read/write state scoped to this plugin. |
@@ -89,22 +98,27 @@ The `PluginPrepare` object exposes:
 ```typescript
 const myPlugin = createPlugin({
   id: 'my-plugin',
+  config: z.object({
+    enableAdvanced: z.boolean(),
+  }),
   state: z.object({
     mode: z.enum(['basic', 'advanced']),
   }),
-  prepare: async ({ context, tools, state, services }) => {
+  prepare: async ({ config, context, tools, state, services }) => {
     // Add system context
     context.items.push({
       type: 'instruction',
       content: 'You are a helpful assistant with access to triggers.',
     });
 
-    // Add tools based on state
+    // Add tools based on config and state
     tools.push(baseTool);
 
-    const pluginState = state.getState(myPlugin);
-    if (pluginState?.mode === 'advanced') {
-      tools.push(advancedTool);
+    if (config.enableAdvanced) {
+      const pluginState = state.getState(myPlugin);
+      if (pluginState?.mode === 'advanced') {
+        tools.push(advancedTool);
+      }
     }
   },
 });
@@ -112,7 +126,7 @@ const myPlugin = createPlugin({
 
 ## Registering Plugins
 
-Plugins are registered through `PluginService`:
+Plugins are registered through `PluginService`. Each plugin is registered individually with its configuration value:
 
 ```typescript
 import { PluginService, Services } from '@morten-olsen/agentic-core';
@@ -120,11 +134,13 @@ import { PluginService, Services } from '@morten-olsen/agentic-core';
 const services = new Services();
 const pluginService = services.get(PluginService);
 
-// Register one or more plugins
-await pluginService.register(triggerPlugin, skillPlugin, myPlugin);
+// Register each plugin with its config
+await pluginService.register(triggerPlugin, { cronExpression: '0 * * * *' });
+await pluginService.register(skillPlugin, { maxActive: 5 });
+await pluginService.register(myPlugin, { apiUrl: 'https://example.com' });
 ```
 
-Registration calls `setup()` on each plugin in order. If a plugin's `setup()` throws, registration stops.
+Registration calls `setup()` on the plugin with `config`, `services`, and `secrets`. If `setup()` throws, registration stops.
 
 ## Adding Context
 
@@ -184,7 +200,7 @@ prepare: async ({ state }) => {
 
 ## Complete Example: Trigger Plugin
 
-The trigger plugin demonstrates all plugin capabilities:
+The trigger plugin demonstrates all plugin capabilities including config:
 
 ```typescript
 import { createPlugin } from '@morten-olsen/agentic-core';
@@ -199,13 +215,16 @@ import { database } from '../database/database.js';
 const triggerPlugin = createPlugin({
   id: 'trigger',
 
+  // Config schema — validated at registration
+  config: z.unknown(),
+
   // State tracks which trigger is currently active
   state: z.object({
     from: triggerReferenceSchema,
   }),
 
   // One-time setup: run migrations, verify data
-  setup: async ({ services }) => {
+  setup: async ({ config, services }) => {
     const databaseService = services.get(DatabaseService);
     const db = await databaseService.get(database);
     const result = await db.selectFrom('triggers_triggers').selectAll().execute();
@@ -213,7 +232,7 @@ const triggerPlugin = createPlugin({
   },
 
   // Per-prompt preparation
-  prepare: async ({ tools, context, state, services }) => {
+  prepare: async ({ config, tools, context, state, services }) => {
     // Always provide trigger management tools
     tools.push(...triggerTools);
 
@@ -258,12 +277,14 @@ import { skillTools } from '../tools/tools.js';
 const skillPlugin = createPlugin({
   id: 'skills',
 
+  config: z.unknown(),
+
   // State tracks which skills are currently active
   state: z.object({
     active: z.array(z.string()),
   }),
 
-  prepare: async ({ context, tools, state, services }) => {
+  prepare: async ({ config, context, tools, state, services }) => {
     const skillService = services.get(SkillService);
     const skillState = state.getState(skillPlugin);
 

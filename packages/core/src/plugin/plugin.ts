@@ -2,7 +2,9 @@ import type { ZodType } from 'zod';
 
 import type { Plugin } from './plugin.types.js';
 
-const createPlugin = <TSchema extends ZodType>(plugin: Plugin<TSchema>): Plugin<TSchema> => plugin;
+const createPlugin = <TState extends ZodType, TConfig extends ZodType>(
+  plugin: Plugin<TState, TConfig>,
+): Plugin<TState, TConfig> => plugin;
 
 export * from './plugin.service.js';
 export * from './plugin.types.js';

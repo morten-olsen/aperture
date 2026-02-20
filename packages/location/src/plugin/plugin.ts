@@ -7,6 +7,7 @@ import { LocationService } from '../service/service.js';
 
 const locationPlugin = createPlugin({
   id: 'location',
+  config: z.unknown(),
   state: z.unknown(),
   setup: async ({ services }) => {
     const databaseService = services.get(DatabaseService);

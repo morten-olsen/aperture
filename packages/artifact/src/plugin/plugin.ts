@@ -10,6 +10,7 @@ const artifactPlugin = createPlugin({
   id: 'artifact',
   name: 'Artifact',
   description: 'Stores and retrieves large structured data produced by tools',
+  config: z.unknown(),
   state: z.unknown(),
   setup: async ({ services }) => {
     const databaseService = services.get(DatabaseService);

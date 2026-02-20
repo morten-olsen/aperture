@@ -4,7 +4,7 @@ import { setupServer } from 'msw/node';
 import { PromptCompletion, Services, PluginService } from '@morten-olsen/agentic-core';
 import { skillPlugin } from '@morten-olsen/agentic-skill';
 
-import { createShellPlugin } from '../plugin/plugin.js';
+import { shellPlugin } from '../plugin/plugin.js';
 
 const TEST_BASE_URL = 'https://test.openai.com/v1';
 const RESPONSES_URL = `${TEST_BASE_URL}/responses`;
@@ -88,7 +88,8 @@ describe('shell approval gate flow', () => {
 
   beforeEach(async () => {
     services = Services.mock();
-    await services.get(PluginService).register(skillPlugin, createShellPlugin());
+    await services.get(PluginService).register(skillPlugin, undefined);
+    await services.get(PluginService).register(shellPlugin, {});
   });
 
   it('pauses for approval when executing a non-whitelisted command', async () => {

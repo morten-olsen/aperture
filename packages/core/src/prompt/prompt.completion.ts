@@ -4,7 +4,7 @@ import OpenAI from 'openai';
 
 import type { ApprovalRequest, Tool } from '../tool/tool.js';
 import type { Services } from '../utils/utils.service.js';
-import { PluginService, PluginPrepare } from '../plugin/plugin.js';
+import { PluginService, PluginPrepareContext } from '../plugin/plugin.js';
 import { EventEmitter } from '../utils/utils.event-emitter.js';
 import { State } from '../state/state.js';
 
@@ -107,25 +107,24 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
   #prepare = async () => {
     const { userId, services, history = [] } = this.#options;
     const pluginService = services.get(PluginService);
-    const prepare = new PluginPrepare({
+
+    const prepareContext = new PluginPrepareContext({
       userId,
-      context: {
-        items: [],
-      },
+      context: { items: [] },
       prompts: [...history, this.#prompt],
       tools: [],
       state: this.#state,
       services,
     });
 
-    for (const plugin of pluginService.toArray()) {
-      await plugin.prepare?.(prepare);
+    for (const [, { plugin, config }] of pluginService.toArray()) {
+      await plugin.prepare?.(prepareContext.forPlugin(config));
     }
 
-    return prepare;
+    return prepareContext;
   };
 
-  #callModel = async (prepared: PluginPrepare) => {
+  #callModel = async (prepared: PluginPrepareContext) => {
     const { services } = this.#options;
     const messages: OpenAI.Responses.ResponseInput = [
       ...contextToMessages(prepared.context),

@@ -4,7 +4,7 @@ import { setupServer } from 'msw/node';
 import { PromptCompletion, Services, PluginService } from '@morten-olsen/agentic-core';
 import { skillPlugin } from '@morten-olsen/agentic-skill';
 
-import { createSshPlugin } from '../plugin/plugin.js';
+import { sshPlugin } from '../plugin/plugin.js';
 
 vi.mock('ssh2', async () => {
   const { EventEmitter } = await import('node:events');
@@ -114,7 +114,8 @@ describe('ssh approval gate flow', () => {
 
   beforeEach(async () => {
     services = Services.mock();
-    await services.get(PluginService).register(skillPlugin, createSshPlugin());
+    await services.get(PluginService).register(skillPlugin, undefined);
+    await services.get(PluginService).register(sshPlugin, {});
 
     const { SshService } = await import('../service/service.js');
     const sshService = services.get(SshService);

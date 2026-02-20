@@ -10,6 +10,7 @@ const todoPlugin = createPlugin({
   id: 'todo',
   name: 'Todo',
   description: 'Task management with subtasks, priorities, projects, and tags',
+  config: z.unknown(),
   state: z.unknown(),
   setup: async ({ services }) => {
     const databaseService = services.get(DatabaseService);

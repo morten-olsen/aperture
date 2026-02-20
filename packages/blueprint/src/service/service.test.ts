@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { Services, PluginService } from '@morten-olsen/agentic-core';
 import { EmbeddingService } from '@morten-olsen/agentic-database';
 
-import { createBlueprintPlugin } from '../plugin/plugin.js';
+import { blueprintPlugin } from '../plugin/plugin.js';
 
 import { BlueprintService } from './service.js';
 
@@ -27,7 +27,7 @@ describe('BlueprintService', () => {
     mockEmbedding([[0.1, 0.2, 0.3]]);
 
     const pluginService = services.get(PluginService);
-    await pluginService.register(createBlueprintPlugin());
+    await pluginService.register(blueprintPlugin, {});
 
     service = services.get(BlueprintService);
   });

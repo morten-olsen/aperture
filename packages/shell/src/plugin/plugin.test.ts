@@ -4,9 +4,9 @@ import { SkillService } from '@morten-olsen/agentic-skill';
 
 import { ShellService } from '../service/service.js';
 
-import { createShellPlugin } from './plugin.js';
+import { shellPlugin } from './plugin.js';
 
-describe('createShellPlugin', () => {
+describe('shellPlugin', () => {
   let services: Services;
 
   beforeEach(() => {
@@ -15,24 +15,21 @@ describe('createShellPlugin', () => {
 
   describe('setup', () => {
     it('runs migrations without error', async () => {
-      const plugin = createShellPlugin();
       const pluginService = services.get(PluginService);
-      await pluginService.register(plugin);
+      await pluginService.register(shellPlugin, {});
     });
 
     it('configures the service with provided options', async () => {
-      const plugin = createShellPlugin({ timeout: 10_000, shell: '/bin/bash' });
       const pluginService = services.get(PluginService);
-      await pluginService.register(plugin);
+      await pluginService.register(shellPlugin, { timeout: 10_000, shell: '/bin/bash' });
 
       const shellService = services.get(ShellService);
       expect(shellService).toBeDefined();
     });
 
     it('registers a shell skill', async () => {
-      const plugin = createShellPlugin();
       const pluginService = services.get(PluginService);
-      await pluginService.register(plugin);
+      await pluginService.register(shellPlugin, {});
 
       const skillService = services.get(SkillService);
       const skill = skillService.skills.find((s) => s.id === 'shell');

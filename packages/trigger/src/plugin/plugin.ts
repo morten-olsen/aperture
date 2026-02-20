@@ -14,6 +14,7 @@ const triggerStateSchema = z.object({
 
 const triggerPlugin = createPlugin({
   id: 'trigger',
+  config: z.unknown(),
   state: triggerStateSchema,
   setup: async ({ services }) => {
     const databaseService = services.get(DatabaseService);
