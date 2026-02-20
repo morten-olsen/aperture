@@ -1,7 +1,7 @@
-import { action } from '@storybook/addon-actions';
+import { fn } from 'storybook/test';
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 
-import { ApprovalBanner } from './ApprovalBanner.tsx';
+import { ApprovalBanner } from './approval-banner.tsx';
 
 const meta: Meta<typeof ApprovalBanner> = {
   component: ApprovalBanner,
@@ -18,8 +18,8 @@ const Default: Story = {
       input: { path: '/src/app.ts', content: '...' },
       reason: 'This tool modifies the filesystem',
     },
-    onApprove: action('approve'),
-    onReject: action('reject'),
+    onApprove: fn(),
+    onReject: fn(),
   },
 };
 

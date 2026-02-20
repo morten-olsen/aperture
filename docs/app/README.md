@@ -39,6 +39,7 @@ apps/expo/
 
 ## Detailed Documentation
 
+- [Design Principles](./design-principal.md) — Visual language, color system, component patterns
 - [Client](./client.md) — API client, SSE events, platform abstraction
 - [Hooks](./hooks.md) — React hooks for tools, prompts, and events
 - [Codegen](./codegen.md) — Typed tool bindings and the generate script

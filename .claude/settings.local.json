@@ -72,7 +72,8 @@
       "WebFetch(domain:heyapi.dev)",
       "WebFetch(domain:tanstack.com)",
       "Bash(gh api:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "WebFetch(domain:expo.dev)"
     ]
   }
 }

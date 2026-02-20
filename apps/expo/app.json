@@ -1,25 +1,40 @@
 {
   "expo": {
-    "name": "GLaDOS",
-    "slug": "glados",
+    "name": "Aperture",
+    "slug": "aperture",
     "version": "1.0.0",
-    "scheme": "glados",
+    "scheme": "aperture",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/0029aadc-ab19-47dc-8929-9dc8d87723d5"
+    },
     "web": {
       "bundler": "metro",
       "output": "single",
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-updates"
     ],
     "experiments": {
       "typedRoutes": true
     },
     "ios": {
-      "bundleIdentifier": "com.mortenolsen.glados"
+      "bundleIdentifier": "com.mortenolsen.aperture"
     },
     "android": {
-      "package": "com.mortenolsen.glados"
-    }
+      "package": "com.mortenolsen.aperture",
+      "softwareKeyboardLayoutMode": "resize"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "0029aadc-ab19-47dc-8929-9dc8d87723d5"
+      }
+    },
+    "owner": "mortenolsen"
   }
 }

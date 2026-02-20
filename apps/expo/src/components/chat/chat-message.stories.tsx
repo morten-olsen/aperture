@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 
-import { ChatMessage } from './ChatMessage.tsx';
+import { ChatMessage } from './chat-message.tsx';
 
 const meta: Meta<typeof ChatMessage> = {
   component: ChatMessage,

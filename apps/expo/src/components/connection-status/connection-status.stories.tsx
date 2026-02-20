@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 
-import type { EventStream } from '../client/client.events.ts';
+import type { EventStream } from '../../client/client.events.ts';
 
-import { ConnectionStatus } from './ConnectionStatus.tsx';
+import { ConnectionStatus } from './connection-status.tsx';
 
 const meta: Meta<typeof ConnectionStatus> = {
   component: ConnectionStatus,

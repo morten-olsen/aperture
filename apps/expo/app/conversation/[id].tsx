@@ -1,14 +1,14 @@
-import { useCallback, useRef, useState } from 'react';
-import { FlatList, type TextInput as RNTextInput } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
-import { YStack, XStack, Input, Button } from 'tamagui';
+import { useCallback, useState } from 'react';
+import { KeyboardAvoidingView, Platform, Pressable } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { YStack, XStack } from 'tamagui';
+import { ArrowLeft } from '@tamagui/lucide-icons';
 
 import { useToolQuery } from '../../src/hooks/use-tools';
 import { usePrompt, type PromptOutput } from '../../src/hooks/use-prompt';
-import { ChatMessage } from '../../src/components/chat/ChatMessage';
-import { ToolCallCard } from '../../src/components/chat/ToolCallCard';
-import { ApprovalBanner } from '../../src/components/chat/ApprovalBanner';
-import { StreamingIndicator } from '../../src/components/chat/StreamingIndicator';
+import { ChatConversation } from '../../src/components/chat/chat-conversation';
 
 type HistoryEntry = {
   type: string;
@@ -26,7 +26,9 @@ type Prompt = {
 const flattenPrompts = (prompts: unknown[]): HistoryEntry[] => {
   const entries: HistoryEntry[] = [];
   for (const prompt of prompts as Prompt[]) {
-    entries.push({ type: 'text', role: 'user', content: prompt.input });
+    if (prompt.input) {
+      entries.push({ type: 'text', role: 'user', content: prompt.input });
+    }
     if (prompt.output) {
       for (const entry of prompt.output) {
         entries.push(entry);
@@ -38,8 +40,8 @@ const flattenPrompts = (prompts: unknown[]): HistoryEntry[] => {
 
 const ChatScreen = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [text, setText] = useState('');
-  const inputRef = useRef<RNTextInput>(null);
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { data } = useToolQuery('conversation.get', { id });
   const { send, outputs, pendingApproval, isStreaming, error, approve, reject } = usePrompt();
   const [pendingInput, setPendingInput] = useState<string | null>(null);
@@ -52,63 +54,45 @@ const ChatScreen = () => {
     ...outputs,
   ];
 
-  const handleSend = useCallback(() => {
-    if (!text.trim()) return;
-    const input = text.trim();
-    setPendingInput(input);
-    send(input, { conversationId: id });
-    setText('');
-    inputRef.current?.blur();
-  }, [text, send, id]);
+  const handleSend = useCallback(
+    (text: string) => {
+      setPendingInput(text);
+      send(text, { conversationId: id });
+    },
+    [send, id],
+  );
 
-  const renderItem = useCallback(({ item }: { item: HistoryEntry | PromptOutput }) => {
-    if (item.type === 'tool') {
-      return <ToolCallCard data={item} />;
-    }
-    return <ChatMessage data={item} />;
-  }, []);
+  const content = (
+    <YStack flex={1} backgroundColor="$background" paddingTop={insets.top} paddingBottom={insets.bottom}>
+      <Stack.Screen options={{ headerShown: false }} />
 
-  return (
-    <YStack flex={1}>
-      <FlatList
-        data={allMessages}
-        keyExtractor={(_, index) => String(index)}
-        renderItem={renderItem}
-        contentContainerStyle={{ padding: 12 }}
-      />
-
-      {pendingApproval && (
-        <ApprovalBanner
-          approval={pendingApproval}
-          onApprove={() => approve(pendingApproval.toolCallId)}
-          onReject={() => reject(pendingApproval.toolCallId)}
-        />
-      )}
-
-      {isStreaming && <StreamingIndicator />}
-
-      {error && (
-        <YStack padding="$2" backgroundColor="$red2">
-          <ChatMessage data={{ type: 'text', content: `Error: ${error.message}` }} />
-        </YStack>
-      )}
-
-      <XStack padding="$3" gap="$2" borderTopWidth={1} borderTopColor="$borderColor">
-        <Input
-          ref={inputRef}
-          flex={1}
-          value={text}
-          onChangeText={setText}
-          placeholder="Type a message..."
-          onSubmitEditing={handleSend}
-          returnKeyType="send"
-        />
-        <Button theme="active" onPress={handleSend} disabled={!text.trim() || isStreaming}>
-          Send
-        </Button>
+      <XStack paddingHorizontal="$4" paddingVertical="$3" borderBottomWidth={1} borderBottomColor="$borderSubtle">
+        <Pressable onPress={() => router.back()} hitSlop={12}>
+          <ArrowLeft size={24} color="$accent" />
+        </Pressable>
       </XStack>
+
+      <ChatConversation
+        messages={allMessages}
+        isStreaming={isStreaming}
+        error={error?.message ?? null}
+        pendingApproval={pendingApproval}
+        onSend={handleSend}
+        onApprove={pendingApproval ? () => approve(pendingApproval.toolCallId) : undefined}
+        onReject={pendingApproval ? () => reject(pendingApproval.toolCallId) : undefined}
+      />
     </YStack>
   );
+
+  if (Platform.OS === 'ios') {
+    return (
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+        {content}
+      </KeyboardAvoidingView>
+    );
+  }
+
+  return content;
 };
 
 export default ChatScreen;

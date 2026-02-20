@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 
-import { StreamingIndicator } from './StreamingIndicator.tsx';
+import { StreamingIndicator } from './streaming-indicator.tsx';
 
 const meta: Meta<typeof StreamingIndicator> = {
   component: StreamingIndicator,
