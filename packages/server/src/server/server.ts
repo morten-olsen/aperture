@@ -18,7 +18,7 @@ import { weatherPlugin } from '@morten-olsen/agentic-weather';
 import { homeAssistantPlugin } from '@morten-olsen/agentic-home-assistant';
 import { interpreterPlugin, InterpreterService } from '@morten-olsen/agentic-interpreter';
 import { timePlugin } from '@morten-olsen/agentic-time';
-import { todoPlugin } from '@morten-olsen/agentic-todo';
+import { todoPlugin, todoApiTools } from '@morten-olsen/agentic-todo';
 import { usagePlugin } from '@morten-olsen/agentic-usage';
 
 import type { ServerConfig } from '../config/config.js';
@@ -168,6 +168,9 @@ const startServer = async ({ config }: StartServerOptions) => {
     apiService.exposeTools(conversationApiTools, { tag: 'Conversations' });
     if (config.trigger.enabled) {
       apiService.exposeTools(triggerTools, { tag: 'Triggers' });
+    }
+    if (config.todo.enabled) {
+      apiService.exposeTools(todoApiTools, { tag: 'Todos' });
     }
     await pluginService.register(apiPlugin, {
       port: config.api.port,

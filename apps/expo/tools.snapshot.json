@@ -638,6 +638,355 @@
         ],
         "additionalProperties": false
       }
+    },
+    {
+      "id": "todo.create",
+      "description": "Create a new task. Supports subtasks via parentId, priorities, projects, and tags.",
+      "tag": "Todos",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "description": "Task title"
+          },
+          "description": {
+            "type": "string",
+            "description": "Task description"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "in_progress", "completed", "cancelled"],
+            "description": "Task status (default: pending)"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "urgent"],
+            "description": "Task priority (default: medium)"
+          },
+          "parentId": {
+            "type": "string",
+            "description": "Parent task ID for subtasks"
+          },
+          "position": {
+            "type": "number",
+            "description": "Sort order (default: 0)"
+          },
+          "project": {
+            "type": "string",
+            "description": "Project name"
+          },
+          "agentNotes": {
+            "type": "string",
+            "description": "Private notes for the agent"
+          },
+          "startsAt": {
+            "type": "string",
+            "description": "Start date (ISO8601)"
+          },
+          "dueAt": {
+            "type": "string",
+            "description": "Due date (ISO8601)"
+          },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Tags to attach"
+          }
+        },
+        "required": ["userId", "title"],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "status": { "type": "string", "enum": ["pending", "in_progress", "completed", "cancelled"] },
+          "priority": { "type": "string", "enum": ["low", "medium", "high", "urgent"] },
+          "parentId": { "type": "string" },
+          "position": { "type": "number" },
+          "project": { "type": "string" },
+          "agentNotes": { "type": "string" },
+          "startsAt": { "type": "string" },
+          "dueAt": { "type": "string" },
+          "completedAt": { "type": "string" },
+          "createdAt": { "type": "string" },
+          "updatedAt": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["id", "title", "status", "priority", "position", "createdAt", "updatedAt", "tags"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "todo.list",
+      "description": "List tasks with optional filters. Set parentId to null to get only top-level tasks. Use tags to filter by all matching tags.",
+      "tag": "Todos",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "in_progress", "completed", "cancelled"],
+            "description": "Filter by status"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "urgent"],
+            "description": "Filter by priority"
+          },
+          "project": {
+            "type": "string",
+            "description": "Filter by project"
+          },
+          "parentId": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "description": "Filter by parent ID (null for top-level only)"
+          },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Filter by tags (all must match)"
+          },
+          "search": {
+            "type": "string",
+            "description": "Search in title and description"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max results (default: 50)"
+          }
+        },
+        "required": ["userId"],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "tasks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "title": { "type": "string" },
+                "description": { "type": "string" },
+                "status": { "type": "string", "enum": ["pending", "in_progress", "completed", "cancelled"] },
+                "priority": { "type": "string", "enum": ["low", "medium", "high", "urgent"] },
+                "parentId": { "type": "string" },
+                "position": { "type": "number" },
+                "project": { "type": "string" },
+                "agentNotes": { "type": "string" },
+                "startsAt": { "type": "string" },
+                "dueAt": { "type": "string" },
+                "completedAt": { "type": "string" },
+                "createdAt": { "type": "string" },
+                "updatedAt": { "type": "string" },
+                "tags": { "type": "array", "items": { "type": "string" } }
+              },
+              "required": ["id", "title", "status", "priority", "position", "createdAt", "updatedAt", "tags"],
+              "additionalProperties": false
+            }
+          },
+          "total": { "type": "number" }
+        },
+        "required": ["tasks", "total"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "todo.update",
+      "description": "Update a task. Setting status to \"completed\" auto-sets completedAt. Pass null to clear optional fields.",
+      "tag": "Todos",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "taskId": {
+            "type": "string",
+            "description": "ID of the task to update"
+          },
+          "title": {
+            "type": "string",
+            "description": "New title"
+          },
+          "description": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "description": "New description (null to clear)"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "in_progress", "completed", "cancelled"],
+            "description": "New status"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "urgent"],
+            "description": "New priority"
+          },
+          "parentId": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "description": "New parent ID (null to make top-level)"
+          },
+          "position": {
+            "type": "number",
+            "description": "New sort order"
+          },
+          "project": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "description": "New project (null to clear)"
+          },
+          "agentNotes": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "description": "New agent notes (null to clear)"
+          },
+          "startsAt": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "description": "New start date (null to clear)"
+          },
+          "dueAt": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "description": "New due date (null to clear)"
+          }
+        },
+        "required": ["userId", "taskId"],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "status": { "type": "string", "enum": ["pending", "in_progress", "completed", "cancelled"] },
+          "priority": { "type": "string", "enum": ["low", "medium", "high", "urgent"] },
+          "parentId": { "type": "string" },
+          "position": { "type": "number" },
+          "project": { "type": "string" },
+          "agentNotes": { "type": "string" },
+          "startsAt": { "type": "string" },
+          "dueAt": { "type": "string" },
+          "completedAt": { "type": "string" },
+          "createdAt": { "type": "string" },
+          "updatedAt": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["id", "title", "status", "priority", "position", "createdAt", "updatedAt", "tags"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "todo.remove",
+      "description": "Remove a task and all its subtasks and tags.",
+      "tag": "Todos",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "taskId": {
+            "type": "string",
+            "description": "ID of the task to remove"
+          }
+        },
+        "required": ["userId", "taskId"],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "deleted": { "type": "boolean" }
+        },
+        "required": ["deleted"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "todo.add-tag",
+      "description": "Add a tag to a task. Idempotent — no-op if the tag already exists.",
+      "tag": "Todos",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "taskId": {
+            "type": "string",
+            "description": "Task ID"
+          },
+          "tag": {
+            "type": "string",
+            "description": "Tag name"
+          }
+        },
+        "required": ["userId", "taskId", "tag"],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "taskId": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["taskId", "tags"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "todo.remove-tag",
+      "description": "Remove a tag from a task. Returns the remaining tags.",
+      "tag": "Todos",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "taskId": {
+            "type": "string",
+            "description": "Task ID"
+          },
+          "tag": {
+            "type": "string",
+            "description": "Tag name"
+          }
+        },
+        "required": ["userId", "taskId", "tag"],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "taskId": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["taskId", "tags"],
+        "additionalProperties": false
+      }
     }
   ]
 }

@@ -73,7 +73,10 @@
       "WebFetch(domain:tanstack.com)",
       "Bash(gh api:*)",
       "Bash(curl:*)",
-      "WebFetch(domain:expo.dev)"
+      "WebFetch(domain:expo.dev)",
+      "WebFetch(domain:ixd.prattsi.org)",
+      "WebFetch(domain:culturedcode.com)",
+      "WebFetch(domain:www.banani.co)"
     ]
   }
 }

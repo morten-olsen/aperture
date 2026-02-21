@@ -1,3 +1,5 @@
+import type { Tool } from '@morten-olsen/agentic-core';
+
 import { addTag } from './tools.add-tag.js';
 import { createTask } from './tools.create.js';
 import { listTasks } from './tools.list.js';
@@ -7,4 +9,6 @@ import { updateTask } from './tools.update.js';
 
 const todoTools = [createTask, listTasks, updateTask, removeTask, addTag, removeTag];
 
-export { todoTools };
+const todoApiTools: Tool[] = [createTask, listTasks, updateTask, removeTask, addTag, removeTag];
+
+export { todoTools, todoApiTools };
