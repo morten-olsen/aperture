@@ -6,5 +6,5 @@ export * from './prompt/prompt.js';
 export * from './state/state.js';
 export * from './tool/tool.js';
 export * from './secrets/secrets.js';
+export * from './event/event.js';
 export * from './utils/utils.service.js';
-export * from './utils/utils.event-emitter.js';

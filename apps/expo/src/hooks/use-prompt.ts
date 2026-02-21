@@ -47,11 +47,21 @@ const usePrompt = (): UsePromptReturn => {
     const payload = data as Record<string, unknown>;
     switch (event) {
       case 'prompt.output':
-        setOutputs((prev) => [...prev, payload as PromptOutput]);
+        setOutputs((prev) => [...prev, (payload.output ?? payload) as PromptOutput]);
         break;
-      case 'prompt.approval':
-        setPendingApproval(payload as unknown as ApprovalRequest);
+      case 'prompt.approval-requested': {
+        const request = payload.request as Record<string, unknown> | undefined;
+        if (request) {
+          setPendingApproval({
+            promptId: payload.promptId as string,
+            toolCallId: request.toolCallId as string,
+            toolName: request.toolName as string,
+            input: request.input,
+            reason: request.reason as string,
+          });
+        }
         break;
+      }
       case 'prompt.completed':
         setIsStreaming(false);
         break;

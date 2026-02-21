@@ -1,5 +1,11 @@
 import type { Prompt, Services } from '@morten-olsen/agentic-core';
-import { PromptService } from '@morten-olsen/agentic-core';
+import {
+  EventService,
+  PromptService,
+  promptCreatedEvent,
+  promptApprovalRequestedEvent,
+  promptCompletedEvent,
+} from '@morten-olsen/agentic-core';
 import { sql } from 'kysely';
 
 import { DatabaseService } from '../database/database.service.js';
@@ -110,52 +116,49 @@ class PromptStoreService {
     resolved_model: prompt.usage?.resolvedModel ?? null,
   });
 
-  #usageFromPrompt = (prompt: Prompt) => {
-    const usage: Partial<PromptRow> = {};
-    if (prompt.usage) {
-      usage.input_tokens = prompt.usage.inputTokens;
-      usage.output_tokens = prompt.usage.outputTokens;
-      usage.total_tokens = prompt.usage.totalTokens;
-      usage.reasoning_tokens = prompt.usage.reasoningTokens ?? null;
-      usage.cost = prompt.usage.cost ?? null;
-      usage.resolved_model = prompt.usage.resolvedModel ?? null;
-    }
-    return usage;
-  };
-
   public listen = () => {
+    const eventService = this.#services.get(EventService);
     const promptService = this.#services.get(PromptService);
-    promptService.on('created', async (completion) => {
+
+    eventService.listen(promptCreatedEvent, async (data) => {
+      const completion = promptService.getActive(data.promptId);
+      if (!completion) return;
       const db = await this.#getDb();
       const row = this.#promptToRow(completion.prompt);
       await db.insertInto('db_prompts').values(row).execute();
+    });
 
-      completion.on('updated', async () => {
-        if (completion.prompt.state !== 'waiting_for_approval') return;
-        const db = await this.#getDb();
-        await db
-          .updateTable('db_prompts')
-          .set({
-            state: completion.prompt.state,
-            output: JSON.stringify(completion.prompt.output),
-          })
-          .where('id', '=', completion.id)
-          .execute();
-      });
+    eventService.listen(promptApprovalRequestedEvent, async (data) => {
+      const completion = promptService.getActive(data.promptId);
+      if (!completion) return;
+      const db = await this.#getDb();
+      await db
+        .updateTable('db_prompts')
+        .set({
+          state: 'waiting_for_approval',
+          output: JSON.stringify(completion.prompt.output),
+        })
+        .where('id', '=', data.promptId)
+        .execute();
+    });
 
-      completion.on('completed', async () => {
-        const db = await this.#getDb();
-        await db
-          .updateTable('db_prompts')
-          .set({
-            state: completion.prompt.state,
-            output: JSON.stringify(completion.prompt.output),
-            completed_at: new Date().toISOString(),
-            ...this.#usageFromPrompt(completion.prompt),
-          })
-          .where('id', '=', completion.id)
-          .execute();
-      });
+    eventService.listen(promptCompletedEvent, async (data) => {
+      const db = await this.#getDb();
+      await db
+        .updateTable('db_prompts')
+        .set({
+          state: 'completed',
+          output: JSON.stringify(data.output),
+          completed_at: new Date().toISOString(),
+          input_tokens: data.usage?.inputTokens ?? null,
+          output_tokens: data.usage?.outputTokens ?? null,
+          total_tokens: data.usage?.totalTokens ?? null,
+          reasoning_tokens: data.usage?.reasoningTokens ?? null,
+          cost: data.usage?.cost ?? null,
+          resolved_model: data.usage?.resolvedModel ?? null,
+        })
+        .where('id', '=', data.promptId)
+        .execute();
     });
   };
 

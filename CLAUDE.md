@@ -99,6 +99,7 @@ Full standards are in `docs/coding-standard.md`. The critical rules enforced by 
 - `docs/services.md` — DI container usage
 - `docs/plugins.md` — Writing plugins with lifecycle hooks
 - `docs/tools.md` — Defining and registering tools
+- `docs/events.md` — Centralized event system, EventService, SSE bridging
 - `docs/databases.md` — Database definitions and migrations
 - `docs/embeddings.md` — Embedding generation and vector search for plugins
 - `docs/state.md` — Per-plugin conversation state

@@ -1,10 +1,10 @@
-# Codegen — Typed Tool Bindings
+# Codegen — Typed Tool & Event Bindings
 
-The codegen script generates TypeScript types from the API's tool schemas so that `invokeTool`, `useToolQuery`, and `useToolInvoke` are fully type-safe.
+The codegen script generates TypeScript types from the API's tool and event schemas so that `invokeTool`, `useToolQuery`, `useToolInvoke`, and SSE event handlers are fully type-safe.
 
 ## Generated Types
 
-The script produces `apps/expo/src/generated/tools.ts` containing:
+### Tools (`src/generated/tools.ts`)
 
 | Type | Description |
 |---|---|
@@ -15,6 +15,15 @@ The script produces `apps/expo/src/generated/tools.ts` containing:
 | `ToolOutput<T>` | Helper — `ToolOutputMap[T]` |
 
 `userId` is stripped from all input types since the server injects it from the `X-User-Id` header.
+
+### Events (`src/generated/events.ts`)
+
+| Type | Description |
+|---|---|
+| `EventId` | Union of all event ID string literals (e.g. `"prompt.completed" \| "prompt.output" \| ...`) |
+| `EventDataMap` | Mapped type: `{ [eventId]: dataType }` |
+| `EventData<T>` | Helper — `EventDataMap[T]` |
+| `knownEventIds` | Runtime constant — array of all event IDs (used by native SSE client for listener registration) |
 
 ## Running the Script
 
@@ -36,10 +45,10 @@ npx tsx apps/expo/scripts/generate-tool-types.ts
 
 1. Start the API server
 2. Run `pnpm --filter @morten-olsen/agentic-expo generate`
-3. The script fetches `GET /api/tools`, saves the response to `tools.snapshot.json`, then generates `src/generated/tools.ts`
-4. Commit both files — this lets CI and other developers build without a running server
+3. The script fetches `GET /api/tools` and `GET /api/events`, saves both to `tools.snapshot.json`, then generates `src/generated/tools.ts` and `src/generated/events.ts`
+4. Commit all files — this lets CI and other developers build without a running server
 
-When tools are added or their schemas change, re-run the script against a running server to update the snapshot and generated types.
+When tools or events are added or their schemas change, re-run the script against a running server to update the snapshot and generated types.
 
 ## How It Works
 
@@ -73,3 +82,4 @@ The converter handles the patterns used by the framework's Zod-to-JSON-Schema ou
 | `scripts/generate-tool-types.ts` | Yes | No |
 | `tools.snapshot.json` | Yes | N/A |
 | `src/generated/tools.ts` | Yes | Yes (`**/generated/`) |
+| `src/generated/events.ts` | Yes | Yes (`**/generated/`) |

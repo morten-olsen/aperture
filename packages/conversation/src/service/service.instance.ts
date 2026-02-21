@@ -1,4 +1,11 @@
-import { type Prompt, type Services, type PromptCompletionInput, PromptService } from '@morten-olsen/agentic-core';
+import {
+  type Prompt,
+  type Services,
+  type PromptCompletionInput,
+  PromptService,
+  EventService,
+  promptCompletedEvent,
+} from '@morten-olsen/agentic-core';
 import { PromptStoreService } from '@morten-olsen/agentic-database';
 
 import type { ConversationRepo } from '../repo/repo.js';
@@ -53,10 +60,18 @@ class ConversationInstance {
     this.#prompts.push(promptCompletion.prompt);
     await repo.addPrompt(this.id, promptCompletion.id);
 
-    promptCompletion.on('completed', async () => {
-      this.#state = promptCompletion.state.toRecord();
-      await repo.updateState(this.id, this.#state);
-    });
+    const abortController = new AbortController();
+    const eventService = services.get(EventService);
+    eventService.listen(
+      promptCompletedEvent,
+      async (data) => {
+        if (data.promptId !== promptCompletion.id) return;
+        abortController.abort();
+        this.#state = promptCompletion.state.toRecord();
+        await repo.updateState(this.id, this.#state);
+      },
+      { abortSignal: abortController.signal },
+    );
 
     return promptCompletion;
   };

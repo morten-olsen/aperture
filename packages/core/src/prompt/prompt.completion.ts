@@ -5,18 +5,12 @@ import OpenAI from 'openai';
 import type { ApprovalRequest, Tool } from '../tool/tool.js';
 import type { Services } from '../utils/utils.service.js';
 import { PluginService, PluginPrepareContext } from '../plugin/plugin.js';
-import { EventEmitter } from '../utils/utils.event-emitter.js';
 import { State } from '../state/state.js';
+import { EventService } from '../event/event.service.js';
 
 import { contextToMessages, promptsToMessages } from './prompt.utils.js';
 import type { Prompt, PromptOutputFile, PromptOutputText, PromptOutputTool, PromptUsage } from './prompt.schema.js';
-
-type ApprovalRequestedEvent = {
-  toolCallId: string;
-  toolName: string;
-  input: unknown;
-  reason: string;
-};
+import { promptOutputEvent, promptCompletedEvent, promptApprovalRequestedEvent } from './prompt.events.js';
 
 type PromptCompletionOptions = {
   services: Services;
@@ -29,13 +23,7 @@ type PromptCompletionOptions = {
   resumePrompt?: Prompt;
 };
 
-type PromptCompletionEvents = {
-  updated: (completion: PromptCompletion) => void;
-  completed: (completion: PromptCompletion) => void;
-  'approval-requested': (completion: PromptCompletion, request: ApprovalRequestedEvent) => void;
-};
-
-class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
+class PromptCompletion {
   #options: PromptCompletionOptions;
   #prompt: Prompt;
   #client: OpenAI;
@@ -43,9 +31,9 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
   #pendingBatchRemaining: OpenAI.Responses.ResponseFunctionToolCall[] = [];
   #pendingToolCallTools: Tool[] = [];
   #usage: PromptUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+  #lastPublishedIndex = 0;
 
   constructor(options: PromptCompletionOptions) {
-    super();
     this.#options = options;
     this.#prompt = options.resumePrompt ?? {
       id: randomUUID(),
@@ -116,6 +104,16 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
       };
       this.#prompt.output.push(fileOutput);
     };
+  };
+
+  #publishNewOutputs = () => {
+    const { services } = this.#options;
+    const eventService = services.get(EventService);
+    const output = this.#prompt.output;
+    for (let i = this.#lastPublishedIndex; i < output.length; i++) {
+      eventService.publish(promptOutputEvent, { promptId: this.id, output: output[i] }, { userId: this.userId });
+    }
+    this.#lastPublishedIndex = output.length;
   };
 
   #prepare = async () => {
@@ -302,6 +300,7 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
     tools: Tool[],
     state: State,
   ): Promise<boolean> => {
+    const { services } = this.#options;
     for (let i = 0; i < toolCalls.length; i++) {
       const output = await this.#executeToolCall(toolCalls[i], tools, state);
       this.#prompt.output.push(output);
@@ -310,13 +309,21 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
         this.#pendingBatchRemaining = toolCalls.slice(i + 1);
         this.#pendingToolCallTools = tools;
         this.#prompt.state = 'waiting_for_approval';
-        this.emit('updated', this);
-        this.emit('approval-requested', this, {
-          toolCallId: output.id,
-          toolName: output.function,
-          input: output.input,
-          reason: output.result.reason,
-        });
+        const eventService = services.get(EventService);
+        this.#publishNewOutputs();
+        eventService.publish(
+          promptApprovalRequestedEvent,
+          {
+            promptId: this.id,
+            request: {
+              toolCallId: output.id,
+              toolName: output.function,
+              input: output.input,
+              reason: output.result.reason,
+            },
+          },
+          { userId: this.userId },
+        );
         return true;
       }
     }
@@ -390,6 +397,7 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
   };
 
   public run = async () => {
+    const { services } = this.#options;
     const maxRounds = this.#options.maxRounds ?? 25;
     let round = 0;
 
@@ -410,21 +418,29 @@ class PromptCompletion extends EventEmitter<PromptCompletionEvents> {
         this.#completeWithText(response.output_text);
       }
 
-      this.emit('updated', this);
+      this.#publishNewOutputs();
 
       if (round >= maxRounds && this.#prompt.state === 'running') {
         this.#completeWithText(`Exceeded maximum number of rounds (${maxRounds}). Stopping.`);
-        this.emit('updated', this);
+        this.#publishNewOutputs();
       }
     }
 
     if (this.#prompt.state === 'completed') {
-      this.emit('updated', this);
-      this.emit('completed', this);
+      const eventService = services.get(EventService);
+      eventService.publish(
+        promptCompletedEvent,
+        {
+          promptId: this.id,
+          output: this.#prompt.output,
+          usage: this.#usage,
+        },
+        { userId: this.userId },
+      );
     }
     return this.#prompt;
   };
 }
 
-export type { PromptCompletionOptions, PromptCompletionEvents, ApprovalRequestedEvent };
+export type { PromptCompletionOptions };
 export { PromptCompletion };

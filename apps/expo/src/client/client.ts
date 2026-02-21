@@ -33,7 +33,7 @@ class AgenticClient {
   }
 
   connect = () => {
-    this.#events.connect(`${this.#baseUrl}/events`, {
+    this.#events.connect(`${this.#baseUrl}/events/stream`, {
       'X-User-Id': this.#userId,
     });
   };
@@ -58,6 +58,16 @@ class AgenticClient {
     }[];
   }> => {
     return this.#fetch('/tools');
+  };
+
+  listEvents = async (): Promise<{
+    events: {
+      id: string;
+      tag?: string;
+      schema: unknown;
+    }[];
+  }> => {
+    return this.#fetch('/events');
   };
 
   invokeTool = async <T extends ToolId>(toolId: T, input: ToolInput<T>): Promise<{ result: ToolOutput<T> }> => {

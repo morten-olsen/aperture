@@ -213,8 +213,8 @@ If `conversationId` is provided but the conversation plugin is not registered, t
 Some tools require human approval before execution. When this happens, the SSE stream pauses and emits an approval event:
 
 ```
-event: prompt.approval
-data: {"promptId":"p-123","toolCallId":"call-2","toolName":"shell.exec","input":{"command":"ls -la"},"reason":"Shell command execution"}
+event: prompt.approval-requested
+data: {"promptId":"p-123","request":{"toolCallId":"call-2","toolName":"shell.exec","input":{"command":"ls -la"},"reason":"Shell command execution"}}
 ```
 
 The client should display the pending action to the user, then call one of:
@@ -241,18 +241,25 @@ After approval or rejection, the SSE stream resumes with the tool result and any
 
 ### SSE Event Reference
 
+Events are extensible — plugins register their own events via `EventService`, and all registered events are automatically forwarded over SSE. Use `GET /api/events` to discover all available events and their schemas.
+
+Built-in prompt events:
+
 | Event | Payload | Description |
 |-------|---------|-------------|
-| `prompt.created` | `{ promptId }` | Prompt created, agent loop starting |
-| `prompt.output` | `PromptOutput` | New output entry (text, tool call, or file) |
-| `prompt.approval` | `{ promptId, toolCallId, toolName, input, reason }` | Tool paused, awaiting human approval |
-| `prompt.completed` | `{ promptId, usage }` | Agent loop finished |
-| `error` | `{ message }` | Unrecoverable error, stream will close |
+| `prompt.created` | `{ promptId, userId }` | Prompt created, agent loop starting |
+| `prompt.output` | `{ promptId, output: PromptOutput }` | New output entry (text, tool call, or file) |
+| `prompt.approval-requested` | `{ promptId, request: { toolCallId, toolName, input, reason } }` | Tool paused, awaiting human approval |
+| `prompt.completed` | `{ promptId, output: PromptOutput[], usage? }` | Agent loop finished |
+| `prompt.error` | `{ promptId, error }` | Unrecoverable error |
+| `notification.published` | `{ userId, title, body, urgency? }` | Notification sent |
 
 `PromptOutput` is one of:
 - `{ type: "text", content: "...", start, end }` — model text response
 - `{ type: "tool", id, function, input, result: { type, output|error }, start, end }` — tool invocation
 - `{ type: "file", path, mimeType?, description?, start, end }` — file output
+
+See [Events](../../events.md) for full documentation on the event system.
 
 ### Error Responses
 

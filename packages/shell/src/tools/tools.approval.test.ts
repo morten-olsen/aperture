@@ -1,7 +1,13 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach, beforeEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
-import { PromptCompletion, Services, PluginService } from '@morten-olsen/agentic-core';
+import {
+  PromptCompletion,
+  Services,
+  PluginService,
+  EventService,
+  promptApprovalRequestedEvent,
+} from '@morten-olsen/agentic-core';
 import { skillPlugin } from '@morten-olsen/agentic-skill';
 
 import { shellPlugin } from '../plugin/plugin.js';
@@ -102,16 +108,19 @@ describe('shell approval gate flow', () => {
     const completion = new PromptCompletion({ services, userId: 'user-1', input: 'List files', state: SKILL_STATE });
 
     const approvalSpy = vi.fn();
-    completion.on('approval-requested', approvalSpy);
+    const eventService = services.get(EventService);
+    eventService.listen(promptApprovalRequestedEvent, approvalSpy);
 
     const result = await completion.run();
 
     expect(result.state).toBe('waiting_for_approval');
     expect(approvalSpy).toHaveBeenCalledOnce();
-    expect(approvalSpy.mock.calls[0][1]).toMatchObject({
-      toolCallId: 'call_1',
-      toolName: 'shell.execute',
-      reason: 'Command "ls -la" does not match any allowed pattern.',
+    expect(approvalSpy.mock.calls[0][0]).toMatchObject({
+      request: {
+        toolCallId: 'call_1',
+        toolName: 'shell.execute',
+        reason: 'Command "ls -la" does not match any allowed pattern.',
+      },
     });
 
     const toolOutput = result.output[0];
@@ -203,7 +212,8 @@ describe('shell approval gate flow', () => {
     const completion = new PromptCompletion({ services, userId: 'user-1', input: 'Echo hello', state: SKILL_STATE });
 
     const approvalSpy = vi.fn();
-    completion.on('approval-requested', approvalSpy);
+    const eventService = services.get(EventService);
+    eventService.listen(promptApprovalRequestedEvent, approvalSpy);
 
     const result = await completion.run();
 
@@ -230,7 +240,8 @@ describe('shell approval gate flow', () => {
     const completion = new PromptCompletion({ services, userId: 'user-1', input: 'Echo hello', state: SKILL_STATE });
 
     const approvalSpy = vi.fn();
-    completion.on('approval-requested', approvalSpy);
+    const eventService = services.get(EventService);
+    eventService.listen(promptApprovalRequestedEvent, approvalSpy);
 
     const result = await completion.run();
 
@@ -296,15 +307,18 @@ describe('shell approval gate flow', () => {
     });
 
     const approvalSpy = vi.fn();
-    completion.on('approval-requested', approvalSpy);
+    const eventService = services.get(EventService);
+    eventService.listen(promptApprovalRequestedEvent, approvalSpy);
 
     await completion.run();
 
     expect(completion.prompt.state).toBe('waiting_for_approval');
     expect(approvalSpy).toHaveBeenCalledOnce();
-    expect(approvalSpy.mock.calls[0][1]).toMatchObject({
-      toolName: 'shell.add-rule',
-      reason: 'Adding a rule modifies command execution permissions.',
+    expect(approvalSpy.mock.calls[0][0]).toMatchObject({
+      request: {
+        toolName: 'shell.add-rule',
+        reason: 'Adding a rule modifies command execution permissions.',
+      },
     });
 
     await completion.approve('call_1');

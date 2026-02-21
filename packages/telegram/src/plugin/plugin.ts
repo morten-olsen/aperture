@@ -1,6 +1,14 @@
-import { createPlugin, FileSystemService, PromptService } from '@morten-olsen/agentic-core';
+import {
+  createPlugin,
+  FileSystemService,
+  PromptService,
+  EventService,
+  promptCreatedEvent,
+  promptCompletedEvent,
+  promptApprovalRequestedEvent,
+} from '@morten-olsen/agentic-core';
 import { DatabaseService } from '@morten-olsen/agentic-database';
-import { NotificationService } from '@morten-olsen/agentic-notification';
+import { notificationPublishedEvent } from '@morten-olsen/agentic-notification';
 import { triggerPlugin } from '@morten-olsen/agentic-trigger';
 
 import { telegramPluginOptionsSchema, telegramStateSchema } from '../schemas/schemas.js';
@@ -17,8 +25,8 @@ const telegramPlugin = createPlugin({
     const databaseService = services.get(DatabaseService);
     await databaseService.get(database);
 
-    const notificationService = services.get(NotificationService);
-    notificationService.on('published', async (notification) => {
+    const eventService = services.get(EventService);
+    eventService.listen(notificationPublishedEvent, async (notification) => {
       const user = config.users?.find((user) => user.userId === notification.userId);
       if (!user) {
         return;
@@ -36,6 +44,7 @@ const telegramPlugin = createPlugin({
     const telegramCompletions = new Map<string, string>();
     let approvalCounter = 0;
     const pendingApprovals = new Map<string, { promptId: string; toolCallId: string }>();
+    const triggerInitiatedPrompts = new Set<string>();
 
     const resolveChatId = (completionId: string, userId: string): string | undefined => {
       const fromMap = telegramCompletions.get(completionId);
@@ -45,57 +54,71 @@ const telegramPlugin = createPlugin({
     };
 
     const promptService = services.get(PromptService);
-    promptService.on('created', (completion) => {
+
+    eventService.listen(promptCreatedEvent, (data) => {
+      const completion = promptService.getActive(data.promptId);
+      if (!completion) return;
       const triggerState = completion.state.getState(triggerPlugin);
       if (triggerState?.from.id) {
-        return;
+        triggerInitiatedPrompts.add(data.promptId);
       }
-      completion.on('completed', async () => {
-        const chatId = resolveChatId(completion.id, completion.userId);
-        if (!chatId) return;
-        telegramCompletions.delete(completion.id);
-
-        const textParts = completion.prompt.output
-          .filter((o) => o.type === 'text')
-          .map((o) => o.content)
-          .filter(Boolean);
-
-        const responseText = textParts.join('\n\n');
-        if (responseText) {
-          try {
-            await botService.sendMessage(chatId, responseText);
-          } catch (error) {
-            console.error('[Telegram] Error sending response:', error);
-          }
-        }
-
-        const fileOutputs = completion.prompt.output.filter((o) => o.type === 'file');
-        for (const fileOutput of fileOutputs) {
-          try {
-            const fs = services.get(FileSystemService);
-            const result = await fs.read(completion.userId, fileOutput.path);
-            if (result) {
-              await botService.sendDocument(chatId, result.data, fileOutput.path, fileOutput.description);
-            }
-          } catch (error) {
-            console.error('[Telegram] Error sending file:', error);
-          }
-        }
-      });
     });
 
-    promptService.on('approval-requested', async (completion, request) => {
-      const chatId = resolveChatId(completion.id, completion.userId);
+    eventService.listen(promptCompletedEvent, async (data, options) => {
+      if (triggerInitiatedPrompts.has(data.promptId)) {
+        triggerInitiatedPrompts.delete(data.promptId);
+        return;
+      }
+
+      const userId = options.userId;
+      if (!userId) return;
+      const chatId = resolveChatId(data.promptId, userId);
+      if (!chatId) return;
+      telegramCompletions.delete(data.promptId);
+
+      const textParts = data.output
+        .filter((o) => o.type === 'text')
+        .map((o) => (o as { content?: string }).content)
+        .filter(Boolean);
+
+      const responseText = textParts.join('\n\n');
+      if (responseText) {
+        try {
+          await botService.sendMessage(chatId, responseText);
+        } catch (error) {
+          console.error('[Telegram] Error sending response:', error);
+        }
+      }
+
+      const fileOutputs = data.output.filter((o) => o.type === 'file');
+      for (const fileOutput of fileOutputs) {
+        try {
+          const fs = services.get(FileSystemService);
+          const fo = fileOutput as { path: string; description?: string };
+          const result = await fs.read(userId, fo.path);
+          if (result) {
+            await botService.sendDocument(chatId, result.data, fo.path, fo.description);
+          }
+        } catch (error) {
+          console.error('[Telegram] Error sending file:', error);
+        }
+      }
+    });
+
+    eventService.listen(promptApprovalRequestedEvent, async (data, options) => {
+      const userId = options.userId;
+      if (!userId) return;
+      const chatId = resolveChatId(data.promptId, userId);
       if (!chatId) return;
 
       approvalCounter += 1;
       const id = String(approvalCounter);
-      pendingApprovals.set(id, { promptId: completion.id, toolCallId: request.toolCallId });
+      pendingApprovals.set(id, { promptId: data.promptId, toolCallId: data.request.toolCallId });
 
       try {
         await botService.sendMessageWithKeyboard(
           chatId,
-          `Approval required for ${request.toolName}\n\n${request.reason}\n\nInput: ${JSON.stringify(request.input)}`,
+          `Approval required for ${data.request.toolName}\n\n${data.request.reason}\n\nInput: ${JSON.stringify(data.request.input)}`,
           [
             [
               { text: 'Approve', callback_data: `a:${id}` },

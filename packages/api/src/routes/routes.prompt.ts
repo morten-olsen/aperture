@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { PromptService } from '@morten-olsen/agentic-core';
+import { PromptService, EventService, promptErrorEvent } from '@morten-olsen/agentic-core';
 import { ConversationService } from '@morten-olsen/agentic-conversation';
 
 import type { ApiService } from '../service/service.js';
@@ -27,32 +27,17 @@ const registerPromptRoutes = (app: FastifyInstance, apiService: ApiService) => {
       }
 
       const promptId = completion.id;
-      let lastOutputLength = 0;
-
-      completion.on('updated', () => {
-        const output = completion.output;
-        for (let i = lastOutputLength; i < output.length; i++) {
-          apiService.broadcastToUser(userId, 'prompt.output', { promptId, ...output[i] });
-        }
-        lastOutputLength = output.length;
-      });
-
-      completion.on('approval-requested', (_comp, event) => {
-        apiService.broadcastToUser(userId, 'prompt.approval', { promptId, ...event });
-      });
-
-      completion.on('completed', () => {
-        apiService.broadcastToUser(userId, 'prompt.completed', {
-          promptId,
-          usage: completion.usage,
-        });
-      });
 
       completion.run().catch((error: unknown) => {
-        apiService.broadcastToUser(userId, 'prompt.error', {
-          promptId,
-          error: error instanceof Error ? error.message : String(error),
-        });
+        const eventService = apiService.services.get(EventService);
+        eventService.publish(
+          promptErrorEvent,
+          {
+            promptId,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          { userId },
+        );
       });
 
       return { promptId };

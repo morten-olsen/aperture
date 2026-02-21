@@ -3,7 +3,16 @@ import type { FastifyInstance } from 'fastify';
 import type { ApiService } from '../service/service.js';
 
 const registerEventsRoutes = (app: FastifyInstance, apiService: ApiService) => {
-  app.get('/events', async (request, reply) => {
+  app.get('/events', async () => {
+    const events = Array.from(apiService.exposedEvents.entries()).map(([id, { event, tag }]) => ({
+      id,
+      tag,
+      schema: event.schema.toJSONSchema(),
+    }));
+    return { events };
+  });
+
+  app.get('/events/stream', async (request, reply) => {
     const userId = request.headers['x-user-id'] as string;
 
     const origin = request.headers.origin;

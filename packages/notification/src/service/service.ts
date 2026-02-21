@@ -1,15 +1,26 @@
-import { EventEmitter } from '@morten-olsen/agentic-core';
+import { EventService, createEvent } from '@morten-olsen/agentic-core';
+import type { Services } from '@morten-olsen/agentic-core';
 
-import type { TriggerNotifyInput } from '../exports.js';
+import { triggerNotifyInputSchema, type TriggerNotifyInput } from '../schemas/schemas.js';
 
-type NotificationServiceEvents = {
-  published: (input: TriggerNotifyInput) => void;
-};
+const notificationPublishedEvent = createEvent({
+  id: 'notification.published',
+  schema: triggerNotifyInputSchema,
+});
 
-class NotificationService extends EventEmitter<NotificationServiceEvents> {
+class NotificationService {
+  #services: Services;
+
+  constructor(services: Services) {
+    this.#services = services;
+    const eventService = services.get(EventService);
+    eventService.registerEvent(notificationPublishedEvent);
+  }
+
   public publish = async (input: TriggerNotifyInput) => {
-    this.emit('published', input);
+    const eventService = this.#services.get(EventService);
+    eventService.publish(notificationPublishedEvent, input, { userId: input.userId });
   };
 }
 
-export { NotificationService };
+export { NotificationService, notificationPublishedEvent };

@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
-import { createPlugin } from '@morten-olsen/agentic-core';
+import { createPlugin, EventService } from '@morten-olsen/agentic-core';
 import { DatabaseService } from '@morten-olsen/agentic-database';
 import { z } from 'zod';
-import { NotificationService } from '@morten-olsen/agentic-notification';
+import { notificationPublishedEvent } from '@morten-olsen/agentic-notification';
 
 import { conversationDatabase } from '../database/database.js';
 import { ConversationService } from '../service/service.js';
@@ -15,9 +15,9 @@ const conversationPlugin = createPlugin({
   setup: async ({ services }) => {
     const databaseService = services.get(DatabaseService);
     await databaseService.get(conversationDatabase);
-    const notificationService = services.get(NotificationService);
+    const eventService = services.get(EventService);
     const conversationService = services.get(ConversationService);
-    notificationService.on('published', async (notification) => {
+    eventService.listen(notificationPublishedEvent, async (notification) => {
       conversationService.insertIntoActive({
         id: randomUUID(),
         userId: notification.userId,

@@ -1,5 +1,7 @@
 import EventSource from 'react-native-sse';
 
+import { knownEventIds } from '../generated/events.ts';
+
 import type { CreateSseConnection } from './client.sse.ts';
 
 const createSseConnection: CreateSseConnection = (url, headers, callbacks) => {
@@ -16,7 +18,7 @@ const createSseConnection: CreateSseConnection = (url, headers, callbacks) => {
 
   // react-native-sse dispatches named events directly
   const originalOnEvent = callbacks.onEvent;
-  const knownEvents = ['connected', 'prompt.output', 'prompt.approval', 'prompt.completed', 'prompt.error'];
+  const knownEvents = ['connected', ...knownEventIds];
 
   for (const eventName of knownEvents) {
     es.addEventListener(eventName, (event) => {

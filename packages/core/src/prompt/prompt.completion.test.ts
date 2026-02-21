@@ -2,7 +2,17 @@ import { describe, it, expect, beforeAll, afterAll, afterEach, beforeEach, vi } 
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { z } from 'zod';
-import { PromptCompletion, Services, PluginService, createPlugin, createTool } from '@morten-olsen/agentic-core';
+import {
+  PromptCompletion,
+  Services,
+  PluginService,
+  EventService,
+  createPlugin,
+  createTool,
+  promptOutputEvent,
+  promptCompletedEvent,
+  promptApprovalRequestedEvent,
+} from '@morten-olsen/agentic-core';
 
 const TEST_BASE_URL = 'https://test.openai.com/v1';
 const RESPONSES_URL = `${TEST_BASE_URL}/responses`;
@@ -368,7 +378,7 @@ describe('PromptCompletion', () => {
     }
   });
 
-  it('emits updated and completed events', async () => {
+  it('emits output and completed events', async () => {
     server.use(
       http.post(RESPONSES_URL, () => {
         return HttpResponse.json(createTextApiResponse('Done'));
@@ -381,14 +391,15 @@ describe('PromptCompletion', () => {
       input: 'Hello',
     });
 
-    const updatedSpy = vi.fn();
+    const eventService = services.get(EventService);
+    const outputSpy = vi.fn();
     const completedSpy = vi.fn();
-    completion.on('updated', updatedSpy);
-    completion.on('completed', completedSpy);
+    eventService.listen(promptOutputEvent, outputSpy);
+    eventService.listen(promptCompletedEvent, completedSpy);
 
     await completion.run();
 
-    expect(updatedSpy).toHaveBeenCalled();
+    expect(outputSpy).toHaveBeenCalled();
     expect(completedSpy).toHaveBeenCalledOnce();
   });
 
@@ -480,18 +491,22 @@ describe('PromptCompletion', () => {
         input: 'Do it',
       });
 
+      const eventService = services.get(EventService);
       const approvalSpy = vi.fn();
-      completion.on('approval-requested', approvalSpy);
+      eventService.listen(promptApprovalRequestedEvent, approvalSpy);
 
       const result = await completion.run();
 
       expect(result.state).toBe('waiting_for_approval');
       expect(approvalSpy).toHaveBeenCalledOnce();
-      expect(approvalSpy.mock.calls[0][1]).toMatchObject({
-        toolCallId: 'call_1',
-        toolName: 'test.gated',
-        input: { value: 'hello' },
-        reason: 'Sensitive operation',
+      expect(approvalSpy.mock.calls[0][0]).toMatchObject({
+        promptId: completion.id,
+        request: {
+          toolCallId: 'call_1',
+          toolName: 'test.gated',
+          input: { value: 'hello' },
+          reason: 'Sensitive operation',
+        },
       });
 
       const toolOutput = result.output[0];
@@ -592,8 +607,9 @@ describe('PromptCompletion', () => {
       await completion.run();
       expect(completion.prompt.state).toBe('waiting_for_approval');
 
+      const eventService = services.get(EventService);
       const completedSpy = vi.fn();
-      completion.on('completed', completedSpy);
+      eventService.listen(promptCompletedEvent, completedSpy);
 
       await completion.approve('call_1');
 
@@ -925,7 +941,7 @@ describe('PromptCompletion', () => {
       });
     });
 
-    it('event sequence: updated → approval-requested → (approve) → updated → completed', async () => {
+    it('event sequence: output → approval-requested → (approve) → output → completed', async () => {
       const gatedTool = createTool({
         id: 'test.gated',
         description: 'Needs approval',
@@ -964,15 +980,16 @@ describe('PromptCompletion', () => {
       });
 
       const events: string[] = [];
-      completion.on('updated', () => events.push('updated'));
-      completion.on('approval-requested', () => events.push('approval-requested'));
-      completion.on('completed', () => events.push('completed'));
+      const eventService = services.get(EventService);
+      eventService.listen(promptOutputEvent, () => events.push('output'));
+      eventService.listen(promptApprovalRequestedEvent, () => events.push('approval-requested'));
+      eventService.listen(promptCompletedEvent, () => events.push('completed'));
 
       await completion.run();
-      expect(events).toEqual(['updated', 'approval-requested']);
+      expect(events).toEqual(['output', 'approval-requested']);
 
       await completion.approve('call_1');
-      expect(events).toEqual(['updated', 'approval-requested', 'updated', 'updated', 'completed']);
+      expect(events).toEqual(['output', 'approval-requested', 'output', 'completed']);
     });
 
     it('dynamic approval that pauses on required: true', async () => {
@@ -1016,14 +1033,15 @@ describe('PromptCompletion', () => {
         input: 'Do unsafe',
       });
 
+      const eventService = services.get(EventService);
       const approvalSpy = vi.fn();
-      completion.on('approval-requested', approvalSpy);
+      eventService.listen(promptApprovalRequestedEvent, approvalSpy);
 
       await completion.run();
       expect(completion.prompt.state).toBe('waiting_for_approval');
       expect(approvalSpy).toHaveBeenCalledOnce();
-      expect(approvalSpy.mock.calls[0][1]).toMatchObject({
-        reason: 'Unsafe operation',
+      expect(approvalSpy.mock.calls[0][0]).toMatchObject({
+        request: { reason: 'Unsafe operation' },
       });
 
       await completion.approve('call_1');

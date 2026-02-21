@@ -92,6 +92,14 @@ const promptSchema = z.object({
 
 type Prompt = z.input<typeof promptSchema>;
 
+const approvalRequestedEventSchema = z.object({
+  toolCallId: z.string(),
+  toolName: z.string(),
+  input: z.unknown(),
+  reason: z.string(),
+});
+type ApprovalRequestedEvent = z.input<typeof approvalRequestedEventSchema>;
+
 export type {
   PromptOutputText,
   PromptOutputFile,
@@ -103,6 +111,7 @@ export type {
   PromptOutput,
   Prompt,
   PromptUsage,
+  ApprovalRequestedEvent,
 };
 
 export {
@@ -116,4 +125,5 @@ export {
   promptOutputSchema,
   promptSchema,
   promptUsageSchema,
+  approvalRequestedEventSchema,
 };

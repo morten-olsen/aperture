@@ -2,7 +2,8 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import swagger from '@fastify/swagger';
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
-import type { Tool, Services } from '@morten-olsen/agentic-core';
+import type { Tool, Services, Event } from '@morten-olsen/agentic-core';
+import { EventService } from '@morten-olsen/agentic-core';
 
 import type { ApiStartOptions, ToolExposureOptions } from './service.schemas.js';
 
@@ -15,15 +16,22 @@ type ExposedTool = {
   tag?: string;
 };
 
+type ExposedEvent = {
+  event: Event;
+  tag?: string;
+};
+
 class ApiService {
   #services: Services;
   #tools: Map<string, ExposedTool>;
+  #events: Map<string, ExposedEvent>;
   #fastify: FastifyInstance | null;
   #connections: Map<string, Set<SseConnection>>;
 
   constructor(services: Services) {
     this.#services = services;
     this.#tools = new Map();
+    this.#events = new Map();
     this.#fastify = null;
     this.#connections = new Map();
   }
@@ -36,6 +44,10 @@ class ApiService {
     return this.#tools;
   }
 
+  public get exposedEvents() {
+    return this.#events;
+  }
+
   public exposeTool = (tool: Tool, options?: ToolExposureOptions) => {
     this.#tools.set(tool.id, { tool, tag: options?.tag });
   };
@@ -44,6 +56,25 @@ class ApiService {
     for (const tool of tools) {
       this.exposeTool(tool, options);
     }
+  };
+
+  public exposeEvent = (event: Event, options?: { tag?: string }) => {
+    this.#events.set(event.id, { event, tag: options?.tag });
+  };
+
+  public exposeEvents = (events: Event[], options?: { tag?: string }) => {
+    for (const event of events) {
+      this.exposeEvent(event, options);
+    }
+  };
+
+  public startSseBridge = () => {
+    const eventService = this.#services.get(EventService);
+    eventService.listenAll((eventId, data, options) => {
+      if (options.userId) {
+        this.broadcastToUser(options.userId, eventId, data);
+      }
+    });
   };
 
   public registerConnection = (userId: string, connection: SseConnection): (() => void) => {
@@ -87,7 +118,12 @@ class ApiService {
 
     await fastify.register(cors, { origin: true });
 
-    const publicExact = new Set([`${prefix}/capabilities`, `${prefix}/tools`, `${prefix}/openapi.json`]);
+    const publicExact = new Set([
+      `${prefix}/capabilities`,
+      `${prefix}/tools`,
+      `${prefix}/events`,
+      `${prefix}/openapi.json`,
+    ]);
     const publicPrefixes = [`${prefix}/docs`];
     fastify.addHook('onRequest', async (request, reply) => {
       const url = request.url.split('?')[0];
@@ -123,6 +159,18 @@ class ApiService {
       // Scalar is optional — skip if not available
     }
 
+    // Auto-expose all currently registered events and future ones
+    const eventService = this.#services.get(EventService);
+    for (const event of eventService.getEvents()) {
+      this.exposeEvent(event);
+    }
+    eventService.onEventRegistered((event) => {
+      this.exposeEvent(event);
+    });
+
+    // Start SSE bridge
+    this.startSseBridge();
+
     await fastify.listen({ port, host });
     this.#fastify = fastify;
     console.log(`[glados] API listening on ${host}:${port}`);
@@ -136,5 +184,5 @@ class ApiService {
   };
 }
 
-export type { SseConnection };
+export type { SseConnection, ExposedEvent };
 export { ApiService };

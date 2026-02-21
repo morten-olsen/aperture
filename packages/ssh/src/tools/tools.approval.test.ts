@@ -1,7 +1,13 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach, beforeEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
-import { PromptCompletion, Services, PluginService } from '@morten-olsen/agentic-core';
+import {
+  PromptCompletion,
+  Services,
+  PluginService,
+  EventService,
+  promptApprovalRequestedEvent,
+} from '@morten-olsen/agentic-core';
 import { skillPlugin } from '@morten-olsen/agentic-skill';
 
 import { sshPlugin } from '../plugin/plugin.js';
@@ -139,15 +145,15 @@ describe('ssh approval gate flow', () => {
     });
 
     const approvalSpy = vi.fn();
-    completion.on('approval-requested', approvalSpy);
+    const eventService = services.get(EventService);
+    eventService.listen(promptApprovalRequestedEvent, approvalSpy);
 
     const result = await completion.run();
 
     expect(result.state).toBe('waiting_for_approval');
     expect(approvalSpy).toHaveBeenCalledOnce();
-    expect(approvalSpy.mock.calls[0][1]).toMatchObject({
-      toolCallId: 'call_1',
-      toolName: 'ssh.execute',
+    expect(approvalSpy.mock.calls[0][0]).toMatchObject({
+      request: { toolCallId: 'call_1', toolName: 'ssh.execute' },
     });
   });
 
@@ -238,7 +244,8 @@ describe('ssh approval gate flow', () => {
       state: SKILL_STATE,
     });
     const approvalSpy = vi.fn();
-    completion.on('approval-requested', approvalSpy);
+    const eventService = services.get(EventService);
+    eventService.listen(promptApprovalRequestedEvent, approvalSpy);
 
     const result = await completion.run();
 
@@ -266,7 +273,8 @@ describe('ssh approval gate flow', () => {
       state: SKILL_STATE,
     });
     const approvalSpy = vi.fn();
-    completion.on('approval-requested', approvalSpy);
+    const eventService = services.get(EventService);
+    eventService.listen(promptApprovalRequestedEvent, approvalSpy);
 
     await completion.run();
     expect(approvalSpy).toHaveBeenCalledOnce();
@@ -327,15 +335,15 @@ describe('ssh approval gate flow', () => {
       state: SKILL_STATE,
     });
     const approvalSpy = vi.fn();
-    completion.on('approval-requested', approvalSpy);
+    const eventService = services.get(EventService);
+    eventService.listen(promptApprovalRequestedEvent, approvalSpy);
 
     await completion.run();
 
     expect(completion.prompt.state).toBe('waiting_for_approval');
     expect(approvalSpy).toHaveBeenCalledOnce();
-    expect(approvalSpy.mock.calls[0][1]).toMatchObject({
-      toolName: 'ssh.add-host',
-      reason: 'Adding a host registers a new SSH connection target.',
+    expect(approvalSpy.mock.calls[0][0]).toMatchObject({
+      request: { toolName: 'ssh.add-host', reason: 'Adding a host registers a new SSH connection target.' },
     });
   });
 
@@ -355,15 +363,15 @@ describe('ssh approval gate flow', () => {
       state: SKILL_STATE,
     });
     const approvalSpy = vi.fn();
-    completion.on('approval-requested', approvalSpy);
+    const eventService = services.get(EventService);
+    eventService.listen(promptApprovalRequestedEvent, approvalSpy);
 
     await completion.run();
 
     expect(completion.prompt.state).toBe('waiting_for_approval');
     expect(approvalSpy).toHaveBeenCalledOnce();
-    expect(approvalSpy.mock.calls[0][1]).toMatchObject({
-      toolName: 'ssh.add-rule',
-      reason: 'Adding a rule modifies SSH command execution permissions.',
+    expect(approvalSpy.mock.calls[0][0]).toMatchObject({
+      request: { toolName: 'ssh.add-rule', reason: 'Adding a rule modifies SSH command execution permissions.' },
     });
   });
 });

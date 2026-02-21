@@ -1,7 +1,13 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach, beforeEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
-import { PromptCompletion, Services, PluginService } from '@morten-olsen/agentic-core';
+import {
+  PromptCompletion,
+  Services,
+  PluginService,
+  EventService,
+  promptApprovalRequestedEvent,
+} from '@morten-olsen/agentic-core';
 
 import { webFetchPlugin } from '../plugin/plugin.js';
 
@@ -106,16 +112,19 @@ describe('web-fetch approval gate flow', () => {
     });
 
     const approvalSpy = vi.fn();
-    completion.on('approval-requested', approvalSpy);
+    const eventService = services.get(EventService);
+    eventService.listen(promptApprovalRequestedEvent, approvalSpy);
 
     const result = await completion.run();
 
     expect(result.state).toBe('waiting_for_approval');
     expect(approvalSpy).toHaveBeenCalledOnce();
-    expect(approvalSpy.mock.calls[0][1]).toMatchObject({
-      toolCallId: 'call_1',
-      toolName: 'web-fetch.fetch',
-      reason: 'Domain "example.com" is not on the allowlist.',
+    expect(approvalSpy.mock.calls[0][0]).toMatchObject({
+      request: {
+        toolCallId: 'call_1',
+        toolName: 'web-fetch.fetch',
+        reason: 'Domain "example.com" is not on the allowlist.',
+      },
     });
 
     const toolOutput = result.output[0];
@@ -232,7 +241,8 @@ describe('web-fetch approval gate flow', () => {
     });
 
     const approvalSpy = vi.fn();
-    completion.on('approval-requested', approvalSpy);
+    const eventService = services.get(EventService);
+    eventService.listen(promptApprovalRequestedEvent, approvalSpy);
 
     const result = await completion.run();
 
@@ -266,15 +276,18 @@ describe('web-fetch approval gate flow', () => {
     });
 
     const approvalSpy = vi.fn();
-    completion.on('approval-requested', approvalSpy);
+    const eventService = services.get(EventService);
+    eventService.listen(promptApprovalRequestedEvent, approvalSpy);
 
     await completion.run();
 
     expect(completion.prompt.state).toBe('waiting_for_approval');
     expect(approvalSpy).toHaveBeenCalledOnce();
-    expect(approvalSpy.mock.calls[0][1]).toMatchObject({
-      toolName: 'web-fetch.add-domain',
-      reason: 'Adding a domain grants permanent fetch access.',
+    expect(approvalSpy.mock.calls[0][0]).toMatchObject({
+      request: {
+        toolName: 'web-fetch.add-domain',
+        reason: 'Adding a domain grants permanent fetch access.',
+      },
     });
 
     await completion.approve('call_1');
