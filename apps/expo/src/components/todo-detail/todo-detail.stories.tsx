@@ -1,6 +1,5 @@
 import React from 'react';
-import { fn } from 'storybook/test';
-import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
+import type { Meta, StoryObj } from '@storybook/react';
 import { YStack } from 'tamagui';
 
 import { TodoDetail } from './todo-detail.tsx';
@@ -36,8 +35,8 @@ const PendingTask: Story = {
       updatedAt: new Date(now - 3_600_000).toISOString(),
       tags: ['shopping', 'weekly'],
     },
-    onUpdate: fn(),
-    onDelete: fn(),
+    onUpdate: () => undefined,
+    onDelete: () => undefined,
   },
 };
 
@@ -56,8 +55,8 @@ const CompletedTask: Story = {
       updatedAt: new Date(now - 1_800_000).toISOString(),
       tags: ['work'],
     },
-    onUpdate: fn(),
-    onDelete: fn(),
+    onUpdate: () => undefined,
+    onDelete: () => undefined,
   },
 };
 
@@ -77,8 +76,8 @@ const UrgentWithDetails: Story = {
       updatedAt: new Date(now - 600_000).toISOString(),
       tags: ['critical', 'production', 'auth'],
     },
-    onUpdate: fn(),
-    onDelete: fn(),
+    onUpdate: () => undefined,
+    onDelete: () => undefined,
   },
 };
 
@@ -94,8 +93,8 @@ const MinimalTask: Story = {
       updatedAt: new Date(now - 3_600_000).toISOString(),
       tags: [],
     },
-    onUpdate: fn(),
-    onDelete: fn(),
+    onUpdate: () => undefined,
+    onDelete: () => undefined,
   },
 };
 

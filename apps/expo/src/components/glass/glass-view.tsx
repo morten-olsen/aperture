@@ -21,9 +21,9 @@ const BLUR_MAP: Record<GlassIntensity, number> = {
 
 // Thin tint layered on top of BlurView (iOS/Web)
 const BLUR_TINT: Record<GlassIntensity, { light: string; dark: string }> = {
-  subtle: { light: 'rgba(255,255,255,0.08)', dark: 'rgba(30,30,40,0.08)' },
-  medium: { light: 'rgba(255,255,255,0.12)', dark: 'rgba(30,30,40,0.12)' },
-  strong: { light: 'rgba(255,255,255,0.15)', dark: 'rgba(30,30,40,0.15)' },
+  subtle: { light: 'rgba(255,255,255,0.25)', dark: 'rgba(30,30,40,0.25)' },
+  medium: { light: 'rgba(255,255,255,0.35)', dark: 'rgba(30,30,40,0.35)' },
+  strong: { light: 'rgba(255,255,255,0.45)', dark: 'rgba(30,30,40,0.45)' },
 };
 
 // Android fallback — translucent overlay without blur
@@ -55,7 +55,7 @@ const GlassView = ({ intensity = 'medium', children, borderRadius = 24, padding,
         <BlurView intensity={BLUR_MAP[intensity]} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
       ) : null}
       <YStack style={[StyleSheet.absoluteFill, { backgroundColor: overlay }]} />
-      {children}
+      <YStack style={{ position: 'relative', zIndex: 1 }}>{children}</YStack>
     </YStack>
   );
 };

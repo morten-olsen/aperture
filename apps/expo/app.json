@@ -27,8 +27,7 @@
       "bundleIdentifier": "com.mortenolsen.aperture"
     },
     "android": {
-      "package": "com.mortenolsen.aperture",
-      "softwareKeyboardLayoutMode": "resize"
+      "package": "com.mortenolsen.aperture"
     },
     "extra": {
       "router": {},

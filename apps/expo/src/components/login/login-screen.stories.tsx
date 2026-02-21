@@ -1,6 +1,5 @@
 import React from 'react';
-import { fn } from 'storybook/test';
-import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
+import type { Meta, StoryObj } from '@storybook/react';
 import { YStack } from 'tamagui';
 
 import { LoginScreen } from './login-screen.tsx';
@@ -22,36 +21,36 @@ type Story = StoryObj<typeof LoginScreen>;
 const Empty: Story = {
   args: {
     serverUrl: '',
-    onServerUrlChange: fn(),
+    onServerUrlChange: () => undefined,
     userId: '',
-    onUserIdChange: fn(),
+    onUserIdChange: () => undefined,
     password: '',
-    onPasswordChange: fn(),
-    onConnect: fn(),
+    onPasswordChange: () => undefined,
+    onConnect: () => undefined,
   },
 };
 
 const Filled: Story = {
   args: {
     serverUrl: 'http://localhost:3000/api',
-    onServerUrlChange: fn(),
+    onServerUrlChange: () => undefined,
     userId: 'alice',
-    onUserIdChange: fn(),
+    onUserIdChange: () => undefined,
     password: 'hunter2',
-    onPasswordChange: fn(),
-    onConnect: fn(),
+    onPasswordChange: () => undefined,
+    onConnect: () => undefined,
   },
 };
 
 const Connecting: Story = {
   args: {
     serverUrl: 'http://localhost:3000/api',
-    onServerUrlChange: fn(),
+    onServerUrlChange: () => undefined,
     userId: 'alice',
-    onUserIdChange: fn(),
+    onUserIdChange: () => undefined,
     password: 'hunter2',
-    onPasswordChange: fn(),
-    onConnect: fn(),
+    onPasswordChange: () => undefined,
+    onConnect: () => undefined,
     isConnecting: true,
   },
 };

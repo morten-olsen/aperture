@@ -12,7 +12,7 @@ import { filesystemPlugin } from '@morten-olsen/agentic-filesystem';
 import { shellPlugin } from '@morten-olsen/agentic-shell';
 import { sshPlugin } from '@morten-olsen/agentic-ssh';
 import { webFetchPlugin } from '@morten-olsen/agentic-web-fetch';
-import { blueprintPlugin } from '@morten-olsen/agentic-blueprint';
+import { blueprintPlugin, blueprintApiTools } from '@morten-olsen/agentic-blueprint';
 import { locationPlugin } from '@morten-olsen/agentic-location';
 import { weatherPlugin } from '@morten-olsen/agentic-weather';
 import { homeAssistantPlugin } from '@morten-olsen/agentic-home-assistant';
@@ -171,6 +171,9 @@ const startServer = async ({ config }: StartServerOptions) => {
     }
     if (config.todo.enabled) {
       apiService.exposeTools(todoApiTools, { tag: 'Todos' });
+    }
+    if (config.blueprint.enabled) {
+      apiService.exposeTools(blueprintApiTools, { tag: 'Blueprints' });
     }
     await pluginService.register(apiPlugin, {
       port: config.api.port,

@@ -53,6 +53,8 @@ export default tseslint.config(
       '**/generated/',
       'apps/expo/*.config.js',
       'apps/expo/.storybook/',
+      'apps/expo/.rnstorybook/',
+      'apps/expo/expo-env.d.ts',
     ],
   },
 );

@@ -1,10 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
-import { Pressable, Modal, Platform, KeyboardAvoidingView } from 'react-native';
+import { Pressable, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { YStack, XStack, Text, useThemeName } from 'tamagui';
-import { CheckSquare, Plus } from '@tamagui/lucide-icons';
+import { BookOpen, CheckSquare, Plus } from '@tamagui/lucide-icons';
 import Animated from 'react-native-reanimated';
 
 import { useToolQuery, useToolInvoke } from '../src/hooks/use-tools';
@@ -12,6 +12,7 @@ import { useSession } from '../src/hooks/use-session';
 import { useMountAnimation } from '../src/hooks/use-mount-animation';
 import { ConversationList } from '../src/components/conversation-list/conversation-list';
 import { GlassView } from '../src/components/glass/glass-view';
+import { KeyboardAwareView } from '../src/components/keyboard/keyboard-aware-view';
 
 type MenuPosition = { top: number; left: number };
 
@@ -110,8 +111,8 @@ const ConversationsRoute = () => {
   const headerAnim = useMountAnimation({ duration: 400, delay: 200 });
   const titleAnim = useMountAnimation({ translateY: 10, duration: 450, delay: 300 });
 
-  const content = (
-    <YStack flex={1} paddingTop={insets.top} paddingBottom={insets.bottom}>
+  return (
+    <KeyboardAwareView style={{ paddingTop: insets.top }}>
       <Stack.Screen options={{ headerShown: false }} />
 
       <Animated.View style={headerAnim.style}>
@@ -119,6 +120,21 @@ const ConversationsRoute = () => {
           <XStack alignItems="center" height={52} gap={8}>
             <AvatarMenu onLogout={handleLogout} />
             <YStack flex={1} />
+            <Pressable onPress={() => router.push('/blueprints')}>
+              <GlassView
+                intensity="subtle"
+                borderRadius={9999}
+                padding={0}
+                style={{
+                  width: 42,
+                  height: 42,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <BookOpen size={22} color="$accent" />
+              </GlassView>
+            </Pressable>
             <Pressable onPress={() => router.push('/todos')}>
               <GlassView
                 intensity="subtle"
@@ -175,18 +191,8 @@ const ConversationsRoute = () => {
         onRefresh={refetch}
         isRefreshing={isLoading}
       />
-    </YStack>
+    </KeyboardAwareView>
   );
-
-  if (Platform.OS === 'ios') {
-    return (
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-        {content}
-      </KeyboardAvoidingView>
-    );
-  }
-
-  return content;
 };
 
 export default ConversationsRoute;

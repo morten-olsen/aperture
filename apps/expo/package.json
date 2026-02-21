@@ -10,8 +10,9 @@
     "ios": "expo start --ios",
     "build": "echo 'Expo app — no tsc build step'",
     "test:unit": "echo 'No tests yet'",
-    "storybook": "storybook dev -p 6006",
-    "storybook:build": "storybook build",
+    "storybook": "cross-env EXPO_PUBLIC_STORYBOOK_ENABLED=true expo start",
+    "storybook:ios": "cross-env EXPO_PUBLIC_STORYBOOK_ENABLED=true expo start --ios",
+    "storybook:android": "cross-env EXPO_PUBLIC_STORYBOOK_ENABLED=true expo start --android",
     "generate": "tsx scripts/generate-tool-types.ts --server http://localhost:4000/api"
   },
   "dependencies": {
@@ -39,17 +40,21 @@
     "react-native-screens": "~4.16.0",
     "react-native-sse": "^1.2.1",
     "react-native-svg": "^15.15.3",
+    "react-native-gesture-handler": "~2.25.0",
     "react-native-web": "~0.21.2",
     "react-native-worklets": "0.5.1",
-    "tamagui": "^1.120.3"
+    "tamagui": "^1.120.3",
+    "@gorhom/bottom-sheet": "^5"
   },
   "devDependencies": {
     "@babel/core": "^7.27.4",
-    "@storybook/react-native-web-vite": "^10.2.10",
+    "@storybook/addon-ondevice-controls": "^10",
+    "@storybook/react": "^10",
+    "@storybook/react-native": "^10",
     "@tamagui/babel-plugin": "^1.120.3",
     "@types/react": "^19.1.17",
+    "cross-env": "^7.0.3",
     "eas-cli": "^18.0.3",
-    "storybook": "^10.2.10",
     "typescript": "5.9.3"
   }
 }

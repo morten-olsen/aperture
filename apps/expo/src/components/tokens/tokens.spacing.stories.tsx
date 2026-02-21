@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
+import type { Meta, StoryObj } from '@storybook/react';
 import { config } from '@tamagui/config/v3';
 import { XStack, YStack, Text, View } from 'tamagui';
 

@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import type { EventStream } from '../../client/client.events.ts';
 

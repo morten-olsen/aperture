@@ -2,7 +2,16 @@
   "permissions": {
     "allow": [
       "Bash(python3:*)",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "WebFetch(domain:docs.swmansion.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebSearch",
+      "Bash(wc:*)",
+      "Bash(find:*)",
+      "Bash(echo:*)",
+      "Bash(npm view:*)",
+      "Bash(grep:*)",
+      "Bash(pnpm install:*)"
     ]
   }
 }

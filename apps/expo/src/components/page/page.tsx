@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable } from 'react-native';
+import { Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { YStack, XStack, Text } from 'tamagui';
 
 import { AuraBackground } from '../aura/aura-background.tsx';
 import { GlassView } from '../glass/glass-view.tsx';
+import { KeyboardAwareView } from '../keyboard/keyboard-aware-view.tsx';
 
 type PageProps = {
   title: string;
@@ -18,8 +19,8 @@ type PageProps = {
 const Page = ({ title, variant = 'large', onBack, leftAction, rightAction, children }: PageProps) => {
   const insets = useSafeAreaInsets();
 
-  const content = (
-    <YStack flex={1} backgroundColor="$backgroundBase" paddingTop={insets.top} paddingBottom={insets.bottom}>
+  return (
+    <KeyboardAwareView style={{ paddingTop: insets.top }}>
       <AuraBackground />
 
       {variant === 'large' ? (
@@ -65,18 +66,8 @@ const Page = ({ title, variant = 'large', onBack, leftAction, rightAction, child
         </GlassView>
       )}
       {children}
-    </YStack>
+    </KeyboardAwareView>
   );
-
-  if (Platform.OS === 'ios') {
-    return (
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-        {content}
-      </KeyboardAvoidingView>
-    );
-  }
-
-  return content;
 };
 
 export type { PageProps };

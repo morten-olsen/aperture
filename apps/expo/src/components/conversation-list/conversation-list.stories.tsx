@@ -1,6 +1,5 @@
 import React from 'react';
-import { fn } from 'storybook/test';
-import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
+import type { Meta, StoryObj } from '@storybook/react';
 import { YStack } from 'tamagui';
 
 import { ConversationList } from './conversation-list.tsx';
@@ -45,16 +44,16 @@ const WithConversations: Story = {
         updatedAt: new Date('2026-02-10T14:00:00Z').toISOString(),
       },
     ],
-    onSelect: fn(),
-    onRefresh: fn(),
+    onSelect: () => undefined,
+    onRefresh: () => undefined,
   },
 };
 
 const Empty: Story = {
   args: {
     conversations: [],
-    onSelect: fn(),
-    onRefresh: fn(),
+    onSelect: () => undefined,
+    onRefresh: () => undefined,
   },
 };
 
@@ -67,8 +66,8 @@ const Refreshing: Story = {
         updatedAt: new Date(now - 60_000).toISOString(),
       },
     ],
-    onSelect: fn(),
-    onRefresh: fn(),
+    onSelect: () => undefined,
+    onRefresh: () => undefined,
     isRefreshing: true,
   },
 };

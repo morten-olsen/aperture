@@ -1,6 +1,5 @@
 import React from 'react';
-import { fn } from 'storybook/test';
-import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
+import type { Meta, StoryObj } from '@storybook/react';
 import { YStack } from 'tamagui';
 
 import { TodoList } from './todo-list.tsx';
@@ -70,27 +69,27 @@ const sampleTasks = [
 const WithTasks: Story = {
   args: {
     tasks: sampleTasks,
-    onSelect: fn(),
-    onToggleComplete: fn(),
-    onRefresh: fn(),
+    onSelect: () => undefined,
+    onToggleComplete: () => undefined,
+    onRefresh: () => undefined,
   },
 };
 
 const Empty: Story = {
   args: {
     tasks: [],
-    onSelect: fn(),
-    onToggleComplete: fn(),
-    onRefresh: fn(),
+    onSelect: () => undefined,
+    onToggleComplete: () => undefined,
+    onRefresh: () => undefined,
   },
 };
 
 const Refreshing: Story = {
   args: {
     tasks: sampleTasks.slice(0, 2),
-    onSelect: fn(),
-    onToggleComplete: fn(),
-    onRefresh: fn(),
+    onSelect: () => undefined,
+    onToggleComplete: () => undefined,
+    onRefresh: () => undefined,
     isRefreshing: true,
   },
 };

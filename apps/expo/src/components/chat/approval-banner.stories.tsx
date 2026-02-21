@@ -1,5 +1,4 @@
-import { fn } from 'storybook/test';
-import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { ApprovalBanner } from './approval-banner.tsx';
 
@@ -18,8 +17,8 @@ const Default: Story = {
       input: { path: '/src/app.ts', content: '...' },
       reason: 'This tool modifies the filesystem',
     },
-    onApprove: fn(),
-    onReject: fn(),
+    onApprove: () => undefined,
+    onReject: () => undefined,
   },
 };
 

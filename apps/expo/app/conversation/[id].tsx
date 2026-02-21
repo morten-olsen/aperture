@@ -1,9 +1,9 @@
 import { useCallback, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable } from 'react-native';
+import { Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { YStack, XStack } from 'tamagui';
+import { XStack } from 'tamagui';
 import { ArrowLeft } from '@tamagui/lucide-icons';
 import Animated from 'react-native-reanimated';
 
@@ -12,6 +12,7 @@ import { usePrompt, type PromptOutput } from '../../src/hooks/use-prompt';
 import { useMountAnimation } from '../../src/hooks/use-mount-animation';
 import { ChatConversation } from '../../src/components/chat/chat-conversation';
 import { GlassView } from '../../src/components/glass/glass-view';
+import { KeyboardAwareView } from '../../src/components/keyboard/keyboard-aware-view';
 
 type HistoryEntry = {
   type: string;
@@ -68,8 +69,8 @@ const ChatScreen = () => {
   const headerAnim = useMountAnimation({ translateY: -10, duration: 300, delay: 200 });
   const headerHeight = insets.top + 12 + 24 + 12;
 
-  const content = (
-    <YStack flex={1} paddingBottom={insets.bottom}>
+  return (
+    <KeyboardAwareView>
       <Stack.Screen options={{ headerShown: false }} />
 
       <Animated.View style={[{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }, headerAnim.style]}>
@@ -92,18 +93,8 @@ const ChatScreen = () => {
         onReject={pendingApproval ? () => reject(pendingApproval.toolCallId) : undefined}
         contentTopInset={headerHeight}
       />
-    </YStack>
+    </KeyboardAwareView>
   );
-
-  if (Platform.OS === 'ios') {
-    return (
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-        {content}
-      </KeyboardAvoidingView>
-    );
-  }
-
-  return content;
 };
 
 export default ChatScreen;

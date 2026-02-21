@@ -987,6 +987,194 @@
         "required": ["taskId", "tags"],
         "additionalProperties": false
       }
+    },
+    {
+      "id": "blueprint.list",
+      "description": "List all behavioural blueprints (summary view with id, title, and use_case).",
+      "tag": "Blueprints",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "blueprints": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "title": { "type": "string" },
+                "use_case": { "type": "string" }
+              },
+              "required": ["id", "title", "use_case"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["blueprints"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "blueprint.get",
+      "description": "Fetch the full details of a behavioural blueprint.",
+      "tag": "Blueprints",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The blueprint ID to fetch"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "use_case": { "type": "string" },
+          "process": { "type": "string" },
+          "notes": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }]
+          },
+          "created_at": { "type": "string" },
+          "updated_at": { "type": "string" }
+        },
+        "required": ["id", "title", "use_case", "process", "notes", "created_at", "updated_at"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "blueprint.create",
+      "description": "Create a new behavioural blueprint to remember how to handle a recurring task.",
+      "tag": "Blueprints",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Short name describing what this blueprint handles"
+          },
+          "use_case": {
+            "type": "string",
+            "description": "When to apply this blueprint — the matching criteria"
+          },
+          "process": {
+            "type": "string",
+            "description": "Step-by-step instructions the agent should follow"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Agent scratch pad — observations, experiments, caveats"
+          }
+        },
+        "required": ["title", "use_case", "process"],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "use_case": { "type": "string" },
+          "process": { "type": "string" },
+          "notes": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }]
+          },
+          "created_at": { "type": "string" },
+          "updated_at": { "type": "string" }
+        },
+        "required": ["id", "title", "use_case", "process", "notes", "created_at", "updated_at"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "blueprint.update",
+      "description": "Update one or more fields of an existing blueprint. Re-embeds automatically if title or use_case changes.",
+      "tag": "Blueprints",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The blueprint ID to update"
+          },
+          "title": {
+            "type": "string",
+            "description": "Updated title"
+          },
+          "use_case": {
+            "type": "string",
+            "description": "Updated use case"
+          },
+          "process": {
+            "type": "string",
+            "description": "Updated process"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Updated notes"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "use_case": { "type": "string" },
+          "process": { "type": "string" },
+          "notes": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }]
+          },
+          "created_at": { "type": "string" },
+          "updated_at": { "type": "string" }
+        },
+        "required": ["id", "title", "use_case", "process", "notes", "created_at", "updated_at"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "blueprint.delete",
+      "description": "Delete a behavioural blueprint permanently.",
+      "tag": "Blueprints",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The blueprint ID to delete"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "deleted": { "type": "boolean" }
+        },
+        "required": ["deleted"],
+        "additionalProperties": false
+      }
     }
   ]
 }

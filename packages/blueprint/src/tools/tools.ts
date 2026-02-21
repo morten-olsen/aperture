@@ -8,4 +8,6 @@ import { listBlueprints } from './tools.list.js';
 
 const blueprintTools: Tool[] = [getBlueprint, createBlueprint, updateBlueprint, deleteBlueprint, listBlueprints];
 
-export { blueprintTools };
+const blueprintApiTools: Tool[] = [getBlueprint, createBlueprint, updateBlueprint, deleteBlueprint, listBlueprints];
+
+export { blueprintTools, blueprintApiTools };

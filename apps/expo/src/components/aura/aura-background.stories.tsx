@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
+import type { Meta, StoryObj } from '@storybook/react';
 import { YStack, Text } from 'tamagui';
 
 import { AuraBackground } from './aura-background.tsx';

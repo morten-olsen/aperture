@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { FlatList, TextInput, Pressable, type TextInput as RNTextInput } from 'react-native';
 import { YStack, XStack, Text, useTheme } from 'tamagui';
 import Animated, { SlideInDown } from 'react-native-reanimated';
@@ -78,30 +78,32 @@ const ChatConversation = ({
   }, [text, onSend]);
 
   const displayItems = groupMessages(messages);
+  const reversedItems = useMemo(() => [...displayItems].reverse(), [displayItems]);
 
   const renderItem = useCallback(
     ({ item, index }: { item: DisplayItem; index: number }) => {
-      const prev = index > 0 ? displayItems[index - 1] : null;
+      const prev = index < reversedItems.length - 1 ? reversedItems[index + 1] : null;
       const sameSender = prev?.kind === 'message' && item.kind === 'message' && prev.entry.role === item.entry.role;
 
       return (
-        <YStack marginTop={sameSender ? 3 : 12}>
+        <YStack marginBottom={sameSender ? 3 : 12}>
           <AnimatedChatItem kind={item.kind} role={item.kind === 'message' ? item.entry.role : undefined}>
             {item.kind === 'tools' ? <ToolCallGroup tools={item.entries} /> : <ChatMessage data={item.entry} />}
           </AnimatedChatItem>
         </YStack>
       );
     },
-    [displayItems],
+    [reversedItems],
   );
 
   return (
     <YStack flex={1}>
       <FlatList
-        data={displayItems}
+        inverted
+        data={reversedItems}
         keyExtractor={(_, index) => String(index)}
         renderItem={renderItem}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: contentTopInset + 16, paddingBottom: 8 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: contentTopInset + 16, paddingTop: 8 }}
       />
 
       {pendingApproval && onApprove && onReject && (

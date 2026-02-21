@@ -1,6 +1,5 @@
 import React from 'react';
-import { fn } from 'storybook/test';
-import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
+import type { Meta, StoryObj } from '@storybook/react';
 import { YStack } from 'tamagui';
 
 import { Page } from '../page/page.tsx';
@@ -15,7 +14,7 @@ const FullScreen = (Story: React.ComponentType) => (
 );
 
 const WithPage = (Story: React.ComponentType) => (
-  <Page title="Conversation" variant="inline" onBack={fn()}>
+  <Page title="Conversation" variant="inline" onBack={() => undefined}>
     <Story />
   </Page>
 );
@@ -71,7 +70,7 @@ const basicConversation: ChatEntry[] = [
 const Conversation: Story = {
   args: {
     messages: basicConversation,
-    onSend: fn(),
+    onSend: () => undefined,
   },
 };
 
@@ -88,7 +87,7 @@ const Streaming: Story = {
   args: {
     messages: streamingMessages,
     isStreaming: true,
-    onSend: fn(),
+    onSend: () => undefined,
   },
 };
 
@@ -111,9 +110,9 @@ const PendingApproval: Story = {
       input: { path: '/src/__fixtures__/temp-data.json' },
       reason: 'This action will permanently delete a file',
     },
-    onSend: fn(),
-    onApprove: fn(),
-    onReject: fn(),
+    onSend: () => undefined,
+    onApprove: () => undefined,
+    onReject: () => undefined,
   },
 };
 
@@ -130,14 +129,14 @@ const WithError: Story = {
   args: {
     messages: errorMessages,
     error: 'Connection refused: unable to reach database at prod-db.internal:5432',
-    onSend: fn(),
+    onSend: () => undefined,
   },
 };
 
 const Empty: Story = {
   args: {
     messages: [],
-    onSend: fn(),
+    onSend: () => undefined,
   },
 };
 

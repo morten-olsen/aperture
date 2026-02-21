@@ -11,35 +11,36 @@ import Animated from 'react-native-reanimated';
 import { useToolQuery, useToolInvoke } from '../../src/hooks/use-tools';
 import { useMountAnimation } from '../../src/hooks/use-mount-animation';
 import { GlassView } from '../../src/components/glass/glass-view';
-import { TodoDetail } from '../../src/components/todo-detail/todo-detail';
+import { BlueprintDetail } from '../../src/components/blueprint-detail/blueprint-detail';
 import { KeyboardAwareView } from '../../src/components/keyboard/keyboard-aware-view';
 
-import type { TodoDetailChanges } from '../../src/components/todo-detail/todo-detail';
+import type { BlueprintDetailChanges } from '../../src/components/blueprint-detail/blueprint-detail';
 
-const TodoDetailScreen = () => {
+const BlueprintDetailScreen = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
-  const { data } = useToolQuery('todo.list', {});
-  const updateTask = useToolInvoke('todo.update');
-  const removeTask = useToolInvoke('todo.remove');
+  const { data } = useToolQuery('blueprint.get', { id });
+  const updateBlueprint = useToolInvoke('blueprint.update');
+  const deleteBlueprint = useToolInvoke('blueprint.delete');
 
-  const task = data?.result.tasks.find((t) => t.id === id);
+  const blueprint = data?.result;
 
   const handleUpdate = useCallback(
-    async (changes: TodoDetailChanges) => {
-      await updateTask.mutateAsync({ taskId: id, ...changes });
-      queryClient.invalidateQueries({ queryKey: ['tool', 'todo.list'] });
+    async (changes: BlueprintDetailChanges) => {
+      await updateBlueprint.mutateAsync({ id, ...changes });
+      queryClient.invalidateQueries({ queryKey: ['tool', 'blueprint.get'] });
+      queryClient.invalidateQueries({ queryKey: ['tool', 'blueprint.list'] });
     },
-    [updateTask, id, queryClient],
+    [updateBlueprint, id, queryClient],
   );
 
   const handleDelete = useCallback(async () => {
-    await removeTask.mutateAsync({ taskId: id });
-    queryClient.invalidateQueries({ queryKey: ['tool', 'todo.list'] });
+    await deleteBlueprint.mutateAsync({ id });
+    queryClient.invalidateQueries({ queryKey: ['tool', 'blueprint.list'] });
     router.back();
-  }, [removeTask, id, queryClient, router]);
+  }, [deleteBlueprint, id, queryClient, router]);
 
   const headerAnim = useMountAnimation({ translateY: -10, duration: 300, delay: 200 });
   const headerHeight = insets.top + 12 + 24 + 12;
@@ -54,9 +55,9 @@ const TodoDetailScreen = () => {
             <Pressable onPress={() => router.back()} hitSlop={12}>
               <ArrowLeft size={24} color="$accent" />
             </Pressable>
-            {task && (
+            {blueprint && (
               <Text fontSize={17} fontWeight="600" color="$color" numberOfLines={1} flex={1}>
-                {task.title}
+                {blueprint.title}
               </Text>
             )}
           </XStack>
@@ -64,8 +65,13 @@ const TodoDetailScreen = () => {
       </Animated.View>
 
       <YStack flex={1} paddingTop={headerHeight}>
-        {task ? (
-          <TodoDetail task={task} onUpdate={handleUpdate} onDelete={handleDelete} isUpdating={updateTask.isPending} />
+        {blueprint ? (
+          <BlueprintDetail
+            blueprint={blueprint}
+            onUpdate={handleUpdate}
+            onDelete={handleDelete}
+            isUpdating={updateBlueprint.isPending}
+          />
         ) : (
           <YStack flex={1} alignItems="center" justifyContent="center">
             <Text color="$colorMuted">Loading...</Text>
@@ -76,4 +82,4 @@ const TodoDetailScreen = () => {
   );
 };
 
-export default TodoDetailScreen;
+export default BlueprintDetailScreen;

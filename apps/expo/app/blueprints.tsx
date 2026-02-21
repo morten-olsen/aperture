@@ -4,55 +4,37 @@ import { useRouter } from 'expo-router';
 import { Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { YStack, XStack, Text } from 'tamagui';
-import { ArrowLeft } from '@tamagui/lucide-icons';
+import { ArrowLeft, Plus } from '@tamagui/lucide-icons';
 import { useQueryClient } from '@tanstack/react-query';
-import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { useToolQuery, useToolInvoke } from '../src/hooks/use-tools';
 import { useMountAnimation } from '../src/hooks/use-mount-animation';
-import { useKeyboardBottomInset } from '../src/hooks/use-keyboard-bottom-inset';
 import { GlassView } from '../src/components/glass/glass-view';
-import { TodoList } from '../src/components/todo-list/todo-list';
-import { TodoQuickAdd } from '../src/components/todo-list/todo-quick-add';
+import { BlueprintList } from '../src/components/blueprint-list/blueprint-list';
 import { KeyboardAwareView } from '../src/components/keyboard/keyboard-aware-view';
 
-const TodosRoute = () => {
+const BlueprintsRoute = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const bottomInset = useKeyboardBottomInset();
   const queryClient = useQueryClient();
-  const { data, refetch, isLoading } = useToolQuery('todo.list', { parentId: null });
-  const createTask = useToolInvoke('todo.create');
-  const updateTask = useToolInvoke('todo.update');
+  const { data, refetch, isLoading } = useToolQuery('blueprint.list', {});
+  const createBlueprint = useToolInvoke('blueprint.create');
 
-  const tasks = data?.result.tasks ?? [];
+  const blueprints = data?.result.blueprints ?? [];
 
-  const handleAdd = useCallback(
-    async (title: string) => {
-      await createTask.mutateAsync({ title });
-      queryClient.invalidateQueries({ queryKey: ['tool', 'todo.list'] });
-    },
-    [createTask, queryClient],
-  );
-
-  const handleToggleComplete = useCallback(
-    async (id: string, currentStatus: string) => {
-      const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
-      await updateTask.mutateAsync({ taskId: id, status: newStatus });
-      queryClient.invalidateQueries({ queryKey: ['tool', 'todo.list'] });
-    },
-    [updateTask, queryClient],
-  );
+  const handleCreate = useCallback(async () => {
+    const result = await createBlueprint.mutateAsync({
+      title: 'New Blueprint',
+      use_case: '',
+      process: '',
+    });
+    queryClient.invalidateQueries({ queryKey: ['tool', 'blueprint.list'] });
+    router.push(`/blueprint/${result.result.id}`);
+  }, [createBlueprint, queryClient, router]);
 
   const headerAnim = useMountAnimation({ duration: 400, delay: 200 });
   const titleAnim = useMountAnimation({ translateY: 10, duration: 450, delay: 300 });
-
-  const fabStyle = useAnimatedStyle(() => ({
-    position: 'absolute' as const,
-    bottom: bottomInset.value + 16,
-    left: 0,
-    right: 0,
-  }));
 
   return (
     <KeyboardAwareView style={{ paddingTop: insets.top }}>
@@ -76,6 +58,23 @@ const TodosRoute = () => {
                 <ArrowLeft size={24} color="$accent" />
               </GlassView>
             </Pressable>
+            <YStack flex={1} />
+            <Pressable onPress={handleCreate} disabled={createBlueprint.isPending}>
+              <GlassView
+                intensity="subtle"
+                borderRadius={9999}
+                padding={0}
+                style={{
+                  width: 42,
+                  height: 42,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: createBlueprint.isPending ? 0.5 : 1,
+                }}
+              >
+                <Plus size={24} color="$accent" />
+              </GlassView>
+            </Pressable>
           </XStack>
         </YStack>
       </Animated.View>
@@ -91,23 +90,18 @@ const TodosRoute = () => {
           paddingTop="$4"
           paddingBottom="$3"
         >
-          Tasks
+          Blueprints
         </Text>
       </Animated.View>
 
-      <TodoList
-        tasks={tasks}
-        onSelect={(id) => router.push(`/todo/${id}`)}
-        onToggleComplete={handleToggleComplete}
+      <BlueprintList
+        blueprints={blueprints}
+        onSelect={(id) => router.push(`/blueprint/${id}`)}
         onRefresh={refetch}
         isRefreshing={isLoading}
       />
-
-      <Animated.View style={fabStyle}>
-        <TodoQuickAdd onAdd={handleAdd} isAdding={createTask.isPending} />
-      </Animated.View>
     </KeyboardAwareView>
   );
 };
 
-export default TodosRoute;
+export default BlueprintsRoute;

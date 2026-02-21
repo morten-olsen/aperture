@@ -1,12 +1,11 @@
 import React from 'react';
-import { fn } from 'storybook/test';
-import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
+import type { Meta, StoryObj } from '@storybook/react';
 import { YStack, Text, XStack } from 'tamagui';
 
 import { Page } from './page.tsx';
 
 const FullScreen = (Story: React.ComponentType) => (
-  <YStack height="100vh">
+  <YStack flex={1}>
     <Story />
   </YStack>
 );
@@ -44,7 +43,7 @@ const LargeTitle: Story = {
 const LargeTitleWithBack: Story = {
   args: {
     title: 'Settings',
-    onBack: fn(),
+    onBack: () => undefined,
     children: React.createElement(SampleContent),
   },
 };
@@ -70,7 +69,7 @@ const InlineTitle: Story = {
   args: {
     title: 'Conversation',
     variant: 'inline',
-    onBack: fn(),
+    onBack: () => undefined,
     children: React.createElement(SampleContent),
   },
 };

@@ -1,7 +1,8 @@
 import { useEffect, useMemo } from 'react';
-import { StyleSheet, useColorScheme } from 'react-native';
+import { useColorScheme } from 'react-native';
 import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
+import { ThemeProvider, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { TamaguiProvider, Theme, YStack } from 'tamagui';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -10,6 +11,7 @@ import { PlusJakartaSans_500Medium } from '@expo-google-fonts/plus-jakarta-sans/
 import { PlusJakartaSans_600SemiBold } from '@expo-google-fonts/plus-jakarta-sans/600SemiBold';
 import { PlusJakartaSans_700Bold } from '@expo-google-fonts/plus-jakarta-sans/700Bold';
 
+import StorybookUI from '../.rnstorybook';
 import { tamaguiConfig } from '../src/theme/tamagui.config';
 import { AgenticClient } from '../src/client/client';
 import { createSseConnection } from '../src/client/client.sse';
@@ -19,6 +21,22 @@ import { useEventStream } from '../src/hooks/use-event-stream';
 import { SessionProvider, useSession } from '../src/hooks/use-session';
 
 const queryClient = new QueryClient();
+
+const lightNavTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: 'transparent',
+  },
+};
+
+const darkNavTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: 'transparent',
+  },
+};
 
 const transparentScreen = { backgroundColor: 'transparent' };
 
@@ -95,6 +113,10 @@ const InnerLayout = () => {
 };
 
 const RootLayout = () => {
+  if (process.env.EXPO_PUBLIC_STORYBOOK_ENABLED === 'true') {
+    return <StorybookUI />;
+  }
+
   const colorScheme = useColorScheme();
   const [fontsLoaded] = useFonts({
     PlusJakartaSans: PlusJakartaSans_400Regular,
@@ -111,12 +133,14 @@ const RootLayout = () => {
         <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
           <Theme name={colorScheme === 'dark' ? 'dark' : 'light'}>
             <QueryClientProvider client={queryClient}>
-              <YStack flex={1} backgroundColor="$backgroundBase">
-                <AuraBackground />
-                <YStack flex={1} style={StyleSheet.absoluteFill}>
-                  <InnerLayout />
+              <ThemeProvider value={colorScheme === 'dark' ? darkNavTheme : lightNavTheme}>
+                <YStack flex={1} backgroundColor="$backgroundBase">
+                  <AuraBackground />
+                  <YStack flex={1}>
+                    <InnerLayout />
+                  </YStack>
                 </YStack>
-              </YStack>
+              </ThemeProvider>
             </QueryClientProvider>
           </Theme>
         </TamaguiProvider>

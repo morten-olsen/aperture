@@ -1,5 +1,4 @@
-import { fn } from 'storybook/test';
-import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { TodoQuickAdd } from './todo-quick-add.tsx';
 
@@ -11,13 +10,13 @@ type Story = StoryObj<typeof TodoQuickAdd>;
 
 const Default: Story = {
   args: {
-    onAdd: fn(),
+    onAdd: () => undefined,
   },
 };
 
 const Adding: Story = {
   args: {
-    onAdd: fn(),
+    onAdd: () => undefined,
     isAdding: true,
   },
 };

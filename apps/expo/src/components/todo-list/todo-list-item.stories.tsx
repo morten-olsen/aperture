@@ -1,5 +1,4 @@
-import { fn } from 'storybook/test';
-import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { TodoListItem } from './todo-list-item.tsx';
 
@@ -25,16 +24,16 @@ const baseTask = {
 const Pending: Story = {
   args: {
     task: baseTask,
-    onPress: fn(),
-    onToggleComplete: fn(),
+    onPress: () => undefined,
+    onToggleComplete: () => undefined,
   },
 };
 
 const InProgress: Story = {
   args: {
     task: { ...baseTask, id: 'task-2', title: 'Write unit tests', status: 'in_progress' },
-    onPress: fn(),
-    onToggleComplete: fn(),
+    onPress: () => undefined,
+    onToggleComplete: () => undefined,
   },
 };
 
@@ -47,16 +46,16 @@ const Completed: Story = {
       status: 'completed',
       completedAt: new Date(now - 1_800_000).toISOString(),
     },
-    onPress: fn(),
-    onToggleComplete: fn(),
+    onPress: () => undefined,
+    onToggleComplete: () => undefined,
   },
 };
 
 const HighPriority: Story = {
   args: {
     task: { ...baseTask, id: 'task-4', title: 'Fix production bug', priority: 'high' },
-    onPress: fn(),
-    onToggleComplete: fn(),
+    onPress: () => undefined,
+    onToggleComplete: () => undefined,
   },
 };
 
@@ -69,16 +68,16 @@ const UrgentOverdue: Story = {
       priority: 'urgent',
       dueAt: new Date(now - 7_200_000).toISOString(),
     },
-    onPress: fn(),
-    onToggleComplete: fn(),
+    onPress: () => undefined,
+    onToggleComplete: () => undefined,
   },
 };
 
 const WithProject: Story = {
   args: {
     task: { ...baseTask, id: 'task-6', title: 'Design new landing page', project: 'Website Redesign' },
-    onPress: fn(),
-    onToggleComplete: fn(),
+    onPress: () => undefined,
+    onToggleComplete: () => undefined,
   },
 };
 
@@ -89,8 +88,8 @@ const LongTitle: Story = {
       id: 'task-7',
       title: 'This is a very long task title that should be truncated in the user interface to prevent overflow',
     },
-    onPress: fn(),
-    onToggleComplete: fn(),
+    onPress: () => undefined,
+    onToggleComplete: () => undefined,
   },
 };
 
