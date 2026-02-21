@@ -8,7 +8,7 @@ import { ChatConversation } from './chat-conversation.tsx';
 import type { ChatEntry } from './chat-conversation.tsx';
 
 const FullScreen = (Story: React.ComponentType) => (
-  <YStack height="100vh">
+  <YStack flex={1}>
     <Story />
   </YStack>
 );

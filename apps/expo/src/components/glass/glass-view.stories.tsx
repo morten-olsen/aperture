@@ -17,42 +17,33 @@ const meta: Meta<typeof GlassView> = {
 type Story = StoryObj<typeof GlassView>;
 
 const Subtle: Story = {
-  args: {
-    intensity: 'subtle',
-    borderRadius: 24,
-    padding: 20,
-    children: (
+  render: () => (
+    <GlassView intensity="subtle" borderRadius={24} padding={20}>
       <Text fontSize={16} color="$color">
         Subtle glass intensity — used for tool cards, list items, and inactive buttons.
       </Text>
-    ),
-  },
+    </GlassView>
+  ),
 };
 
 const Medium: Story = {
-  args: {
-    intensity: 'medium',
-    borderRadius: 24,
-    padding: 20,
-    children: (
+  render: () => (
+    <GlassView intensity="medium" borderRadius={24} padding={20}>
       <Text fontSize={16} color="$color">
         Medium glass intensity — used for login forms, assistant chat bubbles.
       </Text>
-    ),
-  },
+    </GlassView>
+  ),
 };
 
 const Strong: Story = {
-  args: {
-    intensity: 'strong',
-    borderRadius: 24,
-    padding: 20,
-    children: (
+  render: () => (
+    <GlassView intensity="strong" borderRadius={24} padding={20}>
       <Text fontSize={16} color="$color">
         Strong glass intensity — used for headers, input bars, approval banners.
       </Text>
-    ),
-  },
+    </GlassView>
+  ),
 };
 
 const AllIntensities: Story = {

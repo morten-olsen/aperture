@@ -5,7 +5,7 @@ import { YStack } from 'tamagui';
 import { BlueprintList } from './blueprint-list.tsx';
 
 const FullScreen = (Story: React.ComponentType) => (
-  <YStack height="100vh">
+  <YStack flex={1}>
     <Story />
   </YStack>
 );

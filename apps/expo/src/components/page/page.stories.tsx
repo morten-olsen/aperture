@@ -33,45 +33,44 @@ const SampleContent = () => (
   </YStack>
 );
 
+const NewButton = () => (
+  <XStack backgroundColor="$accent" paddingHorizontal="$3" paddingVertical="$1.5" borderRadius="$full">
+    <Text fontSize={14} fontWeight="600" color="$accentText">
+      New
+    </Text>
+  </XStack>
+);
+
 const LargeTitle: Story = {
-  args: {
-    title: 'Conversations',
-    children: React.createElement(SampleContent),
-  },
+  render: () => (
+    <Page title="Conversations">
+      <SampleContent />
+    </Page>
+  ),
 };
 
 const LargeTitleWithBack: Story = {
-  args: {
-    title: 'Settings',
-    onBack: () => undefined,
-    children: React.createElement(SampleContent),
-  },
+  render: () => (
+    <Page title="Settings" onBack={() => undefined}>
+      <SampleContent />
+    </Page>
+  ),
 };
 
 const LargeTitleWithActions: Story = {
-  args: {
-    title: 'Conversations',
-    rightAction: React.createElement(
-      XStack,
-      {
-        backgroundColor: '$accent',
-        paddingHorizontal: '$3',
-        paddingVertical: '$1.5',
-        borderRadius: '$full',
-      },
-      React.createElement(Text, { fontSize: 14, fontWeight: '600', color: '$accentText' }, 'New'),
-    ),
-    children: React.createElement(SampleContent),
-  },
+  render: () => (
+    <Page title="Conversations" rightAction={<NewButton />}>
+      <SampleContent />
+    </Page>
+  ),
 };
 
 const InlineTitle: Story = {
-  args: {
-    title: 'Conversation',
-    variant: 'inline',
-    onBack: () => undefined,
-    children: React.createElement(SampleContent),
-  },
+  render: () => (
+    <Page title="Conversation" variant="inline" onBack={() => undefined}>
+      <SampleContent />
+    </Page>
+  ),
 };
 
 export { LargeTitle, LargeTitleWithBack, LargeTitleWithActions, InlineTitle };

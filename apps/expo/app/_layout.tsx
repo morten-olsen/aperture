@@ -11,7 +11,6 @@ import { PlusJakartaSans_500Medium } from '@expo-google-fonts/plus-jakarta-sans/
 import { PlusJakartaSans_600SemiBold } from '@expo-google-fonts/plus-jakarta-sans/600SemiBold';
 import { PlusJakartaSans_700Bold } from '@expo-google-fonts/plus-jakarta-sans/700Bold';
 
-import StorybookUI from '../.rnstorybook';
 import { tamaguiConfig } from '../src/theme/tamagui.config';
 import { AgenticClient } from '../src/client/client';
 import { createSseConnection } from '../src/client/client.sse';
@@ -113,10 +112,6 @@ const InnerLayout = () => {
 };
 
 const RootLayout = () => {
-  if (process.env.EXPO_PUBLIC_STORYBOOK_ENABLED === 'true') {
-    return <StorybookUI />;
-  }
-
   const colorScheme = useColorScheme();
   const [fontsLoaded] = useFonts({
     PlusJakartaSans: PlusJakartaSans_400Regular,
