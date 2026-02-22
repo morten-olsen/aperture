@@ -123,6 +123,7 @@ class ApiService {
       `${prefix}/tools`,
       `${prefix}/events`,
       `${prefix}/openapi.json`,
+      `${prefix}/schema`,
     ]);
     const publicPrefixes = [`${prefix}/docs`];
     fastify.addHook('onRequest', async (request, reply) => {
@@ -139,6 +140,7 @@ class ApiService {
     const { registerToolRoutes } = await import('../routes/routes.tools.js');
     const { registerPromptRoutes } = await import('../routes/routes.prompt.js');
     const { registerEventsRoutes } = await import('../routes/routes.events.js');
+    const { registerSchemaRoutes } = await import('../routes/routes.schema.js');
 
     await fastify.register(
       async (app) => {
@@ -146,6 +148,7 @@ class ApiService {
         registerToolRoutes(app, this);
         registerPromptRoutes(app, this);
         registerEventsRoutes(app, this);
+        registerSchemaRoutes(app, this);
       },
       { prefix },
     );

@@ -25,7 +25,7 @@ const TodosRoute = () => {
   const createTask = useToolInvoke('todo.create');
   const updateTask = useToolInvoke('todo.update');
 
-  const tasks = data?.result.tasks ?? [];
+  const tasks = data?.tasks ?? [];
 
   const handleAdd = useCallback(
     async (title: string) => {

@@ -50,7 +50,7 @@ const ChatScreen = () => {
   const { send, outputs, pendingApproval, isStreaming, error, approve, reject } = usePrompt();
   const [pendingInput, setPendingInput] = useState<string | null>(null);
 
-  const history = flattenPrompts(data?.result.prompts ?? []);
+  const history = flattenPrompts(data?.prompts ?? []);
 
   const allMessages: (HistoryEntry | PromptOutput)[] = [
     ...history,

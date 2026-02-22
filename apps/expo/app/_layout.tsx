@@ -11,8 +11,9 @@ import { PlusJakartaSans_500Medium } from '@expo-google-fonts/plus-jakarta-sans/
 import { PlusJakartaSans_600SemiBold } from '@expo-google-fonts/plus-jakarta-sans/600SemiBold';
 import { PlusJakartaSans_700Bold } from '@expo-google-fonts/plus-jakarta-sans/700Bold';
 
+import { ApertureClient } from '@morten-olsen/agentic-client';
+
 import { tamaguiConfig } from '../src/theme/tamagui.config';
-import { AgenticClient } from '../src/client/client';
 import { createSseConnection } from '../src/client/client.sse';
 import { AuraBackground } from '../src/components/aura/aura-background';
 import { AgenticClientProvider } from '../src/hooks/use-client';
@@ -56,8 +57,9 @@ const AuthenticatedProviders = ({ children }: { children: React.ReactNode }) => 
 
   const client = useMemo(
     () =>
-      new AgenticClient({
+      new ApertureClient({
         baseUrl: serverUrl,
+        prefix: '',
         userId,
         createSseConnection,
       }),

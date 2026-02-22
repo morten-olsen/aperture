@@ -1,8 +1,7 @@
+import type { CreateSseConnection } from '@morten-olsen/agentic-client';
 import EventSource from 'react-native-sse';
 
 import { knownEventIds } from '../generated/events.ts';
-
-import type { CreateSseConnection } from './client.sse.ts';
 
 const createSseConnection: CreateSseConnection = (url, headers, callbacks) => {
   const es = new EventSource(url, { headers });

@@ -25,7 +25,7 @@ const TodoDetailScreen = () => {
   const updateTask = useToolInvoke('todo.update');
   const removeTask = useToolInvoke('todo.remove');
 
-  const task = data?.result.tasks.find((t) => t.id === id);
+  const task = data?.tasks.find((t) => t.id === id);
 
   const handleUpdate = useCallback(
     async (changes: TodoDetailChanges) => {

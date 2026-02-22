@@ -21,7 +21,7 @@ const TriggersRoute = () => {
   const { data, refetch, isLoading } = useToolQuery('trigger.list', {});
   const createTrigger = useToolInvoke('trigger.create');
 
-  const triggers = data?.result.triggers ?? [];
+  const triggers = data?.triggers ?? [];
 
   const handleCreate = useCallback(async () => {
     const result = await createTrigger.mutateAsync({
@@ -32,7 +32,7 @@ const TriggersRoute = () => {
       scheduleValue: '0 9 * * *',
     });
     queryClient.invalidateQueries({ queryKey: ['tool', 'trigger.list'] });
-    router.push(`/trigger/${result.result.triggerId}`);
+    router.push(`/trigger/${result.triggerId}`);
   }, [createTrigger, queryClient, router]);
 
   const headerAnim = useMountAnimation({ duration: 400, delay: 200 });

@@ -6,8 +6,8 @@ const useEventStream = () => {
   const client = useAgenticClient();
 
   useEffect(() => {
-    client.connect();
-    return () => client.disconnect();
+    client.events.connect();
+    return () => client.events.disconnect();
   }, [client]);
 
   return client.events;

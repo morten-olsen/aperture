@@ -1,0 +1,32 @@
+{
+  "type": "module",
+  "main": "dist/exports.js",
+  "scripts": {
+    "build": "tsc --build",
+    "build:dev": "tsc --build --watch --preserveWatchOutput",
+    "test:unit": "vitest --run --passWithNoTests",
+    "test": "pnpm run \"/^test:/\""
+  },
+  "packageManager": "pnpm@10.6.0",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": "./dist/exports.js",
+    "./generate": "./dist/generate.js"
+  },
+  "devDependencies": {
+    "@morten-olsen/agentic-configs": "workspace:*",
+    "@morten-olsen/agentic-tests": "workspace:*",
+    "@types/node": "25.3.0",
+    "@vitest/coverage-v8": "4.0.18",
+    "tsx": "^4.21.0",
+    "typescript": "5.9.3",
+    "vitest": "4.0.18"
+  },
+  "name": "@morten-olsen/agentic-client",
+  "version": "1.0.0",
+  "dependencies": {
+    "json-schema-to-typescript": "^15.0.4"
+  }
+}

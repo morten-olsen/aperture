@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-// eslint-disable-next-line import/namespace
 import { Dimensions, Keyboard, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Easing, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';

@@ -21,7 +21,7 @@ const BlueprintsRoute = () => {
   const { data, refetch, isLoading } = useToolQuery('blueprint.list', {});
   const createBlueprint = useToolInvoke('blueprint.create');
 
-  const blueprints = data?.result.blueprints ?? [];
+  const blueprints = data?.blueprints ?? [];
 
   const handleCreate = useCallback(async () => {
     const result = await createBlueprint.mutateAsync({
@@ -30,7 +30,7 @@ const BlueprintsRoute = () => {
       process: '',
     });
     queryClient.invalidateQueries({ queryKey: ['tool', 'blueprint.list'] });
-    router.push(`/blueprint/${result.result.id}`);
+    router.push(`/blueprint/${result.id}`);
   }, [createBlueprint, queryClient, router]);
 
   const headerAnim = useMountAnimation({ duration: 400, delay: 200 });

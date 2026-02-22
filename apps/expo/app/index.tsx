@@ -97,11 +97,11 @@ const ConversationsRoute = () => {
   const { data, refetch, isLoading } = useToolQuery('conversation.list', {});
   const createConversation = useToolInvoke('conversation.create');
 
-  const conversations = data?.result.conversations ?? [];
+  const conversations = data?.conversations ?? [];
 
   const handleCreate = useCallback(async () => {
     const result = await createConversation.mutateAsync({});
-    router.push(`/conversation/${result.result.id}`);
+    router.push(`/conversation/${result.id}`);
   }, [createConversation, router]);
 
   const handleLogout = useCallback(async () => {

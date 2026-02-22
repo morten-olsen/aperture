@@ -1,6 +1,5 @@
+import type { CreateSseConnection } from '@morten-olsen/agentic-client';
 import { EventSourceParserStream } from 'eventsource-parser/stream';
-
-import type { CreateSseConnection } from './client.sse.ts';
 
 const createSseConnection: CreateSseConnection = (url, headers, callbacks) => {
   const abortController = new AbortController();

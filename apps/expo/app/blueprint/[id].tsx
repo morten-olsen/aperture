@@ -25,7 +25,7 @@ const BlueprintDetailScreen = () => {
   const updateBlueprint = useToolInvoke('blueprint.update');
   const deleteBlueprint = useToolInvoke('blueprint.delete');
 
-  const blueprint = data?.result;
+  const blueprint = data;
 
   const handleUpdate = useCallback(
     async (changes: BlueprintDetailChanges) => {

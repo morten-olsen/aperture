@@ -97,7 +97,7 @@ const usePrompt = (): UsePromptReturn => {
       });
 
       try {
-        const { promptId: id } = await client.sendPrompt({
+        const { promptId: id } = await client.prompts.create({
           input,
           model: options?.model,
           conversationId: options?.conversationId,
@@ -130,7 +130,7 @@ const usePrompt = (): UsePromptReturn => {
   const approve = useCallback(
     async (toolCallId: string) => {
       if (!promptId) return;
-      await client.approveToolCall(promptId, toolCallId);
+      await client.prompts.approve(promptId, { toolCallId });
       setPendingApproval(null);
     },
     [client, promptId],
@@ -139,7 +139,7 @@ const usePrompt = (): UsePromptReturn => {
   const reject = useCallback(
     async (toolCallId: string, reason?: string) => {
       if (!promptId) return;
-      await client.rejectToolCall(promptId, toolCallId, reason);
+      await client.prompts.reject(promptId, { toolCallId, reason });
       setPendingApproval(null);
     },
     [client, promptId],

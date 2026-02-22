@@ -226,6 +226,16 @@
         "packageVersion": "1.0.0",
         "packageName": "interpreter"
       }
+    },
+    {
+      "timestamp": "2026-02-21T23:09:02.487Z",
+      "template": "pkg",
+      "values": {
+        "monoRepo": true,
+        "packagePrefix": "@morten-olsen/agentic-",
+        "packageVersion": "1.0.0",
+        "packageName": "client"
+      }
     }
   ]
 }

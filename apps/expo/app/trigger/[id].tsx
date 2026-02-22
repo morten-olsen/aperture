@@ -25,7 +25,7 @@ const TriggerDetailScreen = () => {
   const updateTrigger = useToolInvoke('trigger.update');
   const deleteTrigger = useToolInvoke('trigger.delete');
 
-  const trigger = data?.result.triggers.find((t) => t.id === id);
+  const trigger = data?.triggers.find((t) => t.id === id);
 
   const handleUpdate = useCallback(
     async (changes: TriggerDetailChanges) => {

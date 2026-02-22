@@ -10,6 +10,19 @@ const compat = new FlatCompat({
 });
 
 export default tseslint.config(
+  {
+    ignores: [
+      '**/node_modules/',
+      '**/dist/',
+      '**/.turbo/',
+      '**/generated/',
+      'apps/expo/*.config.js',
+      'apps/expo/.storybook/',
+      'apps/expo/.rnstorybook/',
+      'apps/expo/expo-env.d.ts',
+      'apps/expo/index.js',
+    ],
+  },
   eslint.configs.recommended,
   ...tseslint.configs.strict,
   ...tseslint.configs.stylistic,
@@ -17,6 +30,9 @@ export default tseslint.config(
   {
     files: ['**/*.{ts,tsxx}'],
     extends: [importPlugin.flatConfigs.recommended, importPlugin.flatConfigs.typescript],
+    settings: {
+      'import/ignore': ['react-native'],
+    },
     rules: {
       'import/no-unresolved': 'off',
       'import/extensions': ['error', 'ignorePackages'],
@@ -45,17 +61,4 @@ export default tseslint.config(
     },
   },
   ...compat.extends('plugin:prettier/recommended'),
-  {
-    ignores: [
-      '**/node_modules/',
-      '**/dist/',
-      '**/.turbo/',
-      '**/generated/',
-      'apps/expo/*.config.js',
-      'apps/expo/.storybook/',
-      'apps/expo/.rnstorybook/',
-      'apps/expo/expo-env.d.ts',
-      'apps/expo/index.js',
-    ],
-  },
 );
