@@ -1,3 +1,4 @@
+import { sql } from 'kysely';
 import { createDatabase } from '@morten-olsen/agentic-database';
 import { z } from 'zod';
 
@@ -81,6 +82,32 @@ const database = createDatabase({
         await db.schema.createIndex('calendar_notes_event_uid_idx').on('calendar_notes').column('event_uid').execute();
 
         await db.schema.createIndex('calendar_notes_user_id_idx').on('calendar_notes').column('user_id').execute();
+      },
+    },
+    '2026-02-23-add-user-id': {
+      up: async (db) => {
+        const hasColumn = async (table: string, column: string) => {
+          const result = await sql<{ count: number }>`
+            SELECT count(*) as count FROM pragma_table_info(${table}) WHERE name = ${column}
+          `.execute(db);
+          return (result.rows[0]?.count ?? 0) > 0;
+        };
+
+        if (!(await hasColumn('calendar_events', 'user_id'))) {
+          await db.schema
+            .alterTable('calendar_events')
+            .addColumn('user_id', 'varchar(255)', (cb) => cb.notNull().defaultTo(''))
+            .execute();
+          await db.schema.createIndex('calendar_events_user_id_idx').on('calendar_events').column('user_id').execute();
+        }
+
+        if (!(await hasColumn('calendar_notes', 'user_id'))) {
+          await db.schema
+            .alterTable('calendar_notes')
+            .addColumn('user_id', 'varchar(255)', (cb) => cb.notNull().defaultTo(''))
+            .execute();
+          await db.schema.createIndex('calendar_notes_user_id_idx').on('calendar_notes').column('user_id').execute();
+        }
       },
     },
   },

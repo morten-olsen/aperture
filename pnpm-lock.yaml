@@ -735,6 +735,9 @@ importers:
 
   packages/playground:
     dependencies:
+      '@morten-olsen/agentic-client':
+        specifier: workspace:*
+        version: link:../client
       '@morten-olsen/agentic-conversation':
         specifier: workspace:*
         version: link:../conversation

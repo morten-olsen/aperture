@@ -76,7 +76,9 @@
       "WebFetch(domain:expo.dev)",
       "WebFetch(domain:ixd.prattsi.org)",
       "WebFetch(domain:culturedcode.com)",
-      "WebFetch(domain:www.banani.co)"
+      "WebFetch(domain:www.banani.co)",
+      "Bash(GLADOS_URL=https://glados.olsen.cloud/api GLADOS_USER_ID=morten npx tsx:*)",
+      "Bash(GLADOS_URL=https://glados.olsen.cloud GLADOS_USER_ID=morten npx tsx:*)"
     ]
   }
 }

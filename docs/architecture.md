@@ -145,3 +145,4 @@ await completion.run();
 - [State](./state.md) - Per-plugin conversation state
 - [Secrets & Connections](./connections.md) - Agent-driven configuration for external services
 - [Testing](./testing.md) - Test infrastructure and MSW patterns
+- [Playground CLI](./playground-cli.md) - Remote server debugging via CLI

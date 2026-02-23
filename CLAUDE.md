@@ -107,3 +107,4 @@ Full standards are in `docs/coding-standard.md`. The critical rules enforced by 
 - `docs/testing.md` — Test infrastructure, MSW patterns, and conventions
 - `docs/coding-standard.md` — Full TypeScript coding standards
 - `docs/deployment.md` — Docker image, configuration, environment variables, persistent state
+- `docs/playground-cli.md` — Remote server debugging via CLI

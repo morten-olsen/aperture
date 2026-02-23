@@ -3,6 +3,7 @@
   "main": "dist/exports.js",
   "scripts": {
     "build": "tsc --build",
+    "cli": "tsx src/cli/cli.ts",
     "test:unit": "vitest --run --passWithNoTests",
     "test": "pnpm run \"/^test:/\""
   },
@@ -24,6 +25,7 @@
     "vitest": "4.0.18"
   },
   "dependencies": {
+    "@morten-olsen/agentic-client": "workspace:*",
     "@morten-olsen/agentic-conversation": "workspace:*",
     "@morten-olsen/agentic-core": "workspace:*",
     "@morten-olsen/agentic-trigger": "workspace:*",
