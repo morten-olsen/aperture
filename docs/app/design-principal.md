@@ -1,6 +1,159 @@
 # Design Principles
 
-Design language for the GLaDOS client app. These principles guide every component, screen, and interaction.
+Design language for the Aperture client app. These principles guide every component, screen, and interaction.
+
+---
+
+## Navigation Architecture
+
+Aperture is a **chat-first AI personal assistant**. The navigation hierarchy reflects this: conversation is primary, everything else supports it.
+
+### Core Philosophy
+
+1. **Instant Interaction**: When the app opens, the user should be able to start talking immediately — no menu traversal required.
+2. **Conversation is Home**: The chat interface is the default view, not a destination.
+3. **Utilities Recede**: Management features (triggers, blueprints, secrets) are important but secondary — they configure the assistant, not replace it.
+4. **Tasks Surface Naturally**: Tasks have special status as a user-facing feature that bridges chat and productivity.
+
+### Screen Hierarchy
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         PRIMARY LAYER                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌────────────────┐  ┌──────────────────────────────────────┐   │
+│  │  Conversation  │  │            CHAT (Home)               │   │
+│  │    Sidebar     │  │                                      │   │
+│  │                │  │  The active conversation.            │   │
+│  │  • Recent      │  │  Input bar always visible.           │   │
+│  │  • Search      │  │  Send a message immediately.         │   │
+│  │  • + New       │  │                                      │   │
+│  │                │  │                         ┌──────────┐ │   │
+│  │  [Persistent   │  │                         │ Settings │ │   │
+│  │   on tablet/   │  │                         │  (gear)  │ │   │
+│  │   desktop]     │  │                         └────┬─────┘ │   │
+│  └────────────────┘  └──────────────────────────────┼───────┘   │
+│                                                     ▼           │
+│                                          ┌──────────────────┐   │
+│                                          │  Settings Sheet  │   │
+│                                          │                  │   │
+│                                          │  • Account       │   │
+│                                          │  • Secrets       │   │
+│                                          │  • Triggers      │   │
+│                                          │  • Blueprints    │   │
+│                                          │  • Tasks         │   │
+│                                          │  • Appearance    │   │
+│                                          └──────────────────┘   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                        DETAIL LAYER                             │
+│                    (Contextual screens)                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   Secret Detail │ Trigger Detail │ Blueprint Detail │ Task Detail│
+│                                                                 │
+│   Pushed onto stack from Settings. Back returns to Settings.    │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Navigation Patterns
+
+#### Chat Screen (Home)
+
+The chat screen is the app's home. It displays the **active conversation** as tracked by the backend. The backend maintains an `activeConversation` concept — the app simply renders whatever conversation is currently active.
+
+| Element | Behavior |
+|---------|----------|
+| **Header left** | Tap to open Conversation Drawer (slide-over or bottom sheet) |
+| **Header center** | Conversation title (tappable to rename) |
+| **Header right** | Settings gear icon → opens Settings Sheet |
+| **Message area** | Scrollable chat history with smart spacing |
+| **Input bar** | Always visible at bottom, keyboard-aware |
+| **New conversation** | Available in Conversation Drawer, or long-press header title |
+
+#### Conversation Sidebar
+
+On tablet/desktop: a persistent sidebar listing all conversations. On phone: a bottom sheet triggered from the header.
+
+- **Default sort**: Most recent first
+- **Actions**: Create new, search, delete (swipe on phone, hover menu on desktop)
+- **Selection**: Tap to switch active conversation (backend updates `activeConversation`)
+- **Visual**: `GlassView intensity="medium"` background; active conversation highlighted
+- **Future possibilities**: Folders, pinned conversations, drag-to-reorder, conversation search
+
+#### Settings Sheet
+
+A bottom sheet or side panel containing all configuration and utility features, grouped logically.
+
+| Section | Contains |
+|---------|----------|
+| **Account** | User profile, server connection, sign out |
+| **Secrets** | API keys and credentials (list → detail) |
+| **Automations** | Triggers and Blueprints (grouped or separate) |
+| **Tasks** | Task list for manual review (primary interaction is via chat) |
+| **Appearance** | Theme toggle (light/dark/system) |
+
+Opening Settings does not navigate away from chat — it overlays as a sheet. Dismissing returns to chat instantly.
+
+#### Tasks
+
+Tasks live in Settings alongside other utilities. The assistant is the primary interface for task management — users create, update, and complete tasks through conversation. The Settings list view exists for manual review and bulk operations, not as the primary interaction point.
+
+#### Detail Screens
+
+Detail screens (Secret Detail, Trigger Detail, Blueprint Detail, Task Detail) are pushed onto the navigation stack from their parent list. They use the **Inline Page** variant (glass header with back button).
+
+- **Entry**: Tap item in Settings list
+- **Exit**: Back button or swipe-back gesture
+- **Context**: Header shows parent context (e.g., "Secrets › API Key")
+
+### Responsive Behavior
+
+| Breakpoint | Conversation Sidebar | Settings | Chat |
+|------------|----------------------|----------|------|
+| Phone (`$xs`) | Bottom sheet | Bottom sheet | Full screen |
+| Tablet (`$sm`–`$md`) | Persistent sidebar (collapsible) | Side sheet (right) | Main area |
+| Desktop (`$gtMd`) | Persistent sidebar | Side panel or modal | Main content area |
+
+On tablet and desktop, the conversation list is a **persistent sidebar** on the left. This enables quick conversation switching, provides constant context, and opens up future possibilities (drag-and-drop organization, folders, pinned conversations). The sidebar can be collapsed to an icon rail on tablets if screen space is tight.
+
+On phones, the sidebar becomes a bottom sheet to preserve vertical space for the chat.
+
+### Transition Animations
+
+| Transition | Animation |
+|------------|-----------|
+| Open Conversation Drawer | Slide in from left (tablet) or rise from bottom (phone) with chat dimming |
+| Close Drawer | Reverse; chat un-dims |
+| Open Settings Sheet | Rise from bottom with spring easing |
+| Push to Detail | Standard stack push (slide from right) |
+| Switch Conversation | Cross-fade message area; header title animates |
+
+All transitions use `react-native-reanimated` with consistent spring configs (damping: 20, stiffness: 200).
+
+### Deep Linking
+
+URL structure for web and universal links:
+
+| Route | Screen |
+|-------|--------|
+| `/` | Chat (active conversation from backend) |
+| `/c/:id` | Chat with specific conversation (sets as active) |
+| `/settings` | Settings sheet open over chat |
+| `/settings/secrets` | Secrets list |
+| `/settings/secrets/:id` | Secret detail |
+| `/settings/triggers` | Triggers list |
+| `/settings/triggers/:id` | Trigger detail |
+| `/settings/blueprints` | Blueprints list |
+| `/settings/blueprints/:id` | Blueprint detail |
+| `/settings/tasks` | Tasks list |
+| `/settings/tasks/:id` | Task detail |
+
+---
 
 ## 1. Content First
 
@@ -253,6 +406,104 @@ Each item wrapped in `GlassView intensity="subtle"` with `$card` radius. Items h
 - **Glass components** use `expo-blur` (BlurView) on iOS/Web and RGBA overlay on Android.
 - **Aura gradients** use `expo-linear-gradient` (LinearGradient) for soft radial orbs.
 - **Storybook** is the living documentation for the design system. All components and full-screen compositions have stories. Theme toggle (light/dark) is available in the Storybook toolbar. The preview decorator renders components on `AuraBackground` for accurate visual context.
+
+---
+
+## Interaction Patterns
+
+### Gestures
+
+| Gesture | Context | Action |
+|---------|---------|--------|
+| Swipe right | Chat screen | Open Conversation Drawer |
+| Swipe left | Conversation Drawer open | Close drawer |
+| Swipe left on item | List item (conversations, tasks) | Reveal delete action |
+| Long press | Message bubble | Copy text, share, or show menu |
+| Long press | Header title | Rename conversation |
+| Pull down | Chat (at top) | Refresh / load older messages |
+| Pull down | Any list | Refresh data |
+
+### Keyboard Shortcuts (Web/Desktop)
+
+| Shortcut | Action |
+|----------|--------|
+| `⌘ K` / `Ctrl K` | Quick switcher (conversation search) |
+| `⌘ N` / `Ctrl N` | New conversation |
+| `⌘ ,` / `Ctrl ,` | Open Settings |
+| `⌘ Enter` | Send message (when input focused) |
+| `Escape` | Close drawer/sheet, or blur input |
+| `↑` (in empty input) | Edit last sent message |
+
+### Empty States
+
+Every list should have a purposeful empty state that guides the user:
+
+| Screen | Empty State |
+|--------|-------------|
+| Conversation list | "No conversations yet. Start chatting!" with prominent new-chat button |
+| Tasks | "All clear! Add a task to get started." with add button |
+| Secrets | "No secrets configured. Add API keys to connect services." |
+| Triggers | "No automations running. Create a trigger to automate tasks." |
+| Blueprints | "No blueprints yet. Blueprints help the assistant follow your processes." |
+
+Empty states use `GlassView intensity="subtle"` as a container, with muted text and a single clear action.
+
+### Loading States
+
+- **Initial load**: Skeleton placeholders matching content shape (glass rectangles with shimmer)
+- **Refresh**: Pull-to-refresh indicator (native on mobile, subtle spinner on web)
+- **Streaming**: Three-dot pulse indicator inline with messages
+- **Action pending**: Button shows spinner, remains tappable area disabled
+
+### Error Handling
+
+Errors appear as inline glass banners, not blocking modals:
+
+- **Network error**: Banner at top of chat with retry action
+- **Tool failure**: Inline in message stream, collapsible details
+- **Validation error**: Inline below input field, red text on glass
+
+### Confirmations
+
+Destructive actions (delete conversation, remove trigger) use a confirmation sheet:
+
+- Title: "Delete [item]?"
+- Description: Brief consequence explanation
+- Actions: "Cancel" (ghost) | "Delete" (solid danger)
+- Sheet uses `GlassView intensity="strong"`
+
+Avoid confirmation for reversible actions (marking task complete, renaming).
+
+---
+
+## Migration Path
+
+The current app structure uses flat navigation with utility icons in the header. To migrate to the chat-first architecture:
+
+### Phase 1: Chat as Home
+1. Change app entry point to fetch and display the backend's active conversation
+2. Create conversation sidebar component (persistent on tablet/desktop, sheet on phone)
+3. Wire up conversation selection to update backend's `activeConversation`
+
+### Phase 2: Settings Consolidation
+1. Create Settings sheet component
+2. Move utilities (Secrets, Triggers, Blueprints, Tasks) under Settings
+3. Remove utility icons from chat header; add single Settings gear
+
+### Phase 3: Responsive Layout
+1. Implement persistent sidebar for `$sm` and above breakpoints
+2. Add collapsible sidebar toggle for tablets
+3. Polish transitions and gestures
+
+### File Changes Required
+
+| Current | New |
+|---------|-----|
+| `app/index.tsx` (conversation list) | `app/index.tsx` (chat with active conversation + sidebar) |
+| `app/conversation/[id].tsx` | Kept for deep links; sets conversation as active then redirects to `/` |
+| `app/secrets.tsx`, `app/triggers.tsx`, `app/blueprints.tsx`, `app/todos.tsx` | Move under `app/settings/` group |
+| — | New: `src/components/conversation-sidebar/` |
+| — | New: `src/components/settings-sheet/` |
 
 ---
 
