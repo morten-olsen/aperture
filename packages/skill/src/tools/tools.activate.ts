@@ -13,7 +13,7 @@ const activateTool = createTool({
   invoke: async ({ input, state }) => {
     const { skillPlugin } = await import('../plugin/plugin.js');
     const skillState = state.getState(skillPlugin);
-    const skillList = [...new Set(...(skillState?.active || []), input.id)];
+    const skillList = [...new Set([...(skillState?.active || []), input.id])];
     state.setState(skillPlugin, {
       ...skillState,
       active: skillList,
