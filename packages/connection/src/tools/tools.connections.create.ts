@@ -3,7 +3,8 @@ import { z } from 'zod';
 
 const connectionsCreate = createTool({
   id: 'configuration.connections.create',
-  description: 'Create a new connection of a registered type. Fields are validated against the type schema.',
+  description:
+    'Create a new connection of a registered type. Fields are validated against the type schema. Secret fields accept either a secret UUID or a secret name (resolved automatically).',
   input: z.object({
     type: z.string().describe('Connection type ID'),
     name: z.string().describe('Human-readable name for this connection'),

@@ -1,4 +1,4 @@
-import type { Services } from '@morten-olsen/agentic-core';
+import type { Secret, Services } from '@morten-olsen/agentic-core';
 import { DatabaseService } from '@morten-olsen/agentic-database';
 
 import { connectionsDatabase } from '../database/database.js';
@@ -31,6 +31,34 @@ class ConnectionService {
     return this.#types.get(id);
   };
 
+  #resolveSecretFieldsByName = async (
+    userId: string,
+    fields: Record<string, unknown>,
+    secretFieldNames: string[],
+  ): Promise<Record<string, unknown>> => {
+    const resolved = { ...fields };
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let secrets: Secret[] | null = null;
+
+    for (const field of secretFieldNames) {
+      const value = resolved[field];
+      if (typeof value !== 'string' || uuidPattern.test(value)) continue;
+
+      if (!secrets) {
+        secrets = await this.#services.secrets.list(userId);
+      }
+      const match = secrets.find((s) => s.name === value);
+      if (!match) {
+        throw new Error(
+          `Secret not found by name: "${value}". Available secrets: ${secrets.map((s) => s.name).join(', ')}`,
+        );
+      }
+      resolved[field] = match.id;
+    }
+
+    return resolved;
+  };
+
   public create = async (
     userId: string,
     input: { type: string; name: string; fields: Record<string, unknown> },
@@ -39,6 +67,10 @@ class ConnectionService {
     if (!typeDef) {
       throw new Error(`Unknown connection type: ${input.type}`);
     }
+    input = {
+      ...input,
+      fields: await this.#resolveSecretFieldsByName(userId, input.fields, typeDef.fields.secretFields),
+    };
     typeDef.fields.schema.parse(input.fields);
 
     const now = new Date().toISOString();
@@ -114,6 +146,10 @@ class ConnectionService {
     if (changes.fields) {
       const typeDef = this.#types.get(existing.type);
       if (typeDef) {
+        changes = {
+          ...changes,
+          fields: await this.#resolveSecretFieldsByName(userId, changes.fields, typeDef.fields.secretFields),
+        };
         typeDef.fields.schema.parse(changes.fields);
       }
     }
