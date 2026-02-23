@@ -9,13 +9,14 @@ const updateNote = createTool({
   description: 'Update an existing note.',
   input: updateNoteInputSchema,
   output: updateNoteOutputSchema,
-  invoke: async ({ input, services }) => {
+  invoke: async ({ input, services, userId }) => {
     const db = await services.get(DatabaseService).get(database);
 
     const existingNote = await db
       .selectFrom('calendar_notes')
       .select(['id', 'event_uid'])
       .where('id', '=', input.noteId)
+      .where('user_id', '=', userId)
       .executeTakeFirst();
 
     if (!existingNote) {
@@ -31,6 +32,7 @@ const updateNote = createTool({
         updated_at: now,
       })
       .where('id', '=', input.noteId)
+      .where('user_id', '=', userId)
       .execute();
 
     return {

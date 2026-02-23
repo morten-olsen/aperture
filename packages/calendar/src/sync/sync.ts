@@ -9,10 +9,10 @@ const { rrulestr } = rruleDefault;
 type RRule = rrulePkg.RRule;
 
 import { database } from '../database/database.js';
-import type { CalendarSource, CalendarPluginOptions } from '../schemas/schemas.js';
+import type { CaldavConnectionFields, CalendarPluginOptions } from '../schemas/schemas.js';
 
 type SyncTimer = {
-  sourceId: string;
+  key: string;
   intervalId: NodeJS.Timeout;
 };
 
@@ -37,32 +37,46 @@ class CalendarSyncService {
     return this.#options;
   }
 
-  public async initialSync() {
-    const options = this.#getOptions();
-    for (const source of options.sources) {
-      await this.#syncSource(source).catch((error) => {
-        console.warn(`[calendar] Failed to sync source "${source.id}":`, error.message);
-      });
-    }
+  public async syncConnection(userId: string, connectionId: string, resolved: CaldavConnectionFields) {
+    await this.#syncSource(userId, connectionId, resolved);
   }
 
-  public startPeriodicSync() {
-    const options = this.#getOptions();
-    for (const source of options.sources) {
-      const intervalMinutes = source.syncIntervalMinutes ?? options.defaultSyncIntervalMinutes ?? 15;
-      const intervalMs = intervalMinutes * 60 * 1000;
-
-      const intervalId = setInterval(() => {
-        this.#syncSource(source).catch((error) => {
-          console.error(`Error syncing calendar ${source.id}:`, error);
-        });
-      }, intervalMs);
-
-      this.#timers.push({
-        sourceId: source.id,
-        intervalId,
-      });
+  public async ensureFresh(
+    userId: string,
+    connectionId: string,
+    maxAgeMinutes: number,
+    resolved: CaldavConnectionFields,
+  ) {
+    const lastSync = this.#lastSyncTimes.get(connectionId);
+    if (lastSync) {
+      const ageMs = Date.now() - new Date(lastSync).getTime();
+      if (ageMs < maxAgeMinutes * 60 * 1000) {
+        return;
+      }
     }
+    await this.syncConnection(userId, connectionId, resolved);
+  }
+
+  public getLastSyncTime(connectionId: string): string | undefined {
+    return this.#lastSyncTimes.get(connectionId);
+  }
+
+  public startPeriodicSyncForConnection(userId: string, connectionId: string, resolved: CaldavConnectionFields) {
+    const options = this.#getOptions();
+    const intervalMinutes = options.defaultSyncIntervalMinutes ?? 15;
+    const intervalMs = intervalMinutes * 60 * 1000;
+    const key = `${userId}:${connectionId}`;
+
+    const existing = this.#timers.find((t) => t.key === key);
+    if (existing) return;
+
+    const intervalId = setInterval(() => {
+      this.#syncSource(userId, connectionId, resolved).catch((error) => {
+        console.error(`[calendar] Error syncing connection ${connectionId}:`, error);
+      });
+    }, intervalMs);
+
+    this.#timers.push({ key, intervalId });
   }
 
   public stopPeriodicSync() {
@@ -72,37 +86,29 @@ class CalendarSyncService {
     this.#timers = [];
   }
 
-  public getLastSyncTime(sourceId: string): string | undefined {
-    return this.#lastSyncTimes.get(sourceId);
-  }
-
-  public getSources(): CalendarSource[] {
-    return this.#getOptions().sources;
-  }
-
-  async #syncSource(source: CalendarSource) {
+  async #syncSource(userId: string, connectionId: string, resolved: CaldavConnectionFields) {
     try {
       const client = await createDAVClient({
-        serverUrl: source.url,
+        serverUrl: resolved.url,
         credentials: {
-          username: source.auth.username,
-          password: source.auth.password,
+          username: resolved.username,
+          password: resolved.passwordSecretId,
         },
         authMethod: 'Basic',
         defaultAccountType: 'caldav',
       });
 
-      console.log(`[calendar] Syncing source "${source.id}"...`);
+      console.log(`[calendar] Syncing connection "${connectionId}" for user "${userId}"...`);
       const calendars = await client.fetchCalendars();
-      console.log(`[calendar] Found ${calendars.length} calendars in source "${source.id}"`);
+      console.log(`[calendar] Found ${calendars.length} calendars in connection "${connectionId}"`);
 
-      const authHeader = `Basic ${Buffer.from(`${source.auth.username}:${source.auth.password}`).toString('base64')}`;
+      const authHeader = `Basic ${Buffer.from(`${resolved.username}:${resolved.passwordSecretId}`).toString('base64')}`;
 
       const db = await this.#services.get(DatabaseService).get(database);
       const allMasterUids = new Set<string>();
 
       for (const calendar of calendars) {
-        const calendarName = calendar.displayName || source.id;
+        const calendarName = calendar.displayName || connectionId;
         let objects: { data: string; etag: string }[];
         try {
           console.log(`[calendar] Fetching events for "${calendarName}"...`);
@@ -114,7 +120,7 @@ class CalendarSyncService {
         }
 
         for (const object of objects) {
-          const events = this.#parseICalEvents(object.data, object.etag, source.id);
+          const events = this.#parseICalEvents(object.data, object.etag, userId, connectionId);
 
           if (events.length === 0) continue;
 
@@ -125,14 +131,16 @@ class CalendarSyncService {
             .selectFrom('calendar_events')
             .select('etag')
             .where('master_uid', '=', masterUid)
-            .where('calendar_id', '=', source.id)
+            .where('calendar_id', '=', connectionId)
+            .where('user_id', '=', userId)
             .executeTakeFirst();
 
           if (existingEvent && existingEvent.etag !== object.etag) {
             await db
               .deleteFrom('calendar_events')
               .where('master_uid', '=', masterUid)
-              .where('calendar_id', '=', source.id)
+              .where('calendar_id', '=', connectionId)
+              .where('user_id', '=', userId)
               .execute();
           }
 
@@ -144,6 +152,7 @@ class CalendarSyncService {
                 oc.column('uid').doUpdateSet((eb) => ({
                   master_uid: eb.ref('excluded.master_uid'),
                   calendar_id: eb.ref('excluded.calendar_id'),
+                  user_id: eb.ref('excluded.user_id'),
                   summary: eb.ref('excluded.summary'),
                   description: eb.ref('excluded.description'),
                   location: eb.ref('excluded.location'),
@@ -165,16 +174,17 @@ class CalendarSyncService {
       if (allMasterUids.size > 0) {
         await db
           .deleteFrom('calendar_events')
-          .where('calendar_id', '=', source.id)
+          .where('calendar_id', '=', connectionId)
+          .where('user_id', '=', userId)
           .where('master_uid', 'not in', Array.from(allMasterUids))
           .execute();
       }
 
       const now = new Date().toISOString();
-      this.#lastSyncTimes.set(source.id, now);
-      console.log(`[calendar] Sync complete for source "${source.id}"`);
+      this.#lastSyncTimes.set(connectionId, now);
+      console.log(`[calendar] Sync complete for connection "${connectionId}"`);
     } catch (error) {
-      console.error(`[calendar] Failed to sync source "${source.id}":`, error);
+      console.error(`[calendar] Failed to sync connection "${connectionId}":`, error);
       throw error;
     }
   }
@@ -272,11 +282,13 @@ class CalendarSyncService {
   #parseICalEvents(
     icalData: string,
     etag: string,
-    calendarId: string,
+    userId: string,
+    connectionId: string,
   ): {
     uid: string;
     master_uid: string;
     calendar_id: string;
+    user_id: string;
     summary: string;
     description: string | null;
     location: string | null;
@@ -293,6 +305,7 @@ class CalendarSyncService {
       uid: string;
       master_uid: string;
       calendar_id: string;
+      user_id: string;
       summary: string;
       description: string | null;
       location: string | null;
@@ -322,7 +335,7 @@ class CalendarSyncService {
         currentEvent = {};
       } else if (line === 'END:VEVENT') {
         if (currentEvent.UID) {
-          const expanded = this.#expandEvent(currentEvent, etag, calendarId, syncedAt);
+          const expanded = this.#expandEvent(currentEvent, etag, userId, connectionId, syncedAt);
           events.push(...expanded);
         }
         inEvent = false;
@@ -354,12 +367,14 @@ class CalendarSyncService {
   #expandEvent(
     vevent: Record<string, string>,
     etag: string,
-    calendarId: string,
+    userId: string,
+    connectionId: string,
     syncedAt: string,
   ): {
     uid: string;
     master_uid: string;
     calendar_id: string;
+    user_id: string;
     summary: string;
     description: string | null;
     location: string | null;
@@ -390,7 +405,8 @@ class CalendarSyncService {
         {
           uid,
           master_uid: uid,
-          calendar_id: calendarId,
+          calendar_id: connectionId,
+          user_id: userId,
           summary,
           description,
           location,
@@ -432,7 +448,8 @@ class CalendarSyncService {
         return {
           uid: `${uid}_${occurrenceId}`,
           master_uid: uid,
-          calendar_id: calendarId,
+          calendar_id: connectionId,
+          user_id: userId,
           summary,
           description,
           location,
@@ -452,7 +469,8 @@ class CalendarSyncService {
         {
           uid,
           master_uid: uid,
-          calendar_id: calendarId,
+          calendar_id: connectionId,
+          user_id: userId,
           summary,
           description,
           location,

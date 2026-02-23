@@ -19,18 +19,6 @@
   },
   "calendar": {
     "enabled": false,
-    "sources": [
-      {
-        "id": "personal",
-        "name": "Personal",
-        "url": "https://caldav.example.com/dav/calendars/user/default/",
-        "auth": {
-          "username": "user",
-          "password": "pass"
-        },
-        "syncIntervalMinutes": 30
-      }
-    ],
     "defaultSyncIntervalMinutes": 30,
     "injectTodayAgenda": true,
     "expansionWindow": {

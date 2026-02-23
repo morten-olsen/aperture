@@ -6,7 +6,7 @@ import { dailyNotePlugin } from '@morten-olsen/agentic-daily-note';
 import { databasePlugin } from '@morten-olsen/agentic-database';
 import { conversationPlugin } from '@morten-olsen/agentic-conversation';
 import { triggerPlugin } from '@morten-olsen/agentic-trigger';
-import { calendarPlugin, calendarPluginOptionsSchema } from '@morten-olsen/agentic-calendar';
+import { calendarPlugin } from '@morten-olsen/agentic-calendar';
 import { telegramPlugin, telegramPluginOptionsSchema } from '@morten-olsen/agentic-telegram';
 import { filesystemPlugin } from '@morten-olsen/agentic-filesystem';
 import { shellPlugin } from '@morten-olsen/agentic-shell';
@@ -93,18 +93,14 @@ const startServer = async ({ config }: StartServerOptions) => {
   }
 
   if (config.calendar.enabled) {
-    await pluginService.register(
-      calendarPlugin,
-      calendarPluginOptionsSchema.parse({
-        sources: config.calendar.sources,
-        defaultSyncIntervalMinutes: config.calendar.defaultSyncIntervalMinutes,
-        injectTodayAgenda: config.calendar.injectTodayAgenda,
-        expansionWindow: {
-          pastMonths: config.calendar.expansionWindow.pastMonths,
-          futureMonths: config.calendar.expansionWindow.futureMonths,
-        },
-      }),
-    );
+    await pluginService.register(calendarPlugin, {
+      defaultSyncIntervalMinutes: config.calendar.defaultSyncIntervalMinutes,
+      injectTodayAgenda: config.calendar.injectTodayAgenda,
+      expansionWindow: {
+        pastMonths: config.calendar.expansionWindow.pastMonths,
+        futureMonths: config.calendar.expansionWindow.futureMonths,
+      },
+    });
   }
 
   if (config.telegram.enabled) {

@@ -291,6 +291,9 @@ importers:
 
   packages/calendar:
     dependencies:
+      '@morten-olsen/agentic-connection':
+        specifier: workspace:*
+        version: link:../connection
       '@morten-olsen/agentic-core':
         specifier: workspace:*
         version: link:../core

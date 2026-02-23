@@ -44,7 +44,7 @@ This is a **plugin-driven agentic AI framework**. The core handles the agent loo
 ### Package Dependency Layers
 
 - **Foundation** (no internal deps): `core`, `database`
-- **Mid-layer** (depends on foundation): `conversation` → core, `skill` → core, `trigger` → core + database, `behaviour` → core + database
+- **Mid-layer** (depends on foundation): `conversation` → core, `skill` → core, `trigger` → core + database, `behaviour` → core + database, `connection` → core + database
 - **Application**: `playground` → conversation + core + trigger
 - **Infrastructure**: `configs` (shared tsconfig), `tests` (shared vitest aliases), `server` (WIP)
 
@@ -103,6 +103,7 @@ Full standards are in `docs/coding-standard.md`. The critical rules enforced by 
 - `docs/databases.md` — Database definitions and migrations
 - `docs/embeddings.md` — Embedding generation and vector search for plugins
 - `docs/state.md` — Per-plugin conversation state
+- `docs/connections.md` — Secrets, connections, and agent-driven configuration
 - `docs/testing.md` — Test infrastructure, MSW patterns, and conventions
 - `docs/coding-standard.md` — Full TypeScript coding standards
 - `docs/deployment.md` — Docker image, configuration, environment variables, persistent state

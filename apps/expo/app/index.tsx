@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { YStack, XStack, Text, useThemeName } from 'tamagui';
-import { BookOpen, CheckSquare, Clock, Plus } from '@tamagui/lucide-icons';
+import { BookOpen, CheckSquare, Clock, KeyRound, Plus } from '@tamagui/lucide-icons';
 import Animated from 'react-native-reanimated';
 
 import { useToolQuery, useToolInvoke } from '../src/hooks/use-tools';
@@ -120,6 +120,21 @@ const ConversationsRoute = () => {
           <XStack alignItems="center" height={52} gap={8}>
             <AvatarMenu onLogout={handleLogout} />
             <YStack flex={1} />
+            <Pressable onPress={() => router.push('/secrets')}>
+              <GlassView
+                intensity="subtle"
+                borderRadius={9999}
+                padding={0}
+                style={{
+                  width: 42,
+                  height: 42,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <KeyRound size={22} color="$accent" />
+              </GlassView>
+            </Pressable>
             <Pressable onPress={() => router.push('/triggers')}>
               <GlassView
                 intensity="subtle"

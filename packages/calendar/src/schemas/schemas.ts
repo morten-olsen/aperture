@@ -1,31 +1,26 @@
 import { z } from 'zod';
 
-// Configuration types
-const calendarSourceSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  url: z.string(),
-  auth: z.object({
-    username: z.string(),
-    password: z.string(),
-  }),
-  syncIntervalMinutes: z.number().optional(),
-  color: z.string().optional(),
+// CalDAV connection fields for registering with ConnectionService
+const caldavConnectionFieldsSchema = z.object({
+  url: z.string().describe('CalDAV server URL'),
+  username: z.string().describe('CalDAV username'),
+  passwordSecretId: z.string().describe('Secret ID for the CalDAV password'),
 });
 
+type CaldavConnectionFields = z.infer<typeof caldavConnectionFieldsSchema>;
+
+// Configuration types
 const expansionWindowSchema = z.object({
   pastMonths: z.number().optional(),
   futureMonths: z.number().optional(),
 });
 
 const calendarPluginOptionsSchema = z.object({
-  sources: z.array(calendarSourceSchema),
   defaultSyncIntervalMinutes: z.number().optional(),
   injectTodayAgenda: z.boolean().optional(),
   expansionWindow: expansionWindowSchema.optional(),
 });
 
-type CalendarSource = z.infer<typeof calendarSourceSchema>;
 type ExpansionWindow = z.infer<typeof expansionWindowSchema>;
 type CalendarPluginOptions = z.infer<typeof calendarPluginOptionsSchema>;
 
@@ -58,14 +53,13 @@ const listOutputSchema = z.array(
   z.object({
     id: z.string(),
     name: z.string(),
-    color: z.string().optional(),
     lastSyncedAt: z.string().optional(),
   }),
 );
 
 const searchInputSchema = z.object({
   query: z.string().optional().describe('Text to search in event summary, description, or location'),
-  calendarId: z.string().optional().describe('Filter by calendar source ID'),
+  calendarId: z.string().optional().describe('Filter by calendar connection ID'),
   from: z
     .string()
     .optional()
@@ -155,8 +149,8 @@ const deleteNoteOutputSchema = z.object({
 });
 
 export {
+  caldavConnectionFieldsSchema,
   calendarPluginOptionsSchema,
-  calendarSourceSchema,
   eventNoteSchema,
   eventSchema,
   expansionWindowSchema,
@@ -173,4 +167,4 @@ export {
   deleteNoteOutputSchema,
 };
 
-export type { CalendarSource, CalendarPluginOptions, ExpansionWindow, Event, EventNote };
+export type { CaldavConnectionFields, CalendarPluginOptions, ExpansionWindow, Event, EventNote };

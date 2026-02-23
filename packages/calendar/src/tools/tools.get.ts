@@ -9,7 +9,7 @@ const get = createTool({
   description: 'Get full details of a single event by UID.',
   input: getInputSchema,
   output: getOutputSchema,
-  invoke: async ({ input, services }) => {
+  invoke: async ({ input, services, userId }) => {
     const db = await services.get(DatabaseService).get(database);
 
     const rows = await db
@@ -31,6 +31,7 @@ const get = createTool({
         'n.updated_at as note_updated_at',
       ])
       .where('e.uid', '=', input.uid)
+      .where('e.user_id', '=', userId)
       .execute();
 
     if (rows.length === 0) {

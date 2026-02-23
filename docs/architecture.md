@@ -21,6 +21,7 @@ packages/
 ├── behaviour/      Behaviour/persona definitions (WIP)
 ├── skill/          Dynamic skill activation/deactivation plugin
 ├── trigger/        Scheduled/event-driven trigger plugin
+├── connection/     Secrets, connections, and agent-driven configuration
 ├── server/         Server/API layer (WIP)
 ├── configs/        Shared TypeScript configuration
 └── tests/          Shared test utilities
@@ -35,9 +36,9 @@ packages/
                          │                 │
            ┌─────────────┼─────────────┐   │
            │             │             │   │
-     ┌─────┴─────┐ ┌────┴────┐ ┌─────┴───┴────┐
-     │conversation│ │  skill  │ │   trigger     │
-     └─────┬─────┘ └─────────┘ └──────────────┘
+     ┌─────┴─────┐ ┌────┴────┐ ┌─────┴───┴────┐  ┌──────────────┐
+     │conversation│ │  skill  │ │   trigger     │  │  connection  │
+     └─────┬─────┘ └─────────┘ └──────────────┘  └──────────────┘
            │
      ┌─────┴──────┐
      │ playground  │
@@ -142,4 +143,5 @@ await completion.run();
 - [Databases](./databases.md) - Typed database access with migrations
 - [Embeddings & Vector Search](./embeddings.md) - Embedding generation and similarity search
 - [State](./state.md) - Per-plugin conversation state
+- [Secrets & Connections](./connections.md) - Agent-driven configuration for external services
 - [Testing](./testing.md) - Test infrastructure and MSW patterns

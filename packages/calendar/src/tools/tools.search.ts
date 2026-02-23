@@ -9,7 +9,7 @@ const search = createTool({
   description: 'Search events by text and/or date range across all calendars or a specific calendar.',
   input: searchInputSchema,
   output: searchOutputSchema,
-  invoke: async ({ input, services }) => {
+  invoke: async ({ input, services, userId }) => {
     const db = await services.get(DatabaseService).get(database);
 
     let query = db
@@ -28,7 +28,8 @@ const search = createTool({
         'n.id as note_id',
         'n.content as note_content',
         'n.created_at as note_created_at',
-      ]);
+      ])
+      .where('e.user_id', '=', userId);
 
     if (input.query) {
       const likePattern = `%${input.query}%`;

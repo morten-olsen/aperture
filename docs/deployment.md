@@ -56,15 +56,6 @@ Every config value can also be set via environment variables. **Env vars take pr
   },
   "calendar": {
     "enabled": false,
-    "sources": [
-      {
-        "id": "personal",
-        "name": "Personal",
-        "url": "https://caldav.example.com/dav/calendars/user/default/",
-        "auth": { "username": "user", "password": "pass" },
-        "syncIntervalMinutes": 30
-      }
-    ],
     "defaultSyncIntervalMinutes": 30,
     "injectTodayAgenda": true,
     "expansionWindow": { "pastMonths": 1, "futureMonths": 3 }
@@ -123,7 +114,6 @@ Every config value can also be set via environment variables. **Env vars take pr
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `CALENDAR_ENABLED` | `false` | Enable the calendar plugin |
-| `CALENDAR_SOURCES` | `[]` | JSON array of calendar source objects |
 | `CALENDAR_SYNC_INTERVAL` | `30` | Default sync interval in minutes |
 | `CALENDAR_INJECT_TODAY_AGENDA` | `true` | Add today's events to prompt context |
 | `CALENDAR_EXPANSION_PAST_MONTHS` | `1` | RRULE expansion window (past) |
@@ -161,7 +151,7 @@ All persistent state lives in a single SQLite database. In Docker, this is store
 **What's stored:**
 - Conversation history and prompt logs (`conversation_*`, `db_prompts` tables)
 - Trigger definitions and invocation records (`triggers_*` tables)
-- Calendar events and notes (`calendar_*` tables — re-synced on startup)
+- Calendar events and notes (`calendar_*` tables — re-synced when stale)
 - Telegram chat metadata (`telegram_chats` table)
 - Behavioural blueprints (`blueprint_blueprints` table)
 

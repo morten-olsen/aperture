@@ -23,6 +23,7 @@
     "vitest": "4.0.18"
   },
   "dependencies": {
+    "@morten-olsen/agentic-connection": "workspace:*",
     "@morten-olsen/agentic-core": "workspace:*",
     "@morten-olsen/agentic-database": "workspace:*",
     "tsdav": "^2.0.3",

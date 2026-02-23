@@ -11,13 +11,14 @@ const addNote = createTool({
   description: 'Add a note to an event.',
   input: addNoteInputSchema,
   output: addNoteOutputSchema,
-  invoke: async ({ input, services }) => {
+  invoke: async ({ input, services, userId }) => {
     const db = await services.get(DatabaseService).get(database);
 
     const event = await db
       .selectFrom('calendar_events')
       .select('uid')
       .where('uid', '=', input.eventUid)
+      .where('user_id', '=', userId)
       .executeTakeFirst();
 
     if (!event) {
@@ -32,6 +33,7 @@ const addNote = createTool({
       .values({
         id: noteId,
         event_uid: input.eventUid,
+        user_id: userId,
         content: input.content,
         created_at: now,
         updated_at: now,

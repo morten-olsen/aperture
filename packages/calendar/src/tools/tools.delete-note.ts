@@ -9,10 +9,14 @@ const deleteNote = createTool({
   description: 'Remove a note.',
   input: deleteNoteInputSchema,
   output: deleteNoteOutputSchema,
-  invoke: async ({ input, services }) => {
+  invoke: async ({ input, services, userId }) => {
     const db = await services.get(DatabaseService).get(database);
 
-    const result = await db.deleteFrom('calendar_notes').where('id', '=', input.noteId).executeTakeFirst();
+    const result = await db
+      .deleteFrom('calendar_notes')
+      .where('id', '=', input.noteId)
+      .where('user_id', '=', userId)
+      .executeTakeFirst();
 
     if (result.numDeletedRows === BigInt(0)) {
       throw new Error(`Note not found: ${input.noteId}`);

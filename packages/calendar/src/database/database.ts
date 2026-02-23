@@ -8,6 +8,7 @@ const database = createDatabase({
       uid: z.string(),
       master_uid: z.string(),
       calendar_id: z.string(),
+      user_id: z.string(),
       summary: z.string(),
       description: z.string().nullable(),
       location: z.string().nullable(),
@@ -23,6 +24,7 @@ const database = createDatabase({
     calendar_notes: z.object({
       id: z.string(),
       event_uid: z.string(),
+      user_id: z.string(),
       content: z.string(),
       created_at: z.string(),
       updated_at: z.string(),
@@ -36,6 +38,7 @@ const database = createDatabase({
           .addColumn('uid', 'varchar(255)', (cb) => cb.primaryKey())
           .addColumn('master_uid', 'varchar(255)', (cb) => cb.notNull())
           .addColumn('calendar_id', 'varchar(255)', (cb) => cb.notNull())
+          .addColumn('user_id', 'varchar(255)', (cb) => cb.notNull())
           .addColumn('summary', 'text', (cb) => cb.notNull())
           .addColumn('description', 'text')
           .addColumn('location', 'text')
@@ -53,6 +56,7 @@ const database = createDatabase({
           .createTable('calendar_notes')
           .addColumn('id', 'varchar(255)', (cb) => cb.primaryKey())
           .addColumn('event_uid', 'varchar(255)', (cb) => cb.notNull())
+          .addColumn('user_id', 'varchar(255)', (cb) => cb.notNull())
           .addColumn('content', 'text', (cb) => cb.notNull())
           .addColumn('created_at', 'varchar(255)', (cb) => cb.notNull())
           .addColumn('updated_at', 'varchar(255)', (cb) => cb.notNull())
@@ -72,7 +76,11 @@ const database = createDatabase({
           .column('master_uid')
           .execute();
 
+        await db.schema.createIndex('calendar_events_user_id_idx').on('calendar_events').column('user_id').execute();
+
         await db.schema.createIndex('calendar_notes_event_uid_idx').on('calendar_notes').column('event_uid').execute();
+
+        await db.schema.createIndex('calendar_notes_user_id_idx').on('calendar_notes').column('user_id').execute();
       },
     },
   },

@@ -1,8 +1,10 @@
 import { createPlugin } from '@morten-olsen/agentic-core';
-import { z } from 'zod';
+import { ConnectionService } from '@morten-olsen/agentic-connection';
 import { DatabaseService } from '@morten-olsen/agentic-database';
+import { z } from 'zod';
 
-import { calendarPluginOptionsSchema } from '../schemas/schemas.js';
+import { caldavConnectionFieldsSchema, calendarPluginOptionsSchema } from '../schemas/schemas.js';
+import type { CaldavConnectionFields } from '../schemas/schemas.js';
 import { CalendarSyncService } from '../sync/sync.js';
 import { calendarTools } from '../tools/tools.js';
 import { database } from '../database/database.js';
@@ -18,18 +20,44 @@ const calendarPlugin = createPlugin({
     const syncService = services.get(CalendarSyncService);
     syncService.initialize(config);
 
-    await syncService.initialSync().catch((error) => {
-      console.warn('[calendar] Initial sync failed, will retry on next interval:', error.message);
+    const connectionService = services.get(ConnectionService);
+    connectionService.registerType({
+      id: 'caldav',
+      name: 'CalDAV Calendar',
+      description: 'A CalDAV calendar source (iCloud, Google, Nextcloud, etc.)',
+      fields: {
+        schema: caldavConnectionFieldsSchema,
+        secretFields: ['passwordSecretId'],
+      },
     });
-    syncService.startPeriodicSync();
   },
-  prepare: async ({ config, tools, context, services }) => {
+  prepare: async ({ config, tools, context, services, userId }) => {
+    const connectionService = services.get(ConnectionService);
+    const connections = await connectionService.list(userId, 'caldav');
+
+    if (connections.length === 0) return;
+
     tools.push(...calendarTools);
 
-    const calendarNames = config.sources.map((s) => s.name).join(', ');
+    const syncService = services.get(CalendarSyncService);
+    const syncInterval = config.defaultSyncIntervalMinutes ?? 15;
+
+    for (const connection of connections) {
+      const resolved = await connectionService.resolve(userId, connection.id);
+      if (!resolved) continue;
+
+      const fields = resolved as unknown as CaldavConnectionFields;
+      await syncService.ensureFresh(userId, connection.id, syncInterval, fields).catch((error) => {
+        console.warn(`[calendar] Failed to sync connection "${connection.name}":`, (error as Error).message);
+      });
+
+      syncService.startPeriodicSyncForConnection(userId, connection.id, fields);
+    }
+
+    const connectionNames = connections.map((c) => c.name).join(', ');
     context.items.push({
       type: 'calendar-context',
-      content: `You have access to the user's calendars: ${calendarNames}.\nUse the calendar.* tools to search events and manage notes.`,
+      content: `You have access to the user's calendars: ${connectionNames}.\nUse the calendar.* tools to search events and manage notes.`,
     });
 
     if (config.injectTodayAgenda) {
@@ -43,6 +71,7 @@ const calendarPlugin = createPlugin({
       const events = await db
         .selectFrom('calendar_events')
         .select(['summary', 'start_at', 'location'])
+        .where('user_id', '=', userId)
         .where('start_at', '>=', today.toISOString())
         .where('start_at', '<', tomorrow.toISOString())
         .orderBy('start_at', 'asc')

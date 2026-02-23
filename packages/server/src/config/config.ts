@@ -93,12 +93,6 @@ const configSchema = convict({
       default: false,
       env: 'CALENDAR_ENABLED',
     },
-    sources: {
-      doc: 'Calendar sources as JSON array',
-      format: 'json-array' as unknown as 'String',
-      default: [] as unknown[],
-      env: 'CALENDAR_SOURCES',
-    },
     defaultSyncIntervalMinutes: {
       doc: 'Default sync interval in minutes',
       format: 'int',
