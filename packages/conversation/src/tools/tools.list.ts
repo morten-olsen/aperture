@@ -11,6 +11,7 @@ const conversationListTool = createTool({
     conversations: z.array(
       z.object({
         id: z.string(),
+        title: z.string().nullable(),
         createdAt: z.string(),
         updatedAt: z.string(),
       }),
@@ -23,6 +24,7 @@ const conversationListTool = createTool({
     return {
       conversations: rows.map((r) => ({
         id: r.id,
+        title: r.title ?? null,
         createdAt: r.created_at,
         updatedAt: r.updated_at,
       })),

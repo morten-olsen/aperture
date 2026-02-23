@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { notificationPublishedEvent } from '@morten-olsen/agentic-notification';
 
 import { conversationDatabase } from '../database/database.js';
+import { allConversationEvents } from '../events/events.js';
 import { ConversationService } from '../service/service.js';
 import { conversationApiTools } from '../tools/tools.js';
 
@@ -19,6 +20,7 @@ const conversationPlugin = createPlugin({
     const toolRegistry = services.get(ToolRegistry);
     toolRegistry.registerTools(conversationApiTools);
     const eventService = services.get(EventService);
+    eventService.registerEvent(...allConversationEvents);
     const conversationService = services.get(ConversationService);
     eventService.listen(notificationPublishedEvent, async (notification) => {
       conversationService.insertIntoActive({

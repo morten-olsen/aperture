@@ -7,6 +7,7 @@ import { conversationDatabase } from '../database/database.js';
 type ConversationRow = {
   id: string;
   user_id: string;
+  title: string | null;
   state: string | null;
   created_at: string;
   updated_at: string;
@@ -86,6 +87,18 @@ class ConversationRepo {
       .updateTable('conversation_conversations')
       .set({
         state: JSON.stringify(state),
+        updated_at: new Date().toISOString(),
+      })
+      .where('id', '=', id)
+      .execute();
+  };
+
+  public updateTitle = async (id: string, title: string) => {
+    const db = await this.#getDb();
+    await db
+      .updateTable('conversation_conversations')
+      .set({
+        title,
         updated_at: new Date().toISOString(),
       })
       .where('id', '=', id)

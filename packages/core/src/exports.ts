@@ -1,3 +1,4 @@
+export * from './completion/completion.js';
 export * from './config/config.js';
 export * from './context/context.js';
 export * from './filesystem/filesystem.js';

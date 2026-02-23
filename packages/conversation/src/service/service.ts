@@ -68,6 +68,7 @@ class ConversationService {
         services: this.#services,
         repo,
         userId: row.user_id,
+        title: row.title,
         history,
         state,
       });

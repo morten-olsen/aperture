@@ -9,6 +9,7 @@ import { GlassView } from '../glass/glass-view.tsx';
 
 type Conversation = {
   id: string;
+  title?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -28,16 +29,15 @@ type ConversationSidebarProps = {
 };
 
 type SidebarItemProps = {
-  id: string;
+  title: string;
   updatedAt: string;
   isActive: boolean;
   onPress: () => void;
 };
 
-const SidebarItem = ({ id, updatedAt, isActive, onPress }: SidebarItemProps) => {
+const SidebarItem = ({ title, updatedAt, isActive, onPress }: SidebarItemProps) => {
   const themeName = useThemeName();
   const isDark = themeName === 'dark';
-  const displayId = id.slice(0, 8);
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
@@ -74,7 +74,7 @@ const SidebarItem = ({ id, updatedAt, isActive, onPress }: SidebarItemProps) => 
                 color={isActive ? '$accent' : '$color'}
                 numberOfLines={1}
               >
-                {displayId}
+                {title}
               </Text>
               <Text fontSize={11} color="$colorMuted" numberOfLines={1}>
                 {formatRelativeTime(updatedAt)}
@@ -110,7 +110,7 @@ const ConversationSidebar = ({
     ({ item, index }: { item: Conversation; index: number }) => (
       <AnimatedListItem index={index}>
         <SidebarItem
-          id={item.id}
+          title={item.title || item.id.slice(0, 8)}
           updatedAt={item.updatedAt}
           isActive={item.id === activeId}
           onPress={() => onSelect(item.id)}

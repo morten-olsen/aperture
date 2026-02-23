@@ -11,6 +11,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useToolQuery, useToolInvoke } from '../src/hooks/use-tools';
 import { useSession } from '../src/hooks/use-session';
 import { usePrompt, type PromptOutput } from '../src/hooks/use-prompt';
+import { useEventStream } from '../src/hooks/use-event-stream';
 import { useMountAnimation } from '../src/hooks/use-mount-animation';
 import { ChatConversation } from '../src/components/chat/chat-conversation';
 import { ConversationSidebar } from '../src/components/conversation-sidebar/conversation-sidebar';
@@ -91,6 +92,14 @@ const HomeScreen = () => {
   // Chat
   const { send, promptId, outputs, pendingApproval, isStreaming, streamingText, error, approve, reject, clear } =
     usePrompt();
+
+  // Listen for conversation updates (e.g. title generation) to refresh the list
+  const events = useEventStream();
+  useEffect(() => {
+    return events.listen('conversation.updated' as never, () => {
+      queryClient.invalidateQueries({ queryKey: ['tool', 'conversation.list'] });
+    });
+  }, [events, queryClient]);
 
   // Clear pending input and refetch conversation when prompt completes
   useEffect(() => {
@@ -267,7 +276,7 @@ const HomeScreen = () => {
                     color="$color"
                     numberOfLines={1}
                   >
-                    {activeId ? `Chat` : 'Aperture'}
+                    {activeId ? (conversations.find((c) => c.id === activeId)?.title ?? 'Chat') : 'Aperture'}
                   </Text>
                 </YStack>
 

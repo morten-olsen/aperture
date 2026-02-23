@@ -12,6 +12,7 @@ const conversationDatabase = createDatabase({
     conversation_conversations: z.object({
       id: z.string(),
       user_id: z.string(),
+      title: z.string().nullable(),
       state: z.string().nullable(),
       created_at: z.string(),
       updated_at: z.string(),
@@ -45,6 +46,11 @@ const conversationDatabase = createDatabase({
           .addColumn('conversation_id', 'varchar(255)', (cb) => cb.notNull())
           .addColumn('prompt_id', 'varchar(255)', (cb) => cb.notNull())
           .execute();
+      },
+    },
+    '2026-02-23-add-title': {
+      up: async (db) => {
+        await db.schema.alterTable('conversation_conversations').addColumn('title', 'varchar(255)').execute();
       },
     },
   },

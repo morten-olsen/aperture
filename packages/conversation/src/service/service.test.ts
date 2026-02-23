@@ -1,16 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
-import { Services, PluginService } from '@morten-olsen/agentic-core';
+import { Services, PluginService, EventService } from '@morten-olsen/agentic-core';
 import { DatabaseService, databasePlugin, PromptStoreService } from '@morten-olsen/agentic-database';
 
 import { conversationDatabase } from '../database/database.js';
+import { allConversationEvents, conversationUpdatedEvent } from '../events/events.js';
 import { ConversationRepo } from '../repo/repo.js';
 
 import { ConversationService } from './service.js';
 
 const TEST_BASE_URL = 'https://test.openai.com/v1';
 const RESPONSES_URL = `${TEST_BASE_URL}/responses`;
+const CHAT_COMPLETIONS_URL = `${TEST_BASE_URL}/chat/completions`;
 
 const createTextApiResponse = (text: string) => ({
   id: 'resp_test',
@@ -58,7 +60,18 @@ const toSSE = (response: Record<string, unknown>) => {
   return new HttpResponse(stream, { headers: { 'Content-Type': 'text/event-stream' } });
 };
 
-const server = setupServer();
+const createChatCompletionResponse = (text: string) => ({
+  id: 'chatcmpl-test',
+  object: 'chat.completion',
+  created: Math.floor(Date.now() / 1000),
+  model: 'test-model',
+  choices: [{ index: 0, message: { role: 'assistant', content: text }, finish_reason: 'stop' }],
+  usage: { prompt_tokens: 20, completion_tokens: 5, total_tokens: 25 },
+});
+
+const server = setupServer(
+  http.post(CHAT_COMPLETIONS_URL, () => HttpResponse.json(createChatCompletionResponse('Test Conversation Title'))),
+);
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => server.resetHandlers());
@@ -79,6 +92,9 @@ describe('ConversationService', () => {
 
     const dbService = services.get(DatabaseService);
     await dbService.get(conversationDatabase);
+
+    const eventService = services.get(EventService);
+    eventService.registerEvent(...allConversationEvents);
 
     conversationService = services.get(ConversationService);
   });
@@ -151,6 +167,66 @@ describe('ConversationService', () => {
     expect(secondUserMsgs).toHaveLength(2);
     expect(secondUserMsgs[0]?.content).toBe('First message');
     expect(secondUserMsgs[1]?.content).toBe('Second message');
+  });
+
+  describe('title generation', () => {
+    it('auto-generates a title after the first prompt completes', async () => {
+      server.use(http.post(RESPONSES_URL, () => toSSE(createTextApiResponse('Hello back'))));
+
+      const conv = await conversationService.get('conv-title', 'admin');
+      expect(conv.title).toBeNull();
+
+      // Listen for the conversation.updated event
+      const eventService = services.get(EventService);
+      const publishedEvents: { conversationId: string; title: string | null }[] = [];
+      eventService.listen(conversationUpdatedEvent, (data) => {
+        publishedEvents.push(data);
+      });
+
+      const completion = await conv.prompt({ model: 'normal', input: 'Tell me about cats' });
+      await completion.run();
+
+      // Title is generated asynchronously in the promptCompleted listener
+      // Wait a tick for the async title generation to complete
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(conv.title).toBe('Test Conversation Title');
+
+      // Verify it was persisted to the database
+      const repo = services.get(ConversationRepo);
+      const row = await repo.get('conv-title');
+      expect(row?.title).toBe('Test Conversation Title');
+
+      // Verify the event was published
+      expect(publishedEvents).toHaveLength(1);
+      expect(publishedEvents[0]).toEqual({ conversationId: 'conv-title', title: 'Test Conversation Title' });
+    });
+
+    it('does not regenerate title on subsequent prompts', async () => {
+      let titleCallCount = 0;
+      server.use(
+        http.post(RESPONSES_URL, () => toSSE(createTextApiResponse('Reply'))),
+        http.post(CHAT_COMPLETIONS_URL, () => {
+          titleCallCount++;
+          return HttpResponse.json(createChatCompletionResponse('Generated Title'));
+        }),
+      );
+
+      const conv = await conversationService.get('conv-title-once', 'admin');
+
+      const c1 = await conv.prompt({ model: 'normal', input: 'First' });
+      await c1.run();
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(titleCallCount).toBe(1);
+
+      const c2 = await conv.prompt({ model: 'normal', input: 'Second' });
+      await c2.run();
+      await new Promise((r) => setTimeout(r, 50));
+
+      // Should not have called title generation again
+      expect(titleCallCount).toBe(1);
+    });
   });
 
   describe('active conversation', () => {
