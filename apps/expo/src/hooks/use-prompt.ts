@@ -24,6 +24,7 @@ type UsePromptReturn = {
   error: Error | null;
   approve: (toolCallId: string) => Promise<void>;
   reject: (toolCallId: string, reason?: string) => Promise<void>;
+  clear: () => void;
 };
 
 type BufferedEvent = { event: string; data: unknown };
@@ -145,7 +146,17 @@ const usePrompt = (): UsePromptReturn => {
     [client, promptId],
   );
 
-  return { send, promptId, outputs, pendingApproval, isStreaming, error, approve, reject };
+  const clear = useCallback(() => {
+    unsubscribeRef.current?.();
+    unsubscribeRef.current = null;
+    setPromptId(null);
+    setOutputs([]);
+    setPendingApproval(null);
+    setIsStreaming(false);
+    setError(null);
+  }, []);
+
+  return { send, promptId, outputs, pendingApproval, isStreaming, error, approve, reject, clear };
 };
 
 export type { PromptOutput, ApprovalRequest, UsePromptReturn };

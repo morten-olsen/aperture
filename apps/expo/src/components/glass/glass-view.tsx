@@ -26,11 +26,11 @@ const BLUR_TINT: Record<GlassIntensity, { light: string; dark: string }> = {
   strong: { light: 'rgba(255,255,255,0.45)', dark: 'rgba(30,30,40,0.45)' },
 };
 
-// Android fallback — translucent overlay without blur
+// Android fallback — more opaque overlay to compensate for lack of blur
 const ANDROID_OVERLAY: Record<GlassIntensity, { light: string; dark: string }> = {
-  subtle: { light: 'rgba(255,255,255,0.35)', dark: 'rgba(30,30,40,0.35)' },
-  medium: { light: 'rgba(255,255,255,0.50)', dark: 'rgba(30,30,40,0.50)' },
-  strong: { light: 'rgba(255,255,255,0.62)', dark: 'rgba(30,30,40,0.62)' },
+  subtle: { light: 'rgba(255,255,255,0.55)', dark: 'rgba(30,30,40,0.55)' },
+  medium: { light: 'rgba(255,255,255,0.72)', dark: 'rgba(30,30,40,0.72)' },
+  strong: { light: 'rgba(255,255,255,0.88)', dark: 'rgba(30,30,40,0.88)' },
 };
 
 const supportsBlur = Platform.OS === 'ios' || Platform.OS === 'web';

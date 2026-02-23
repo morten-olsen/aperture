@@ -46,11 +46,8 @@ const telegramPlugin = createPlugin({
     const pendingApprovals = new Map<string, { promptId: string; toolCallId: string }>();
     const triggerInitiatedPrompts = new Set<string>();
 
-    const resolveChatId = (completionId: string, userId: string): string | undefined => {
-      const fromMap = telegramCompletions.get(completionId);
-      if (fromMap) return fromMap;
-      const user = config.users?.find((u) => u.userId === userId);
-      return user?.chatId;
+    const resolveChatId = (completionId: string): string | undefined => {
+      return telegramCompletions.get(completionId);
     };
 
     const promptService = services.get(PromptService);
@@ -72,7 +69,7 @@ const telegramPlugin = createPlugin({
 
       const userId = options.userId;
       if (!userId) return;
-      const chatId = resolveChatId(data.promptId, userId);
+      const chatId = resolveChatId(data.promptId);
       if (!chatId) return;
       telegramCompletions.delete(data.promptId);
 
@@ -105,10 +102,8 @@ const telegramPlugin = createPlugin({
       }
     });
 
-    eventService.listen(promptApprovalRequestedEvent, async (data, options) => {
-      const userId = options.userId;
-      if (!userId) return;
-      const chatId = resolveChatId(data.promptId, userId);
+    eventService.listen(promptApprovalRequestedEvent, async (data) => {
+      const chatId = resolveChatId(data.promptId);
       if (!chatId) return;
 
       approvalCounter += 1;

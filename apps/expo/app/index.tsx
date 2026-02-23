@@ -89,7 +89,7 @@ const HomeScreen = () => {
   const setActiveConversation = useToolInvoke('conversation.setActive');
 
   // Chat
-  const { send, promptId, outputs, pendingApproval, isStreaming, error, approve, reject } = usePrompt();
+  const { send, promptId, outputs, pendingApproval, isStreaming, error, approve, reject, clear } = usePrompt();
 
   // Clear pending input and refetch conversation when prompt completes
   useEffect(() => {
@@ -115,12 +115,14 @@ const HomeScreen = () => {
   }, [history, pendingInput, outputs, conversationData?.prompts, promptId]);
 
   const handleCreate = useCallback(async () => {
+    clear();
+    setPendingInput(null);
     const result = await createConversation.mutateAsync({});
     await setActiveConversation.mutateAsync({ conversationId: result.id });
     queryClient.invalidateQueries({ queryKey: ['tool', 'conversation.list'] });
     queryClient.invalidateQueries({ queryKey: ['tool', 'conversation.getActive'] });
     setSidebarVisible(false);
-  }, [createConversation, setActiveConversation, queryClient]);
+  }, [clear, createConversation, setActiveConversation, queryClient]);
 
   const handleSelect = useCallback(
     async (id: string) => {
@@ -128,13 +130,14 @@ const HomeScreen = () => {
         setSidebarVisible(false);
         return;
       }
+      clear();
+      setPendingInput(null);
       await setActiveConversation.mutateAsync({ conversationId: id });
       queryClient.invalidateQueries({ queryKey: ['tool', 'conversation.getActive'] });
       queryClient.invalidateQueries({ queryKey: ['tool', 'conversation.get'] });
-      setPendingInput(null);
       setSidebarVisible(false);
     },
-    [activeId, setActiveConversation, queryClient],
+    [activeId, clear, setActiveConversation, queryClient],
   );
 
   const handleSend = useCallback(
