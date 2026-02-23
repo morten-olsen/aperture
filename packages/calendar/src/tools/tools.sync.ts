@@ -21,9 +21,14 @@ const sync = createTool({
     const connectionService = services.get(ConnectionService);
     const syncService = services.get(CalendarSyncService);
 
+    const connection = await connectionService.get(userId, input.calendarId);
+    if (!connection) {
+      return { success: false, calendarId: input.calendarId, error: 'Connection not found' };
+    }
+
     const resolved = await connectionService.resolve(userId, input.calendarId);
     if (!resolved) {
-      return { success: false, calendarId: input.calendarId, error: 'Connection not found' };
+      return { success: false, calendarId: input.calendarId, error: 'Connection resolve returned undefined' };
     }
 
     try {
