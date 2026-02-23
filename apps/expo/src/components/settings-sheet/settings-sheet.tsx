@@ -106,15 +106,14 @@ const SettingsSheet = ({ visible, onClose, userId, onNavigate, onLogout }: Setti
     onNavigate(route);
   };
 
+  if (!visible) return null;
+
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
       <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={onClose}>
         <YStack flex={1} justifyContent="flex-end">
           <Pressable onPress={(e) => e.stopPropagation()}>
-            <Animated.View
-              entering={SlideInDown.springify().damping(20).stiffness(200)}
-              exiting={SlideOutDown.springify().damping(20).stiffness(200)}
-            >
+            <Animated.View entering={SlideInDown.duration(250)} exiting={SlideOutDown.duration(200)}>
               <GlassView
                 intensity="strong"
                 borderRadius={24}

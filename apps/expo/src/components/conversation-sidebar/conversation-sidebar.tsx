@@ -21,6 +21,10 @@ type ConversationSidebarProps = {
   onRefresh?: () => void;
   isRefreshing?: boolean;
   isCreating?: boolean;
+  contentInsets?: {
+    top?: number;
+    bottom?: number;
+  };
 };
 
 type SidebarItemProps = {
@@ -100,6 +104,7 @@ const ConversationSidebar = ({
   onRefresh,
   isRefreshing = false,
   isCreating = false,
+  contentInsets,
 }: ConversationSidebarProps) => {
   const renderItem = useCallback(
     ({ item, index }: { item: Conversation; index: number }) => (
@@ -117,7 +122,13 @@ const ConversationSidebar = ({
 
   return (
     <YStack flex={1}>
-      <XStack paddingHorizontal={12} paddingVertical={12} alignItems="center" justifyContent="space-between">
+      <XStack
+        paddingHorizontal={12}
+        paddingVertical={12}
+        paddingTop={contentInsets?.top ? contentInsets.top + 12 : 12}
+        alignItems="center"
+        justifyContent="space-between"
+      >
         <Text fontFamily="$heading" fontSize={17} fontWeight="600" letterSpacing={-0.2} color="$color">
           Conversations
         </Text>
@@ -146,7 +157,10 @@ const ConversationSidebar = ({
         onRefresh={onRefresh}
         refreshing={isRefreshing}
         ListEmptyComponent={EmptyState}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 16 }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingBottom: contentInsets?.bottom ? contentInsets.bottom + 16 : 16,
+        }}
         showsVerticalScrollIndicator={false}
       />
     </YStack>

@@ -1,4 +1,4 @@
-import { useCallback, useState, useMemo } from 'react';
+import { useCallback, useState, useMemo, useEffect } from 'react';
 import { Pressable, Modal, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Stack } from 'expo-router';
@@ -22,11 +22,14 @@ type HistoryEntry = {
   type: string;
   content?: string;
   role?: string;
+  start?: string;
   [key: string]: unknown;
 };
 
 type Prompt = {
+  id: string;
   input: string;
+  createdAt?: string;
   output: HistoryEntry[];
   [key: string]: unknown;
 };
@@ -35,10 +38,17 @@ const flattenPrompts = (prompts: unknown[]): HistoryEntry[] => {
   const entries: HistoryEntry[] = [];
   for (const prompt of prompts as Prompt[]) {
     if (prompt.input) {
-      entries.push({ type: 'text', role: 'user', content: prompt.input });
+      // For user messages, use the prompt's createdAt as the timestamp
+      entries.push({
+        type: 'text',
+        role: 'user',
+        content: prompt.input,
+        start: prompt.createdAt,
+      });
     }
     if (prompt.output) {
       for (const entry of prompt.output) {
+        // Output entries already have their own start timestamps
         entries.push(entry);
       }
     }
@@ -79,14 +89,30 @@ const HomeScreen = () => {
   const setActiveConversation = useToolInvoke('conversation.setActive');
 
   // Chat
-  const { send, outputs, pendingApproval, isStreaming, error, approve, reject } = usePrompt();
+  const { send, promptId, outputs, pendingApproval, isStreaming, error, approve, reject } = usePrompt();
+
+  // Clear pending input and refetch conversation when prompt completes
+  useEffect(() => {
+    if (!isStreaming && pendingInput) {
+      setPendingInput(null);
+      if (activeId) {
+        queryClient.invalidateQueries({ queryKey: ['tool', 'conversation.get', { id: activeId }] });
+        queryClient.invalidateQueries({ queryKey: ['tool', 'conversation.list'] });
+      }
+    }
+  }, [isStreaming, pendingInput, activeId, queryClient]);
 
   const history = useMemo(() => flattenPrompts(conversationData?.prompts ?? []), [conversationData?.prompts]);
 
-  const allMessages: (HistoryEntry | PromptOutput)[] = useMemo(
-    () => [...history, ...(pendingInput ? [{ type: 'text', role: 'user', content: pendingInput }] : []), ...outputs],
-    [history, pendingInput, outputs],
-  );
+  const allMessages: (HistoryEntry | PromptOutput)[] = useMemo(() => {
+    const pending = pendingInput ? [{ type: 'text', role: 'user', content: pendingInput }] : [];
+    // Once the refetched conversation data includes the current prompt's output,
+    // stop showing live outputs to avoid duplicates.
+    const prompts = (conversationData?.prompts ?? []) as Prompt[];
+    const historyHasCurrentOutput = promptId != null && prompts.some((p) => p.id === promptId && p.output?.length > 0);
+    const liveOutputs = historyHasCurrentOutput ? [] : outputs;
+    return [...history, ...pending, ...liveOutputs];
+  }, [history, pendingInput, outputs, conversationData?.prompts, promptId]);
 
   const handleCreate = useCallback(async () => {
     const result = await createConversation.mutateAsync({});
@@ -147,18 +173,16 @@ const HomeScreen = () => {
   const headerAnim = useMountAnimation({ translateY: -10, duration: 300, delay: 200 });
   const headerHeight = insets.top + 12 + 24 + 12;
 
-  // Sidebar content (reused for both modal and inline)
-  const sidebarContent = (
-    <ConversationSidebar
-      conversations={conversations}
-      activeId={activeId}
-      onSelect={handleSelect}
-      onCreate={handleCreate}
-      onRefresh={handleRefresh}
-      isRefreshing={isListLoading}
-      isCreating={createConversation.isPending}
-    />
-  );
+  // Sidebar content props (reused for both modal and inline)
+  const sidebarProps = {
+    conversations,
+    activeId,
+    onSelect: handleSelect,
+    onCreate: handleCreate,
+    onRefresh: handleRefresh,
+    isRefreshing: isListLoading,
+    isCreating: createConversation.isPending,
+  };
 
   // Empty state when no active conversation
   const emptyState = (
@@ -205,10 +229,8 @@ const HomeScreen = () => {
       <XStack flex={1}>
         {/* Persistent sidebar on large screens */}
         {isLargeScreen && (
-          <YStack width={SIDEBAR_WIDTH} paddingTop={insets.top}>
-            <GlassView intensity="medium" borderRadius={0} padding={0} style={{ flex: 1 }}>
-              {sidebarContent}
-            </GlassView>
+          <YStack width={SIDEBAR_WIDTH} backgroundColor="$backgroundBase" paddingTop={insets.top}>
+            <ConversationSidebar {...sidebarProps} />
           </YStack>
         )}
 
@@ -281,23 +303,24 @@ const HomeScreen = () => {
       </XStack>
 
       {/* Sidebar modal (small screens only) */}
-      {!isLargeScreen && (
+      {!isLargeScreen && sidebarVisible && (
         <Modal
           visible={sidebarVisible}
           transparent
-          animationType="none"
+          animationType="fade"
           onRequestClose={() => setSidebarVisible(false)}
+          statusBarTranslucent
         >
           <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={() => setSidebarVisible(false)}>
             <Animated.View
-              entering={SlideInLeft.springify().damping(20).stiffness(200)}
-              exiting={SlideOutLeft.springify().damping(20).stiffness(200)}
-              style={{ width: SIDEBAR_WIDTH, height: '100%' }}
+              entering={SlideInLeft.duration(250)}
+              exiting={SlideOutLeft.duration(200)}
+              style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: SIDEBAR_WIDTH }}
             >
               <Pressable onPress={(e) => e.stopPropagation()} style={{ flex: 1 }}>
-                <GlassView intensity="strong" borderRadius={0} padding={0} style={{ flex: 1, paddingTop: insets.top }}>
-                  {sidebarContent}
-                </GlassView>
+                <YStack flex={1} backgroundColor="$backgroundBase">
+                  <ConversationSidebar {...sidebarProps} contentInsets={{ top: insets.top, bottom: insets.bottom }} />
+                </YStack>
               </Pressable>
             </Animated.View>
           </Pressable>

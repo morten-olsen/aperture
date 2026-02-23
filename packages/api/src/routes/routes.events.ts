@@ -29,7 +29,7 @@ const registerEventsRoutes = (app: FastifyInstance, apiService: ApiService) => {
     await reply.hijack();
 
     const send = (event: string, data: unknown) => {
-      reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      reply.raw.write(`data: ${JSON.stringify({ event, data })}\n\n`);
     };
 
     send('connected', { userId });

@@ -26,8 +26,8 @@ const createSseConnection: CreateSseConnection = (url, headers, callbacks) => {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      if (value.event && value.data) {
-        callbacks.onEvent(value.event, value.data);
+      if (value.data) {
+        callbacks.onEvent(value.event || 'message', value.data);
       }
     }
   };

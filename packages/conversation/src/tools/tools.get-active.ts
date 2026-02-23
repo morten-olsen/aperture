@@ -5,7 +5,7 @@ const conversationGetActiveTool = createTool({
   id: 'conversation.getActive',
   description: "Get the user's currently active conversation",
   input: z.object({
-    userId: z.string().describe('User ID'),
+    userId: z.string().optional().describe('User ID (automatically provided by API)'),
   }),
   output: z
     .object({
@@ -13,10 +13,10 @@ const conversationGetActiveTool = createTool({
       prompts: z.array(z.unknown()),
     })
     .nullable(),
-  invoke: async ({ input, services }) => {
+  invoke: async ({ input, services, userId }) => {
     const { ConversationService } = await import('../service/service.js');
     const conversationService = services.get(ConversationService);
-    const conversation = await conversationService.getActive(input.userId);
+    const conversation = await conversationService.getActive(input.userId ?? userId);
     if (!conversation) {
       return null;
     }

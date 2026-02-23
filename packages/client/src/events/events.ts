@@ -149,11 +149,20 @@ class ClientEvents<TEvents extends ClientEventsDirectory = ClientEventsDirectory
         this.#connected = true;
         this.#reconnectDelay = 1000;
       },
-      onEvent: (event, rawData) => {
+      onEvent: (_rawEvent, rawData) => {
+        let event: string;
         let data: unknown;
         try {
-          data = JSON.parse(rawData);
+          const parsed = JSON.parse(rawData);
+          if (typeof parsed === 'object' && parsed !== null && typeof parsed.event === 'string' && 'data' in parsed) {
+            event = parsed.event;
+            data = parsed.data;
+          } else {
+            event = _rawEvent;
+            data = parsed;
+          }
         } catch {
+          event = _rawEvent;
           data = rawData;
         }
 
