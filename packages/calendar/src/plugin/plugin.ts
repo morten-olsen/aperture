@@ -1,4 +1,4 @@
-import { createPlugin } from '@morten-olsen/agentic-core';
+import { createPlugin, ToolRegistry } from '@morten-olsen/agentic-core';
 import { ConnectionService } from '@morten-olsen/agentic-connection';
 import { DatabaseService } from '@morten-olsen/agentic-database';
 import { z } from 'zod';
@@ -30,6 +30,9 @@ const calendarPlugin = createPlugin({
         secretFields: ['passwordSecretId'],
       },
     });
+
+    const toolRegistry = services.get(ToolRegistry);
+    toolRegistry.registerTools(calendarTools);
   },
   prepare: async ({ config, tools, context, services, userId }) => {
     const connectionService = services.get(ConnectionService);
