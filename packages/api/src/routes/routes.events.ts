@@ -4,9 +4,8 @@ import type { ApiService } from '../service/service.js';
 
 const registerEventsRoutes = (app: FastifyInstance, apiService: ApiService) => {
   app.get('/events', async () => {
-    const events = Array.from(apiService.exposedEvents.entries()).map(([id, { event, tag }]) => ({
-      id,
-      tag,
+    const events = apiService.eventService.getEvents().map((event) => ({
+      id: event.id,
       schema: event.schema.toJSONSchema(),
     }));
     return { events };

@@ -1,6 +1,6 @@
 # API Plugin
 
-The API plugin exposes the agentic framework over HTTP via Fastify. It provides a minimal, plugin-agnostic surface: tool discovery and invocation, plus a prompt endpoint with SSE streaming. Plugins expose their own capabilities as tools, which the API automatically makes available — no plugin-specific endpoints required.
+The API plugin exposes the agentic framework over HTTP via Fastify. It provides a minimal, plugin-agnostic surface: tool discovery and invocation, plus a prompt endpoint with SSE streaming. Plugins register their own tools via `ToolRegistry` in core, and the API automatically exposes all registered tools — no plugin-specific endpoints required.
 
 OpenAPI documentation is auto-generated from Zod schemas (via `fastify-type-provider-zod`) and served interactively through Scalar.
 
@@ -21,48 +21,37 @@ The API plugin should be registered **last**, after all other plugins, so that t
 
 ## Plugin Lifecycle
 
-The API plugin relies on the `ready` hook — a lifecycle phase that runs after **all** plugins have completed `setup()`. This guarantees every tool and route is registered before the HTTP server starts listening.
+The API plugin relies on the `ready` hook — a lifecycle phase that runs after **all** plugins have completed `setup()`. This guarantees every tool and event is registered before the HTTP server starts listening.
 
 ```typescript
-// 1. Register all plugins (each calls setup())
+// 1. Register all plugins (each calls setup(), which registers tools via ToolRegistry)
 await pluginService.register(databasePlugin, { ... });
 await pluginService.register(conversationPlugin, undefined);
 await pluginService.register(triggerPlugin, undefined);
 await pluginService.register(apiPlugin, { port: 3000 });
 
-// 2. Wire tools to the API (with optional OpenAPI tags)
-const apiService = services.get(ApiService);
-apiService.exposeTools(triggerTools, { tag: 'Triggers' });
-apiService.exposeTools(conversationApiTools, { tag: 'Conversations' });
-
-// 3. Start all plugins (each calls ready())
+// 2. Start all plugins (each calls ready())
 // The API plugin starts the Fastify server in ready()
+// All tools registered via ToolRegistry are automatically available
 await pluginService.start();
 ```
 
-## Exposing Tools
+## Tool Registration
 
-The `ApiService` accepts tools for REST exposure. Each exposed tool gets:
+Plugins self-register their API tools in their `setup()` hook using `ToolRegistry` from core. The API reads directly from this registry — no server-side wiring needed.
+
+```typescript
+// In a plugin's setup() hook:
+import { ToolRegistry } from '@morten-olsen/agentic-core';
+
+const toolRegistry = services.get(ToolRegistry);
+toolRegistry.registerTools(myTools);
+```
+
+Each registered tool gets:
 - A typed entry in `GET /api/tools` (with JSON Schema for input/output)
 - An invocation endpoint at `POST /api/tools/:toolId/invoke`
 - A fully typed operation in the auto-generated OpenAPI spec
-
-```typescript
-import { ApiService } from '@morten-olsen/agentic-api';
-import { triggerTools } from '@morten-olsen/agentic-trigger';
-
-const apiService = services.get(ApiService);
-
-// Expose a batch of tools with an OpenAPI tag
-apiService.exposeTools(triggerTools, { tag: 'Triggers' });
-
-// Expose a single tool (no tag — appears under default group)
-apiService.exposeTool(myCustomTool);
-```
-
-The optional `tag` groups tools under a heading in the OpenAPI spec and Scalar docs. Tools exposed without a tag appear under a default group.
-
-Tool wiring is done in the **server package** (the composition root), keeping plugin packages decoupled from the API.
 
 ## Custom Routes
 
@@ -123,7 +112,6 @@ GET /api/tools
     {
       "id": "trigger.create",
       "description": "Create a new scheduled trigger",
-      "tag": "Triggers",
       "input": { "type": "object", "properties": { "..." } },
       "output": { "type": "object", "properties": { "..." } }
     }
@@ -131,7 +119,7 @@ GET /api/tools
 }
 ```
 
-The `input` and `output` fields are JSON Schemas derived from the tool's Zod schemas. The `tag` field corresponds to the OpenAPI tag set during `exposeTools()`. Use these to validate requests client-side, group tools in a UI, or auto-generate typed clients.
+The `input` and `output` fields are JSON Schemas derived from the tool's Zod schemas. Use these to validate requests client-side, group tools in a UI, or auto-generate typed clients.
 
 ### Invoking a Tool Directly
 
@@ -293,7 +281,7 @@ When the server is running, interactive API documentation is available at:
 http://localhost:3000/api/docs
 ```
 
-The OpenAPI spec is generated automatically from route schemas. Each exposed tool appears as a distinct operation with fully typed request/response schemas derived from its Zod definitions.
+The OpenAPI spec is generated automatically from route schemas. Each registered tool appears as a distinct operation with fully typed request/response schemas derived from its Zod definitions.
 
 ## Configuration
 
@@ -314,7 +302,7 @@ Environment variable overrides (in server package config):
 
 ## Dependencies
 
-- `@morten-olsen/agentic-core` — plugin creation, `PromptService`, `PluginService`, tool types
+- `@morten-olsen/agentic-core` — plugin creation, `PromptService`, `PluginService`, `ToolRegistry`, tool types
 - **fastify** — HTTP framework
 - **@fastify/cors** — CORS support
 - **@fastify/swagger** — OpenAPI spec generation

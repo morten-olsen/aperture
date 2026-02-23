@@ -30,6 +30,10 @@ class Services {
     return this.#secrets;
   }
 
+  public set secrets(provider: SecretsProvider) {
+    this.#secrets = provider;
+  }
+
   public get fileSystem(): FileSystemProvider {
     return this.#fileSystem;
   }

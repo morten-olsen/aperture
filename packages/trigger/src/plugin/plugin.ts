@@ -1,4 +1,4 @@
-import { createPlugin } from '@morten-olsen/agentic-core';
+import { createPlugin, ToolRegistry } from '@morten-olsen/agentic-core';
 import { z } from 'zod';
 import { DatabaseService } from '@morten-olsen/agentic-database';
 import { notifyTool } from '@morten-olsen/agentic-notification';
@@ -19,6 +19,8 @@ const triggerPlugin = createPlugin({
   setup: async ({ services }) => {
     const databaseService = services.get(DatabaseService);
     await databaseService.get(database);
+    const toolRegistry = services.get(ToolRegistry);
+    toolRegistry.registerTools(triggerTools);
     const scheduler = services.get(TriggerScheduler);
     await scheduler.load();
     scheduler.start();

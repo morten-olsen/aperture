@@ -100,12 +100,14 @@ Columns: `conversation_id`, `prompt_id`. Ordered by `rowid ASC`.
 
 The conversation plugin exports a set of tools designed for **REST clients only** — they are not injected into the agent's tool list during `prepare()`. The agent operates within a conversation, not across them, so it has no need to create or list conversations.
 
-These tools are exported as `conversationApiTools` and wired to the API by the server package:
+These tools are exported as `conversationApiTools` and registered via `ToolRegistry` in the plugin's `setup()` hook:
 
 ```typescript
-import { conversationApiTools } from '@morten-olsen/agentic-conversation';
+import { ToolRegistry } from '@morten-olsen/agentic-core';
 
-apiService.exposeTools(conversationApiTools, { tag: 'Conversations' });
+// In setup():
+const toolRegistry = services.get(ToolRegistry);
+toolRegistry.registerTools(conversationApiTools);
 ```
 
 ### `conversation.create`

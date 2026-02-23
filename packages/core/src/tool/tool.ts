@@ -7,4 +7,5 @@ const createTool = <TInput extends ZodType = ZodType, TOutput extends ZodType = 
 ): Tool<TInput, TOutput> => tool;
 
 export * from './tool.types.js';
+export * from './tool.registry.js';
 export { createTool };

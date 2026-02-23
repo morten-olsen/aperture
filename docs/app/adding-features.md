@@ -1,21 +1,21 @@
 # Adding Features — End to End
 
-This guide walks through adding a new feature to the GLaDOS client app, from server-side tool exposure through to a working screen with Storybook stories. It uses the **Todo** feature as a running example.
+This guide walks through adding a new feature to the GLaDOS client app, from plugin tool registration through to a working screen with Storybook stories. It uses the **Todo** feature as a running example.
 
 ## Overview
 
 ```
-1. Expose API tools   → server wires plugin tools to HTTP endpoints
-2. Regenerate types   → codegen script creates typed client bindings
-3. Build components   → presentational React Native components with stories
-4. Add screen & nav   → Expo Router file-based route + navigation
+1. Register API tools  → plugin self-registers tools via ToolRegistry in setup()
+2. Regenerate types    → codegen script creates typed client bindings
+3. Build components    → presentational React Native components with stories
+4. Add screen & nav    → Expo Router file-based route + navigation
 ```
 
 ---
 
-## Step 1: Expose Tools via the API
+## Step 1: Register Tools via ToolRegistry
 
-Plugins register tools for the AI agent, but the client app talks to the API server over HTTP. To make plugin tools available to the client, you **expose** them through the `ApiService`.
+Plugins register tools for the AI agent, but the client app talks to the API server over HTTP. To make plugin tools available to the client, you register them with the `ToolRegistry` from core — the API server automatically exposes all registered tools.
 
 ### 1a. Create an API tools export in the plugin package
 
@@ -28,27 +28,35 @@ const todoApiTools: Tool[] = [createTask, listTasks, updateTask, removeTask, add
 export { todoApiTools };
 ```
 
-Re-export from the package entry point (`exports.ts`) so the server can import it:
+Re-export from the package entry point (`exports.ts`):
 
 ```ts
 // packages/todo/src/exports.ts
 export * from './tools/tools.js';
 ```
 
-### 1b. Wire tools in the server
+### 1b. Register tools in the plugin's setup()
 
-In `packages/server/src/server/server.ts`, expose the tools before the API plugin starts:
+In the plugin's `setup()` hook, get the `ToolRegistry` from services and register the tools:
 
 ```ts
-import { todoApiTools } from '@morten-olsen/agentic-todo';
+// packages/todo/src/plugin/plugin.ts
+import { createPlugin, ToolRegistry } from '@morten-olsen/agentic-core';
 
-// Inside startServer(), after registering the todo plugin:
-if (config.todo.enabled) {
-  apiService.exposeTools(todoApiTools, { tag: 'Todos' });
-}
+import { todoApiTools } from '../tools/tools.js';
+
+const todoPlugin = createPlugin({
+  id: 'todo',
+  // ...
+  setup: async ({ services }) => {
+    // ... other setup (database, etc.)
+    const toolRegistry = services.get(ToolRegistry);
+    toolRegistry.registerTools(todoApiTools);
+  },
+});
 ```
 
-The `tag` groups tools in the API documentation UI at `/api/docs`.
+No server-side wiring is needed — the API reads directly from `ToolRegistry`.
 
 ### What this gives you
 
@@ -64,7 +72,7 @@ The client uses auto-generated TypeScript types so that `useToolQuery` and `useT
 
 ### 2a. Update the snapshot
 
-With the server running (and the new tools exposed):
+With the server running (and the new tools registered):
 
 ```bash
 pnpm --filter @morten-olsen/agentic-expo generate
@@ -291,7 +299,7 @@ const TodoDetailScreen = () => {
 |---|---|---|
 | Plugin tools | `packages/{pkg}/src/tools/` | `createTool()` with Zod schemas |
 | API tool array | `packages/{pkg}/src/tools/tools.ts` | `const fooApiTools: Tool[] = [...]` |
-| Server wiring | `packages/server/src/server/server.ts` | `apiService.exposeTools(tools, { tag })` |
+| Tool registration | `packages/{pkg}/src/plugin/plugin.ts` | `toolRegistry.registerTools(tools)` in `setup()` |
 | Type generation | `apps/expo/scripts/generate-tool-types.ts` | `pnpm generate` |
 | Snapshot | `apps/expo/tools.snapshot.json` | Committed — enables offline codegen |
 | Generated types | `apps/expo/src/generated/tools.ts` | Committed — eslint-ignored |
@@ -303,7 +311,7 @@ const TodoDetailScreen = () => {
 ## Checklist
 
 - [ ] Plugin tools exported as `{name}ApiTools` array from package
-- [ ] Tools wired in server via `apiService.exposeTools()`
+- [ ] Tools registered via `ToolRegistry` in plugin's `setup()` hook
 - [ ] `tools.snapshot.json` updated (run codegen against server or edit manually)
 - [ ] `src/generated/tools.ts` regenerated
 - [ ] Components created with props-driven API (no direct data fetching)

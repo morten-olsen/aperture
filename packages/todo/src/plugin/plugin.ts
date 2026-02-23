@@ -1,10 +1,10 @@
-import { createPlugin } from '@morten-olsen/agentic-core';
+import { createPlugin, ToolRegistry } from '@morten-olsen/agentic-core';
 import { DatabaseService } from '@morten-olsen/agentic-database';
 import { z } from 'zod';
 
 import { database } from '../database/database.js';
 import { TodoService } from '../service/service.js';
-import { todoTools } from '../tools/tools.js';
+import { todoTools, todoApiTools } from '../tools/tools.js';
 
 const todoPlugin = createPlugin({
   id: 'todo',
@@ -15,6 +15,8 @@ const todoPlugin = createPlugin({
   setup: async ({ services }) => {
     const databaseService = services.get(DatabaseService);
     await databaseService.get(database);
+    const toolRegistry = services.get(ToolRegistry);
+    toolRegistry.registerTools(todoApiTools);
   },
   prepare: async ({ tools, context, services, userId }) => {
     tools.push(...todoTools);

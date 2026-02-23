@@ -1,25 +1,26 @@
 import { FileSystemProviderDisk, PluginService, Services } from '@morten-olsen/agentic-core';
-import { apiPlugin, ApiService } from '@morten-olsen/agentic-api';
+import { apiPlugin } from '@morten-olsen/agentic-api';
 import { artifactPlugin } from '@morten-olsen/agentic-artifact';
 import { personalityPlugin } from '@morten-olsen/agentic-personality';
 import { dailyNotePlugin } from '@morten-olsen/agentic-daily-note';
 import { databasePlugin } from '@morten-olsen/agentic-database';
-import { conversationPlugin, conversationApiTools } from '@morten-olsen/agentic-conversation';
-import { triggerPlugin, triggerTools } from '@morten-olsen/agentic-trigger';
+import { conversationPlugin } from '@morten-olsen/agentic-conversation';
+import { triggerPlugin } from '@morten-olsen/agentic-trigger';
 import { calendarPlugin, calendarPluginOptionsSchema } from '@morten-olsen/agentic-calendar';
 import { telegramPlugin, telegramPluginOptionsSchema } from '@morten-olsen/agentic-telegram';
 import { filesystemPlugin } from '@morten-olsen/agentic-filesystem';
 import { shellPlugin } from '@morten-olsen/agentic-shell';
 import { sshPlugin } from '@morten-olsen/agentic-ssh';
 import { webFetchPlugin } from '@morten-olsen/agentic-web-fetch';
-import { blueprintPlugin, blueprintApiTools } from '@morten-olsen/agentic-blueprint';
+import { blueprintPlugin } from '@morten-olsen/agentic-blueprint';
 import { locationPlugin } from '@morten-olsen/agentic-location';
 import { weatherPlugin } from '@morten-olsen/agentic-weather';
 import { homeAssistantPlugin } from '@morten-olsen/agentic-home-assistant';
 import { interpreterPlugin, InterpreterService } from '@morten-olsen/agentic-interpreter';
 import { timePlugin } from '@morten-olsen/agentic-time';
-import { todoPlugin, todoApiTools } from '@morten-olsen/agentic-todo';
+import { todoPlugin } from '@morten-olsen/agentic-todo';
 import { usagePlugin } from '@morten-olsen/agentic-usage';
+import { connectionPlugin } from '@morten-olsen/agentic-connection';
 
 import type { ServerConfig } from '../config/config.js';
 
@@ -63,6 +64,7 @@ const startServer = async ({ config }: StartServerOptions) => {
       dimensions: config.embeddings.dimensions,
     },
   });
+  await pluginService.register(connectionPlugin, undefined);
   await pluginService.register(conversationPlugin, undefined);
   await pluginService.register(timePlugin, undefined);
   await pluginService.register(artifactPlugin, undefined);
@@ -164,17 +166,6 @@ const startServer = async ({ config }: StartServerOptions) => {
   }
 
   if (config.api.enabled) {
-    const apiService = services.get(ApiService);
-    apiService.exposeTools(conversationApiTools, { tag: 'Conversations' });
-    if (config.trigger.enabled) {
-      apiService.exposeTools(triggerTools, { tag: 'Triggers' });
-    }
-    if (config.todo.enabled) {
-      apiService.exposeTools(todoApiTools, { tag: 'Todos' });
-    }
-    if (config.blueprint.enabled) {
-      apiService.exposeTools(blueprintApiTools, { tag: 'Blueprints' });
-    }
     await pluginService.register(apiPlugin, {
       port: config.api.port,
       host: config.api.host,

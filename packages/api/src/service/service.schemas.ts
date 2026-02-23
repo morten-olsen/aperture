@@ -15,11 +15,5 @@ const apiStartOptionsSchema = z.object({
 
 type ApiStartOptions = z.infer<typeof apiStartOptionsSchema>;
 
-const toolExposureOptionsSchema = z.object({
-  tag: z.string().optional(),
-});
-
-type ToolExposureOptions = z.infer<typeof toolExposureOptionsSchema>;
-
-export type { ApiCorsConfig, ApiStartOptions, ToolExposureOptions };
-export { apiCorsConfigSchema, apiStartOptionsSchema, toolExposureOptionsSchema };
+export type { ApiCorsConfig, ApiStartOptions };
+export { apiCorsConfigSchema, apiStartOptionsSchema };

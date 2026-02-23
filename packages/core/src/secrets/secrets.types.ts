@@ -1,10 +1,17 @@
 import type { Secret } from './secrets.schema.js';
 
-type SecretsProvider = {
-  list: () => Promise<Secret[]>;
-  set: (secret: Secret, value: string) => Promise<void>;
-  get: (id: string) => Promise<string | undefined>;
-  remove: (id: string) => Promise<void>;
+type SecretUpdate = {
+  name?: string;
+  description?: string;
+  value?: string;
 };
 
-export type { SecretsProvider };
+type SecretsProvider = {
+  list: (userId: string) => Promise<Secret[]>;
+  set: (userId: string, secret: Secret, value: string) => Promise<void>;
+  get: (userId: string, id: string) => Promise<string | undefined>;
+  update: (userId: string, id: string, changes: SecretUpdate) => Promise<void>;
+  remove: (userId: string, id: string) => Promise<void>;
+};
+
+export type { SecretsProvider, SecretUpdate };

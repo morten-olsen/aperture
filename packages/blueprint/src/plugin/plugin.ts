@@ -1,11 +1,11 @@
-import { createPlugin } from '@morten-olsen/agentic-core';
+import { createPlugin, ToolRegistry } from '@morten-olsen/agentic-core';
 import { DatabaseService } from '@morten-olsen/agentic-database';
 import { z } from 'zod';
 
 import { blueprintPluginOptionsSchema } from '../schemas/schemas.js';
 import { database } from '../database/database.js';
 import { BlueprintService } from '../service/service.js';
-import { blueprintTools } from '../tools/tools.js';
+import { blueprintTools, blueprintApiTools } from '../tools/tools.js';
 
 const blueprintStateSchema = z.object({
   lastSearchPromptId: z.string().optional(),
@@ -26,6 +26,8 @@ const blueprintPlugin = createPlugin({
   setup: async ({ config, services }) => {
     const databaseService = services.get(DatabaseService);
     await databaseService.get(database);
+    const toolRegistry = services.get(ToolRegistry);
+    toolRegistry.registerTools(blueprintApiTools);
 
     const service = services.get(BlueprintService);
     service.configure(config);

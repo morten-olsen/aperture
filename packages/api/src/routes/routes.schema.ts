@@ -7,8 +7,8 @@ const registerSchemaRoutes = (app: FastifyInstance, apiService: ApiService) => {
   app.get('/schema', async () => {
     const tools = z.object(
       Object.fromEntries(
-        apiService.tools.entries().map(([name, { tool }]) => [
-          name,
+        apiService.toolRegistry.getTools().map((tool) => [
+          tool.id,
           z.object({
             input: tool.input,
             output: tool.output,
@@ -18,8 +18,8 @@ const registerSchemaRoutes = (app: FastifyInstance, apiService: ApiService) => {
     );
     const events = z.object(
       Object.fromEntries(
-        apiService.exposedEvents.entries().map(([name, { event }]) => [
-          name,
+        apiService.eventService.getEvents().map((event) => [
+          event.id,
           z.object({
             schema: event.schema,
           }),
