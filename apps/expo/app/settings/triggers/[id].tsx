@@ -17,15 +17,16 @@ const TriggerDetailScreen = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const headerHeight = useDetailHeaderHeight();
-  const { data } = useToolQuery('trigger.list', {});
+  const { data } = useToolQuery('trigger.get', { triggerId: id });
   const updateTrigger = useToolInvoke('trigger.update');
   const deleteTrigger = useToolInvoke('trigger.delete');
 
-  const trigger = data?.triggers.find((t) => t.id === id);
+  const trigger = data;
 
   const handleUpdate = useCallback(
     async (changes: TriggerDetailChanges) => {
       await updateTrigger.mutateAsync({ triggerId: id, ...changes });
+      queryClient.invalidateQueries({ queryKey: ['tool', 'trigger.get'] });
       queryClient.invalidateQueries({ queryKey: ['tool', 'trigger.list'] });
     },
     [updateTrigger, id, queryClient],

@@ -416,6 +416,116 @@
       }
     },
     {
+      "id": "trigger.get",
+      "description": "Get full details for a single trigger by ID.",
+      "tag": "Triggers",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "triggerId": {
+            "type": "string",
+            "description": "ID of the trigger to retrieve"
+          }
+        },
+        "required": [
+          "triggerId"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "goal": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "setupContext": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "null" }
+            ]
+          },
+          "scheduleType": {
+            "type": "string"
+          },
+          "scheduleValue": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "invocationCount": {
+            "type": "number"
+          },
+          "maxInvocations": {
+            "anyOf": [
+              { "type": "number" },
+              { "type": "null" }
+            ]
+          },
+          "endsAt": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "null" }
+            ]
+          },
+          "nextInvocationAt": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "null" }
+            ]
+          },
+          "lastInvokedAt": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "null" }
+            ]
+          },
+          "continuation": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "null" }
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "goal",
+          "model",
+          "setupContext",
+          "scheduleType",
+          "scheduleValue",
+          "status",
+          "invocationCount",
+          "maxInvocations",
+          "endsAt",
+          "nextInvocationAt",
+          "lastInvokedAt",
+          "continuation",
+          "createdAt",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "trigger.update",
       "description": "Update an existing trigger. Can change name, goal, schedule, status, or set a continuation note for the next invocation.",
       "tag": "Triggers",
