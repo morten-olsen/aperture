@@ -10,6 +10,7 @@ The CLI reads configuration from environment variables (supports `.env` via `dot
 |----------|----------|---------|-------------|
 | `GLADOS_URL` | Yes | — | Server base URL, e.g. `https://glados.olsen.cloud` |
 | `GLADOS_USER_ID` | No | `"cli"` | Value sent as the `X-User-Id` header |
+| `GLADOS_PREFIX` | No | `"/api"` | API path prefix. Set to `""` if the server is not behind a reverse proxy. |
 
 ## Running
 
@@ -110,6 +111,36 @@ pnpm --filter @morten-olsen/agentic-playground cli invoke configuration.connecti
 
 # 5. Test through the full agent loop
 pnpm --filter @morten-olsen/agentic-playground cli prompt "List my calendar connections"
+```
+
+## Debugging Connections
+
+When a connection (e.g. CalDAV calendar) fails, use this workflow to narrow down whether it's a credential issue, a URL issue, or a code bug. See also the [troubleshooting section in connections.md](./connections.md#troubleshooting-connections).
+
+```bash
+export GLADOS_URL=https://glados.olsen.cloud
+export GLADOS_PREFIX=/api
+export GLADOS_USER_ID=morten
+
+CLI="npx tsx packages/playground/src/cli/cli.ts"
+
+# 1. List connections and secrets to get IDs
+$CLI invoke configuration.connections.list '{}'
+$CLI invoke configuration.secrets.list '{}'
+
+# 2. Verify secrets have non-empty values (never reveals the value)
+$CLI invoke configuration.secrets.verify '{"id":"<secret-uuid>"}'
+
+# 3. Diagnose the connection — shows all fields with hasValue/valueLength
+#    Non-secret fields (url, username) are shown in full; secret fields are length-only
+$CLI invoke configuration.connections.diagnose '{"id":"<connection-id>"}'
+
+# 4. If fields look correct, try a manual sync to get the exact error
+#    Note: calendar.sync is only available via the agent loop (prepare() adds it)
+$CLI prompt 'Sync calendar connection <id> and report the exact error'
+
+# 5. Fix issues — e.g. update a wrong URL
+$CLI invoke configuration.connections.update '{"id":"<id>","fields":{...corrected fields...}}'
 ```
 
 ## Implementation

@@ -112,6 +112,35 @@ const resolved = await connectionService.resolve(userId, connectionId);
 
 `resolve()` is only called by plugin/service code. It is never exposed as a tool — the agent never sees secret values after the initial user message.
 
+## Secret Name Resolution
+
+When creating or updating a connection, secret fields accept **either a UUID or a secret name**. If the value is not a UUID, `ConnectionService` looks it up by name in the user's secrets and replaces it with the matching UUID before storing.
+
+```typescript
+// Both of these work:
+await connectionService.create(userId, {
+  type: 'caldav',
+  name: 'Work Calendar',
+  fields: {
+    url: 'https://caldav.icloud.com',
+    username: 'alice@icloud.com',
+    passwordSecretId: 'sec_abc-123-...',           // UUID — stored as-is
+  },
+});
+
+await connectionService.create(userId, {
+  type: 'caldav',
+  name: 'Work Calendar',
+  fields: {
+    url: 'https://caldav.icloud.com',
+    username: 'alice@icloud.com',
+    passwordSecretId: 'iCloud app password',        // Name — resolved to UUID
+  },
+});
+```
+
+This allows the agent to reference secrets by the human-readable name shown in `configuration.secrets.list`, without needing to remember UUIDs.
+
 ## Tools
 
 All tools are registered as a skill (`"configuration"`) so they stay out of daily context. The agent activates this skill when the user asks to configure integrations.
@@ -124,6 +153,7 @@ All tools are registered as a skill (`"configuration"`) so they stay out of dail
 | `configuration.secrets.list` | `{}` | `{ secrets: [{ id, name, description?, createdAt, updatedAt }] }` | List metadata (no values) |
 | `configuration.secrets.update` | `{ id, name?, description?, value? }` | `{ id, updated }` | Update metadata or value |
 | `configuration.secrets.delete` | `{ id }` | `{ deleted, affectedConnections: [{ id, name, type }] }` | Delete and warn about broken refs |
+| `configuration.secrets.verify` | `{ id }` | `{ id, exists, hasValue, valueLength }` | Check if a secret has a non-empty value (never exposes the value) |
 
 ### Connection Tools
 
@@ -135,6 +165,7 @@ All tools are registered as a skill (`"configuration"`) so they stay out of dail
 | `configuration.connections.get` | `{ id }` | `{ connection: { id, type, name, fields, ... } \| null }` | Get connection details |
 | `configuration.connections.update` | `{ id, name?, fields? }` | `{ id, updated }` | Update a connection |
 | `configuration.connections.delete` | `{ id }` | `{ deleted }` | Delete a connection |
+| `configuration.connections.diagnose` | `{ id }` | `{ id, type, name, fields: [{ field, isSecret, hasValue, valueLength, storedRaw? }] }` | Diagnose resolved fields without exposing secrets |
 
 ## Plugin Setup
 
@@ -261,7 +292,8 @@ packages/connection/src/
 │   └── plugin.ts                       Plugin definition (setup, skill registration)
 ├── service/
 │   ├── service.ts                      ConnectionService implementation
-│   └── service.types.ts                Type definitions
+│   ├── service.types.ts                Type definitions
+│   └── service.test.ts                 Tests for resolve, secret name resolution
 ├── secrets/
 │   └── secrets.database.ts             SecretsProviderDatabase implementation
 ├── database/
@@ -272,12 +304,14 @@ packages/connection/src/
     ├── tools.secrets.list.ts           configuration.secrets.list
     ├── tools.secrets.update.ts         configuration.secrets.update
     ├── tools.secrets.delete.ts         configuration.secrets.delete
+    ├── tools.secrets.verify.ts         configuration.secrets.verify
     ├── tools.connections.types.ts      configuration.connections.types
     ├── tools.connections.create.ts     configuration.connections.create
     ├── tools.connections.list.ts       configuration.connections.list
     ├── tools.connections.get.ts        configuration.connections.get
     ├── tools.connections.update.ts     configuration.connections.update
-    └── tools.connections.delete.ts     configuration.connections.delete
+    ├── tools.connections.delete.ts     configuration.connections.delete
+    └── tools.connections.diagnose.ts   configuration.connections.diagnose
 ```
 
 ## Design Guidelines
@@ -295,3 +329,41 @@ packages/connection/src/
 6. **Lazy dynamic imports in tools** — All tool files use `await import('../service/service.js')` to break circular dependencies with `ConnectionService`.
 
 7. **User isolation** — All queries include `user_id` checks. Each user has their own secrets and connections.
+
+## Troubleshooting Connections
+
+### Diagnostic Workflow
+
+When a connection fails (e.g. "Invalid credentials"), use the diagnostic tools to narrow down the cause:
+
+```bash
+# 1. Check if the secret has a non-empty value
+invoke configuration.secrets.verify '{"id":"<secret-uuid>"}'
+# → { exists: true, hasValue: true, valueLength: 16 }
+
+# 2. Check all resolved fields of the connection
+invoke configuration.connections.diagnose '{"id":"<connection-id>"}'
+# → Shows each field's hasValue and valueLength (secrets hidden, non-secrets shown in full)
+
+# 3. Try a manual sync to see the exact error
+invoke calendar.sync '{"calendarId":"<connection-id>"}'
+```
+
+If `hasValue: true` and `valueLength > 0` for all fields, the credential resolution chain is working — the issue is likely wrong URLs or wrong credentials, not a code bug.
+
+### CalDAV URL Reference
+
+The `tsdav` library throws a generic `"Invalid credentials"` error on any HTTP 401. This can be caused by wrong server URLs (server returns 401 on unknown paths), not just wrong passwords. Always verify URLs first.
+
+| Provider | CalDAV Server URL | Notes |
+|----------|-------------------|-------|
+| Google | `https://apidata.googleusercontent.com/calendar/dav` | Requires a Google App Password (not OAuth). Do NOT use `/caldav/v2/` paths. |
+| iCloud | `https://caldav.icloud.com` | Requires an Apple App-Specific Password. Username is the Apple ID email. |
+| Nextcloud | `https://<host>/remote.php/dav` | Regular account password works. |
+
+### Common Pitfalls
+
+- **tsdav "Invalid credentials"** — This is a generic HTTP 401 error. Wrong URLs, wrong usernames, and expired app passwords all produce this same message. Use the diagnostic tools to verify credentials are non-empty, then check URLs.
+- **Empty secret values** — If the frontend doesn't pass the secret value during creation, it gets stored as an empty string. `secrets.verify` will show `valueLength: 0`.
+- **Google CalDAV URL confusion** — Google has multiple CalDAV-related paths (`/caldav/v2/`, `/calendar/dav/`). The correct one for `tsdav` with Basic auth is `https://apidata.googleusercontent.com/calendar/dav`.
+- **Apple App Passwords** — Format is `xxxx-xxxx-xxxx-xxxx`. Some clients work with or without dashes; store the full format with dashes to be safe.
