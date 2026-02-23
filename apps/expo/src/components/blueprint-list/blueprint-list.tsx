@@ -1,6 +1,7 @@
-import { FlatList } from 'react-native';
+import type { ReactNode } from 'react';
 import { YStack, Text } from 'tamagui';
 import { BookOpen } from '@tamagui/lucide-icons';
+import Animated from 'react-native-reanimated';
 
 import { AnimatedListItem } from '../animation/animated-list-item.tsx';
 
@@ -12,6 +13,9 @@ type BlueprintListProps = {
   onSelect: (id: string) => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
+  header?: ReactNode;
+  onScroll?: React.ComponentProps<typeof Animated.FlatList>['onScroll'];
+  contentPadding?: number;
 };
 
 const EmptyState = () => (
@@ -23,8 +27,16 @@ const EmptyState = () => (
   </YStack>
 );
 
-const BlueprintList = ({ blueprints, onSelect, onRefresh, isRefreshing = false }: BlueprintListProps) => (
-  <FlatList
+const BlueprintList = ({
+  blueprints,
+  onSelect,
+  onRefresh,
+  isRefreshing = false,
+  header,
+  onScroll,
+  contentPadding,
+}: BlueprintListProps) => (
+  <Animated.FlatList
     data={blueprints}
     keyExtractor={(item) => item.id}
     renderItem={({ item, index }) => (
@@ -34,8 +46,11 @@ const BlueprintList = ({ blueprints, onSelect, onRefresh, isRefreshing = false }
     )}
     onRefresh={onRefresh}
     refreshing={isRefreshing}
+    ListHeaderComponent={header}
     ListEmptyComponent={EmptyState}
-    contentContainerStyle={{ flexGrow: 1, paddingBottom: 80 }}
+    onScroll={onScroll}
+    scrollEventThrottle={16}
+    contentContainerStyle={{ flexGrow: 1, paddingTop: contentPadding ?? 0, paddingBottom: 80 }}
   />
 );
 

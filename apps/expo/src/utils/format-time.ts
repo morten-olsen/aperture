@@ -11,6 +11,21 @@ const formatRelativeTime = (isoString: string): string => {
   const now = Date.now();
   const diff = now - date.getTime();
 
+  if (diff < 0) {
+    const absDiff = -diff;
+    if (absDiff < MINUTE) return 'in a moment';
+    if (absDiff < HOUR) {
+      const mins = Math.floor(absDiff / MINUTE);
+      return `in ${mins} min`;
+    }
+    if (absDiff < DAY) {
+      const hrs = Math.floor(absDiff / HOUR);
+      return `in ${hrs} hr`;
+    }
+    if (absDiff < WEEK) return DAY_NAMES[date.getDay()] ?? '';
+    return `${MONTH_NAMES[date.getMonth()] ?? ''} ${date.getDate()}`;
+  }
+
   if (diff < MINUTE) return 'Just now';
   if (diff < HOUR) {
     const mins = Math.floor(diff / MINUTE);

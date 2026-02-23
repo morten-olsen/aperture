@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, TextInput } from 'react-native';
+import { Alert, Pressable, ScrollView, TextInput } from 'react-native';
 import { YStack, XStack, Text, useThemeName } from 'tamagui';
 
 import type { ToolOutput } from '../../generated/tools.ts';
@@ -18,7 +18,6 @@ type TriggerDetailProps = {
   trigger: TriggerSummary;
   onUpdate: (changes: TriggerDetailChanges) => void;
   onDelete: () => void;
-  isUpdating?: boolean;
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -49,7 +48,7 @@ const formatDate = (iso: string) => {
   return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 };
 
-const TriggerDetail = ({ trigger, onUpdate, onDelete, isUpdating = false }: TriggerDetailProps) => {
+const TriggerDetail = ({ trigger, onUpdate, onDelete }: TriggerDetailProps) => {
   const themeName = useThemeName();
   const isDark = themeName === 'dark';
 
@@ -101,7 +100,7 @@ const TriggerDetail = ({ trigger, onUpdate, onDelete, isUpdating = false }: Trig
 
       <GlassView intensity="subtle" borderRadius={16} padding={14} style={{ marginBottom: 16 }}>
         <PropertyRow label="Status">
-          <Pressable onPress={toggleStatus} disabled={isUpdating || !canToggle}>
+          <Pressable onPress={toggleStatus} disabled={!canToggle}>
             <XStack alignItems="center" gap={6}>
               <XStack width={8} height={8} borderRadius={4} backgroundColor={statusColor} />
               <Text fontSize={15} color={canToggle ? '$accent' : '$colorMuted'} fontWeight="500">
@@ -171,7 +170,14 @@ const TriggerDetail = ({ trigger, onUpdate, onDelete, isUpdating = false }: Trig
         )}
       </GlassView>
 
-      <Pressable onPress={onDelete} disabled={isUpdating}>
+      <Pressable
+        onPress={() =>
+          Alert.alert('Delete Trigger', 'Are you sure you want to delete this trigger?', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Delete', style: 'destructive', onPress: onDelete },
+          ])
+        }
+      >
         <YStack alignItems="center" paddingVertical={16}>
           <Text fontSize={16} color="$danger" fontWeight="500">
             Delete Trigger

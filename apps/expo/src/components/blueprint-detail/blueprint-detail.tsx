@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, TextInput } from 'react-native';
+import { Alert, Pressable, ScrollView, TextInput } from 'react-native';
 import { YStack, XStack, Text, useThemeName } from 'tamagui';
 
 import type { ToolOutput } from '../../generated/tools.ts';
@@ -18,7 +18,6 @@ type BlueprintDetailProps = {
   blueprint: Blueprint;
   onUpdate: (changes: BlueprintDetailChanges) => void;
   onDelete: () => void;
-  isUpdating?: boolean;
 };
 
 const SectionLabel = ({ children }: { children: string }) => (
@@ -27,7 +26,7 @@ const SectionLabel = ({ children }: { children: string }) => (
   </Text>
 );
 
-const BlueprintDetail = ({ blueprint, onUpdate, onDelete, isUpdating = false }: BlueprintDetailProps) => {
+const BlueprintDetail = ({ blueprint, onUpdate, onDelete }: BlueprintDetailProps) => {
   const themeName = useThemeName();
   const isDark = themeName === 'dark';
 
@@ -173,7 +172,14 @@ const BlueprintDetail = ({ blueprint, onUpdate, onDelete, isUpdating = false }: 
           </XStack>
         </GlassView>
 
-        <Pressable onPress={onDelete} disabled={isUpdating}>
+        <Pressable
+          onPress={() =>
+            Alert.alert('Delete Blueprint', 'Are you sure you want to delete this blueprint?', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Delete', style: 'destructive', onPress: onDelete },
+            ])
+          }
+        >
           <YStack alignItems="center" paddingVertical={16}>
             <Text fontSize={16} color="$danger" fontWeight="500">
               Delete Blueprint

@@ -49,16 +49,17 @@ const TriggerListItem = ({ trigger, onPress }: TriggerListItemProps) => {
                     {isCron ? 'cron' : 'once'}
                   </Text>
                 </XStack>
-                {trigger.nextInvocationAt && (
+                {(trigger.status === 'active' || trigger.status === 'paused') && trigger.nextInvocationAt && (
                   <Text fontSize={12} color="$colorMuted">
                     next {formatRelativeTime(trigger.nextInvocationAt)}
                   </Text>
                 )}
-                {!trigger.nextInvocationAt && trigger.lastInvokedAt && (
-                  <Text fontSize={12} color="$colorMuted">
-                    ran {formatRelativeTime(trigger.lastInvokedAt)}
-                  </Text>
-                )}
+                {((trigger.status !== 'active' && trigger.status !== 'paused') || !trigger.nextInvocationAt) &&
+                  trigger.lastInvokedAt && (
+                    <Text fontSize={12} color="$colorMuted">
+                      ran {formatRelativeTime(trigger.lastInvokedAt)}
+                    </Text>
+                  )}
               </XStack>
             </YStack>
 

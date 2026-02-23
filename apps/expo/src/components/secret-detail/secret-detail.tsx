@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, TextInput } from 'react-native';
+import { Alert, Pressable, ScrollView, TextInput } from 'react-native';
 import { YStack, XStack, Text, useThemeName } from 'tamagui';
 
 import type { ToolOutput } from '../../generated/tools.ts';
@@ -17,7 +17,6 @@ type SecretDetailProps = {
   secret: SecretItem;
   onUpdate: (changes: SecretDetailChanges) => void;
   onDelete: () => void;
-  isUpdating?: boolean;
 };
 
 const PropertyRow = ({ label, children }: { label: string; children: React.ReactNode }) => (
@@ -29,7 +28,7 @@ const PropertyRow = ({ label, children }: { label: string; children: React.React
   </XStack>
 );
 
-const SecretDetail = ({ secret, onUpdate, onDelete, isUpdating = false }: SecretDetailProps) => {
+const SecretDetail = ({ secret, onUpdate, onDelete }: SecretDetailProps) => {
   const themeName = useThemeName();
   const isDark = themeName === 'dark';
   const [editName, setEditName] = useState(secret.name);
@@ -129,7 +128,14 @@ const SecretDetail = ({ secret, onUpdate, onDelete, isUpdating = false }: Secret
         </PropertyRow>
       </GlassView>
 
-      <Pressable onPress={onDelete} disabled={isUpdating}>
+      <Pressable
+        onPress={() =>
+          Alert.alert('Delete Secret', 'Are you sure you want to delete this secret?', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Delete', style: 'destructive', onPress: onDelete },
+          ])
+        }
+      >
         <YStack alignItems="center" paddingVertical={16}>
           <Text fontSize={16} color="$danger" fontWeight="500">
             Delete Secret

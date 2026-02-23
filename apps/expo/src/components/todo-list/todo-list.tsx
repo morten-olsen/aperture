@@ -1,6 +1,7 @@
-import { FlatList } from 'react-native';
+import type { ReactNode } from 'react';
 import { YStack, Text } from 'tamagui';
 import { CircleCheck } from '@tamagui/lucide-icons';
+import Animated from 'react-native-reanimated';
 
 import { AnimatedListItem } from '../animation/animated-list-item.tsx';
 
@@ -13,6 +14,9 @@ type TodoListProps = {
   onToggleComplete: (id: string, currentStatus: string) => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
+  header?: ReactNode;
+  onScroll?: React.ComponentProps<typeof Animated.FlatList>['onScroll'];
+  contentPadding?: number;
 };
 
 const EmptyState = () => (
@@ -27,8 +31,17 @@ const EmptyState = () => (
   </YStack>
 );
 
-const TodoList = ({ tasks, onSelect, onToggleComplete, onRefresh, isRefreshing = false }: TodoListProps) => (
-  <FlatList
+const TodoList = ({
+  tasks,
+  onSelect,
+  onToggleComplete,
+  onRefresh,
+  isRefreshing = false,
+  header,
+  onScroll,
+  contentPadding,
+}: TodoListProps) => (
+  <Animated.FlatList
     data={tasks}
     keyExtractor={(item) => item.id}
     renderItem={({ item, index }) => (
@@ -42,8 +55,11 @@ const TodoList = ({ tasks, onSelect, onToggleComplete, onRefresh, isRefreshing =
     )}
     onRefresh={onRefresh}
     refreshing={isRefreshing}
+    ListHeaderComponent={header}
     ListEmptyComponent={EmptyState}
-    contentContainerStyle={{ flexGrow: 1, paddingBottom: 80 }}
+    onScroll={onScroll}
+    scrollEventThrottle={16}
+    contentContainerStyle={{ flexGrow: 1, paddingTop: contentPadding ?? 0, paddingBottom: 80 }}
   />
 );
 

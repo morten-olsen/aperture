@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Pressable, ScrollView, TextInput } from 'react-native';
+import { Alert, Pressable, ScrollView, TextInput } from 'react-native';
 import { YStack, XStack, Text, useThemeName } from 'tamagui';
 
 import type { ToolOutput } from '../../generated/tools.ts';
@@ -19,7 +19,6 @@ type TodoDetailProps = {
   task: TodoTask;
   onUpdate: (changes: TodoDetailChanges) => void;
   onDelete: () => void;
-  isUpdating?: boolean;
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -62,7 +61,7 @@ const PropertyRow = ({ label, children }: { label: string; children: React.React
   </XStack>
 );
 
-const TodoDetail = ({ task, onUpdate, onDelete, isUpdating = false }: TodoDetailProps) => {
+const TodoDetail = ({ task, onUpdate, onDelete }: TodoDetailProps) => {
   const themeName = useThemeName();
   const isDark = themeName === 'dark';
   const [editTitle, setEditTitle] = useState(task.title);
@@ -109,7 +108,7 @@ const TodoDetail = ({ task, onUpdate, onDelete, isUpdating = false }: TodoDetail
   return (
     <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
       <XStack alignItems="center" gap={14} paddingVertical={16}>
-        <Pressable onPress={cycleStatus} disabled={isUpdating} hitSlop={8}>
+        <Pressable onPress={cycleStatus} hitSlop={8}>
           <XStack
             width={36}
             height={36}
@@ -163,7 +162,7 @@ const TodoDetail = ({ task, onUpdate, onDelete, isUpdating = false }: TodoDetail
 
       <GlassView intensity="subtle" borderRadius={16} padding={14} style={{ marginBottom: 16 }}>
         <PropertyRow label="Status">
-          <Pressable onPress={cycleStatus} disabled={isUpdating}>
+          <Pressable onPress={cycleStatus}>
             <Text fontSize={15} color="$accent" fontWeight="500">
               {STATUS_LABELS[task.status] ?? task.status}
             </Text>
@@ -173,7 +172,7 @@ const TodoDetail = ({ task, onUpdate, onDelete, isUpdating = false }: TodoDetail
         <YStack height={1} backgroundColor="$glassBorder" />
 
         <PropertyRow label="Priority">
-          <Pressable onPress={cyclePriority} disabled={isUpdating}>
+          <Pressable onPress={cyclePriority}>
             <XStack alignItems="center" gap={6}>
               <XStack
                 width={8}
@@ -243,7 +242,14 @@ const TodoDetail = ({ task, onUpdate, onDelete, isUpdating = false }: TodoDetail
         )}
       </GlassView>
 
-      <Pressable onPress={onDelete} disabled={isUpdating}>
+      <Pressable
+        onPress={() =>
+          Alert.alert('Delete Task', 'Are you sure you want to delete this task?', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Delete', style: 'destructive', onPress: onDelete },
+          ])
+        }
+      >
         <YStack alignItems="center" paddingVertical={16}>
           <Text fontSize={16} color="$danger" fontWeight="500">
             Delete Task

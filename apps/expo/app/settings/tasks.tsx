@@ -1,24 +1,16 @@
 import { useCallback } from 'react';
-import { Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Stack } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { YStack, XStack, Text } from 'tamagui';
-import { ArrowLeft } from '@tamagui/lucide-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 
 import { useToolQuery, useToolInvoke } from '../../src/hooks/use-tools';
-import { useMountAnimation } from '../../src/hooks/use-mount-animation';
 import { useKeyboardBottomInset } from '../../src/hooks/use-keyboard-bottom-inset';
-import { GlassView } from '../../src/components/glass/glass-view';
 import { TodoList } from '../../src/components/todo-list/todo-list';
 import { TodoQuickAdd } from '../../src/components/todo-list/todo-quick-add';
-import { KeyboardAwareView } from '../../src/components/keyboard/keyboard-aware-view';
+import { ListScreen } from '../../src/components/list-screen/list-screen';
 
 const TasksRoute = () => {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const bottomInset = useKeyboardBottomInset();
   const queryClient = useQueryClient();
   const { data, refetch, isLoading } = useToolQuery('todo.list', { parentId: null });
@@ -44,9 +36,6 @@ const TasksRoute = () => {
     [updateTask, queryClient],
   );
 
-  const headerAnim = useMountAnimation({ duration: 400, delay: 200 });
-  const titleAnim = useMountAnimation({ translateY: 10, duration: 450, delay: 300 });
-
   const fabStyle = useAnimatedStyle(() => ({
     position: 'absolute' as const,
     bottom: bottomInset.value + 16,
@@ -55,58 +44,27 @@ const TasksRoute = () => {
   }));
 
   return (
-    <KeyboardAwareView style={{ paddingTop: insets.top }}>
-      <Stack.Screen options={{ headerShown: false }} />
-
-      <Animated.View style={headerAnim.style}>
-        <YStack paddingHorizontal="$5" paddingTop="$4" paddingBottom="$2">
-          <XStack alignItems="center" height={52}>
-            <Pressable onPress={() => router.back()} hitSlop={12}>
-              <GlassView
-                intensity="subtle"
-                borderRadius={9999}
-                padding={0}
-                style={{
-                  width: 42,
-                  height: 42,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <ArrowLeft size={24} color="$accent" />
-              </GlassView>
-            </Pressable>
-          </XStack>
-        </YStack>
-      </Animated.View>
-
-      <Animated.View style={titleAnim.style}>
-        <Text
-          fontFamily="$heading"
-          fontSize={34}
-          fontWeight="700"
-          letterSpacing={-1}
-          color="$color"
-          paddingHorizontal="$5"
-          paddingTop="$4"
-          paddingBottom="$3"
-        >
-          Tasks
-        </Text>
-      </Animated.View>
-
-      <TodoList
-        tasks={tasks}
-        onSelect={(id) => router.push(`/settings/tasks/${id}`)}
-        onToggleComplete={handleToggleComplete}
-        onRefresh={refetch}
-        isRefreshing={isLoading}
-      />
-
-      <Animated.View style={fabStyle}>
-        <TodoQuickAdd onAdd={handleAdd} isAdding={createTask.isPending} />
-      </Animated.View>
-    </KeyboardAwareView>
+    <ListScreen
+      title="Tasks"
+      onBack={() => router.back()}
+      overlay={
+        <Animated.View style={fabStyle}>
+          <TodoQuickAdd onAdd={handleAdd} isAdding={createTask.isPending} />
+        </Animated.View>
+      }
+    >
+      {({ scrollHandler, contentPadding }) => (
+        <TodoList
+          onScroll={scrollHandler}
+          contentPadding={contentPadding}
+          tasks={tasks}
+          onSelect={(id) => router.push(`/settings/tasks/${id}`)}
+          onToggleComplete={handleToggleComplete}
+          onRefresh={refetch}
+          isRefreshing={isLoading}
+        />
+      )}
+    </ListScreen>
   );
 };
 

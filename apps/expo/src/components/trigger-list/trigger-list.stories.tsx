@@ -53,6 +53,16 @@ const sampleTriggers = [
   },
   {
     id: 'trg-4',
+    name: 'Paused nightly backup',
+    scheduleType: 'cron',
+    scheduleValue: '0 2 * * *',
+    status: 'paused',
+    invocationCount: 8,
+    nextInvocationAt: new Date(now + 43_200_000).toISOString(),
+    lastInvokedAt: new Date(now - 172_800_000).toISOString(),
+  },
+  {
+    id: 'trg-5',
     name: 'Broken webhook sync',
     scheduleType: 'cron',
     scheduleValue: '*/30 * * * *',
