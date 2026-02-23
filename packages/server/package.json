@@ -42,6 +42,7 @@
     "@morten-olsen/agentic-usage": "workspace:*",
     "@morten-olsen/agentic-filesystem": "workspace:*",
     "@morten-olsen/agentic-shell": "workspace:*",
+    "@morten-olsen/agentic-skill": "workspace:*",
     "@morten-olsen/agentic-ssh": "workspace:*",
     "@morten-olsen/agentic-connection": "workspace:*"
   },

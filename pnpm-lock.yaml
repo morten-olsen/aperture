@@ -817,6 +817,9 @@ importers:
       '@morten-olsen/agentic-shell':
         specifier: workspace:*
         version: link:../shell
+      '@morten-olsen/agentic-skill':
+        specifier: workspace:*
+        version: link:../skill
       '@morten-olsen/agentic-ssh':
         specifier: workspace:*
         version: link:../ssh

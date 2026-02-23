@@ -21,6 +21,7 @@ import { timePlugin } from '@morten-olsen/agentic-time';
 import { todoPlugin } from '@morten-olsen/agentic-todo';
 import { usagePlugin } from '@morten-olsen/agentic-usage';
 import { connectionPlugin } from '@morten-olsen/agentic-connection';
+import { skillPlugin } from '@morten-olsen/agentic-skill';
 
 import type { ServerConfig } from '../config/config.js';
 
@@ -64,6 +65,7 @@ const startServer = async ({ config }: StartServerOptions) => {
       dimensions: config.embeddings.dimensions,
     },
   });
+  await pluginService.register(skillPlugin, undefined);
   await pluginService.register(connectionPlugin, undefined);
   await pluginService.register(conversationPlugin, undefined);
   await pluginService.register(timePlugin, undefined);
