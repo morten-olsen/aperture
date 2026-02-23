@@ -116,6 +116,19 @@ const createMultiToolCallApiResponse = (calls: { name: string; args: Record<stri
   text: { format: { type: 'text' } },
 });
 
+const toSSE = (response: Record<string, unknown>) => {
+  const created = `event: response.created\ndata: ${JSON.stringify({ type: 'response.created', response })}\n\n`;
+  const completed = `event: response.completed\ndata: ${JSON.stringify({ type: 'response.completed', response })}\n\n`;
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(created + completed));
+      controller.close();
+    },
+  });
+  return new HttpResponse(stream, { headers: { 'Content-Type': 'text/event-stream' } });
+};
+
 const server = setupServer();
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
@@ -132,7 +145,7 @@ describe('PromptCompletion', () => {
   it('completes with a text response when no tools are called', async () => {
     server.use(
       http.post(RESPONSES_URL, () => {
-        return HttpResponse.json(createTextApiResponse('Hello, world!'));
+        return toSSE(createTextApiResponse('Hello, world!'));
       }),
     );
 
@@ -178,9 +191,9 @@ describe('PromptCompletion', () => {
       http.post(RESPONSES_URL, () => {
         callCount++;
         if (callCount === 1) {
-          return HttpResponse.json(createToolCallApiResponse('test.echo', { message: 'hello' }, 'call_1'));
+          return toSSE(createToolCallApiResponse('test.echo', { message: 'hello' }, 'call_1'));
         }
-        return HttpResponse.json(createTextApiResponse('Echo received'));
+        return toSSE(createTextApiResponse('Echo received'));
       }),
     );
 
@@ -238,9 +251,9 @@ describe('PromptCompletion', () => {
       http.post(RESPONSES_URL, () => {
         callCount++;
         if (callCount === 1) {
-          return HttpResponse.json(createToolCallApiResponse('test.fail', { value: 'test' }, 'call_1'));
+          return toSSE(createToolCallApiResponse('test.fail', { value: 'test' }, 'call_1'));
         }
-        return HttpResponse.json(createTextApiResponse('I encountered an error and recovered'));
+        return toSSE(createTextApiResponse('I encountered an error and recovered'));
       }),
     );
 
@@ -298,9 +311,9 @@ describe('PromptCompletion', () => {
       http.post(RESPONSES_URL, () => {
         callCount++;
         if (callCount === 1) {
-          return HttpResponse.json(createToolCallApiResponse('test.nonexistent', { x: 1 }, 'call_1'));
+          return toSSE(createToolCallApiResponse('test.nonexistent', { x: 1 }, 'call_1'));
         }
-        return HttpResponse.json(createTextApiResponse('Fixed'));
+        return toSSE(createTextApiResponse('Fixed'));
       }),
     );
 
@@ -352,9 +365,9 @@ describe('PromptCompletion', () => {
         callCount++;
         if (callCount === 1) {
           // Model sends a string instead of a number
-          return HttpResponse.json(createToolCallApiResponse('test.strict', { count: 'not-a-number' }, 'call_1'));
+          return toSSE(createToolCallApiResponse('test.strict', { count: 'not-a-number' }, 'call_1'));
         }
-        return HttpResponse.json(createTextApiResponse('Corrected'));
+        return toSSE(createTextApiResponse('Corrected'));
       }),
     );
 
@@ -381,7 +394,7 @@ describe('PromptCompletion', () => {
   it('emits output and completed events', async () => {
     server.use(
       http.post(RESPONSES_URL, () => {
-        return HttpResponse.json(createTextApiResponse('Done'));
+        return toSSE(createTextApiResponse('Done'));
       }),
     );
 
@@ -431,9 +444,9 @@ describe('PromptCompletion', () => {
         callCount++;
         capturedBodies.push(await request.json());
         if (callCount === 1) {
-          return HttpResponse.json(createToolCallApiResponse('test.add', { a: 2, b: 3 }, 'call_1'));
+          return toSSE(createToolCallApiResponse('test.add', { a: 2, b: 3 }, 'call_1'));
         }
-        return HttpResponse.json(createTextApiResponse('The sum is 5'));
+        return toSSE(createTextApiResponse('The sum is 5'));
       }),
     );
 
@@ -481,7 +494,7 @@ describe('PromptCompletion', () => {
 
       server.use(
         http.post(RESPONSES_URL, () => {
-          return HttpResponse.json(createToolCallApiResponse('test.gated', { value: 'hello' }, 'call_1'));
+          return toSSE(createToolCallApiResponse('test.gated', { value: 'hello' }, 'call_1'));
         }),
       );
 
@@ -545,9 +558,9 @@ describe('PromptCompletion', () => {
         http.post(RESPONSES_URL, () => {
           callCount++;
           if (callCount === 1) {
-            return HttpResponse.json(createToolCallApiResponse('test.conditional', { safe: true }, 'call_1'));
+            return toSSE(createToolCallApiResponse('test.conditional', { safe: true }, 'call_1'));
           }
-          return HttpResponse.json(createTextApiResponse('All done'));
+          return toSSE(createTextApiResponse('All done'));
         }),
       );
 
@@ -592,9 +605,9 @@ describe('PromptCompletion', () => {
         http.post(RESPONSES_URL, () => {
           callCount++;
           if (callCount === 1) {
-            return HttpResponse.json(createToolCallApiResponse('test.gated', { value: 'hello' }, 'call_1'));
+            return toSSE(createToolCallApiResponse('test.gated', { value: 'hello' }, 'call_1'));
           }
-          return HttpResponse.json(createTextApiResponse('Approved and done'));
+          return toSSE(createTextApiResponse('Approved and done'));
         }),
       );
 
@@ -649,9 +662,9 @@ describe('PromptCompletion', () => {
         http.post(RESPONSES_URL, () => {
           callCount++;
           if (callCount === 1) {
-            return HttpResponse.json(createToolCallApiResponse('test.gated', { value: 'hello' }, 'call_1'));
+            return toSSE(createToolCallApiResponse('test.gated', { value: 'hello' }, 'call_1'));
           }
-          return HttpResponse.json(createTextApiResponse('Rejected and recovered'));
+          return toSSE(createTextApiResponse('Rejected and recovered'));
         }),
       );
 
@@ -700,9 +713,9 @@ describe('PromptCompletion', () => {
         http.post(RESPONSES_URL, () => {
           callCount++;
           if (callCount === 1) {
-            return HttpResponse.json(createToolCallApiResponse('test.gated', { value: 'hello' }, 'call_1'));
+            return toSSE(createToolCallApiResponse('test.gated', { value: 'hello' }, 'call_1'));
           }
-          return HttpResponse.json(createTextApiResponse('Done'));
+          return toSSE(createTextApiResponse('Done'));
         }),
       );
 
@@ -757,14 +770,14 @@ describe('PromptCompletion', () => {
         http.post(RESPONSES_URL, () => {
           callCount++;
           if (callCount === 1) {
-            return HttpResponse.json(
+            return toSSE(
               createMultiToolCallApiResponse([
                 { name: 'test.gated', args: { value: 'first' }, callId: 'call_1' },
                 { name: 'test.normal', args: { x: 5 }, callId: 'call_2' },
               ]),
             );
           }
-          return HttpResponse.json(createTextApiResponse('All done'));
+          return toSSE(createTextApiResponse('All done'));
         }),
       );
 
@@ -799,7 +812,7 @@ describe('PromptCompletion', () => {
     it('approve/reject on non-pending completion is a no-op', async () => {
       server.use(
         http.post(RESPONSES_URL, () => {
-          return HttpResponse.json(createTextApiResponse('Hello'));
+          return toSSE(createTextApiResponse('Hello'));
         }),
       );
 
@@ -850,9 +863,9 @@ describe('PromptCompletion', () => {
         http.post(RESPONSES_URL, () => {
           callCount++;
           if (callCount === 1) {
-            return HttpResponse.json(createToolCallApiResponse('test.gated', { value: 'hello' }, 'call_1'));
+            return toSSE(createToolCallApiResponse('test.gated', { value: 'hello' }, 'call_1'));
           }
-          return HttpResponse.json(createTextApiResponse('Approved result'));
+          return toSSE(createTextApiResponse('Approved result'));
         }),
       );
 
@@ -912,9 +925,9 @@ describe('PromptCompletion', () => {
         http.post(RESPONSES_URL, () => {
           callCount++;
           if (callCount === 1) {
-            return HttpResponse.json(createToolCallApiResponse('test.gated', { value: 'hello' }, 'call_1'));
+            return toSSE(createToolCallApiResponse('test.gated', { value: 'hello' }, 'call_1'));
           }
-          return HttpResponse.json(createTextApiResponse('Rejection acknowledged'));
+          return toSSE(createTextApiResponse('Rejection acknowledged'));
         }),
       );
 
@@ -967,9 +980,9 @@ describe('PromptCompletion', () => {
         http.post(RESPONSES_URL, () => {
           callCount++;
           if (callCount === 1) {
-            return HttpResponse.json(createToolCallApiResponse('test.gated', { value: 'x' }, 'call_1'));
+            return toSSE(createToolCallApiResponse('test.gated', { value: 'x' }, 'call_1'));
           }
-          return HttpResponse.json(createTextApiResponse('Done'));
+          return toSSE(createTextApiResponse('Done'));
         }),
       );
 
@@ -1021,9 +1034,9 @@ describe('PromptCompletion', () => {
         http.post(RESPONSES_URL, () => {
           callCount++;
           if (callCount === 1) {
-            return HttpResponse.json(createToolCallApiResponse('test.conditional', { safe: false }, 'call_1'));
+            return toSSE(createToolCallApiResponse('test.conditional', { safe: false }, 'call_1'));
           }
-          return HttpResponse.json(createTextApiResponse('Approved'));
+          return toSSE(createTextApiResponse('Approved'));
         }),
       );
 
@@ -1074,14 +1087,14 @@ describe('PromptCompletion', () => {
         http.post(RESPONSES_URL, () => {
           callCount++;
           if (callCount === 1) {
-            return HttpResponse.json(
+            return toSSE(
               createMultiToolCallApiResponse([
                 { name: 'test.gated', args: { value: 'first' }, callId: 'call_1' },
                 { name: 'test.gated', args: { value: 'second' }, callId: 'call_2' },
               ]),
             );
           }
-          return HttpResponse.json(createTextApiResponse('Both approved'));
+          return toSSE(createTextApiResponse('Both approved'));
         }),
       );
 
@@ -1153,9 +1166,9 @@ describe('PromptCompletion', () => {
           callCount++;
           capturedBodies.push(await request.json());
           if (callCount === 1) {
-            return HttpResponse.json(createToolCallApiResponse('test.gated', { value: 'hello' }, 'call_1'));
+            return toSSE(createToolCallApiResponse('test.gated', { value: 'hello' }, 'call_1'));
           }
-          return HttpResponse.json(createTextApiResponse('Got it'));
+          return toSSE(createTextApiResponse('Got it'));
         }),
       );
 

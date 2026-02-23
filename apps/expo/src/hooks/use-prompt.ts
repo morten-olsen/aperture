@@ -21,6 +21,7 @@ type UsePromptReturn = {
   outputs: PromptOutput[];
   pendingApproval: ApprovalRequest | null;
   isStreaming: boolean;
+  streamingText: string;
   error: Error | null;
   approve: (toolCallId: string) => Promise<void>;
   reject: (toolCallId: string, reason?: string) => Promise<void>;
@@ -35,6 +36,7 @@ const usePrompt = (): UsePromptReturn => {
   const [outputs, setOutputs] = useState<PromptOutput[]>([]);
   const [pendingApproval, setPendingApproval] = useState<ApprovalRequest | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingText, setStreamingText] = useState('');
   const [error, setError] = useState<Error | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
@@ -47,7 +49,11 @@ const usePrompt = (): UsePromptReturn => {
   const handleEvent = useCallback((event: string, data: unknown) => {
     const payload = data as Record<string, unknown>;
     switch (event) {
+      case 'prompt.stream':
+        setStreamingText((prev) => prev + (payload.delta as string));
+        break;
       case 'prompt.output':
+        setStreamingText('');
         setOutputs((prev) => [...prev, (payload.output ?? payload) as PromptOutput]);
         break;
       case 'prompt.approval-requested': {
@@ -64,9 +70,11 @@ const usePrompt = (): UsePromptReturn => {
         break;
       }
       case 'prompt.completed':
+        setStreamingText('');
         setIsStreaming(false);
         break;
       case 'prompt.error':
+        setStreamingText('');
         setError(new Error((payload.error as string) ?? 'Unknown error'));
         setIsStreaming(false);
         break;
@@ -78,6 +86,7 @@ const usePrompt = (): UsePromptReturn => {
       unsubscribeRef.current?.();
       setOutputs([]);
       setPendingApproval(null);
+      setStreamingText('');
       setError(null);
       setIsStreaming(true);
 
@@ -152,11 +161,12 @@ const usePrompt = (): UsePromptReturn => {
     setPromptId(null);
     setOutputs([]);
     setPendingApproval(null);
+    setStreamingText('');
     setIsStreaming(false);
     setError(null);
   }, []);
 
-  return { send, promptId, outputs, pendingApproval, isStreaming, error, approve, reject, clear };
+  return { send, promptId, outputs, pendingApproval, isStreaming, streamingText, error, approve, reject, clear };
 };
 
 export type { PromptOutput, ApprovalRequest, UsePromptReturn };

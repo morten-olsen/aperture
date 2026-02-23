@@ -81,7 +81,11 @@
       "Bash(GLADOS_URL=https://glados.olsen.cloud GLADOS_USER_ID=morten npx tsx:*)",
       "Bash(GLADOS_URL=http://localhost:4000 GLADOS_USER_ID=morten npx tsx:*)",
       "Bash(GLADOS_URL=https://glados.olsen.cloud GLADOS_PREFIX=/api GLADOS_USER_ID=morten npx tsx:*)",
-      "WebFetch(domain:api.github.com)"
+      "WebFetch(domain:api.github.com)",
+      "Bash(GLADOS_URL=http://localhost:3000 GLADOS_PREFIX=\"\" npx tsx:*)",
+      "Bash(GLADOS_URL=https://glados.olsen.cloud GLADOS_PREFIX=/api npx tsx:*)",
+      "Bash(GLADOS_URL=http://localhost:4000 GLADOS_PREFIX=\"\" npx tsx:*)",
+      "Bash(GLADOS_URL=http://localhost:4000 GLADOS_PREFIX=\"/api\" npx tsx:*)"
     ]
   }
 }

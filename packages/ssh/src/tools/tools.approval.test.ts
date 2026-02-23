@@ -109,6 +109,19 @@ const createToolCallApiResponse = (name: string, args: Record<string, unknown>, 
   text: { format: { type: 'text' } },
 });
 
+const toSSE = (response: Record<string, unknown>) => {
+  const created = `event: response.created\ndata: ${JSON.stringify({ type: 'response.created', response })}\n\n`;
+  const completed = `event: response.completed\ndata: ${JSON.stringify({ type: 'response.completed', response })}\n\n`;
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(created + completed));
+      controller.close();
+    },
+  });
+  return new HttpResponse(stream, { headers: { 'Content-Type': 'text/event-stream' } });
+};
+
 const server = setupServer();
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
@@ -131,9 +144,7 @@ describe('ssh approval gate flow', () => {
   it('pauses for approval when executing a non-whitelisted command', async () => {
     server.use(
       http.post(RESPONSES_URL, () => {
-        return HttpResponse.json(
-          createToolCallApiResponse('ssh.execute', { hostId: 'web', command: 'ls -la' }, 'call_1'),
-        );
+        return toSSE(createToolCallApiResponse('ssh.execute', { hostId: 'web', command: 'ls -la' }, 'call_1'));
       }),
     );
 
@@ -163,11 +174,9 @@ describe('ssh approval gate flow', () => {
       http.post(RESPONSES_URL, () => {
         callCount++;
         if (callCount === 1) {
-          return HttpResponse.json(
-            createToolCallApiResponse('ssh.execute', { hostId: 'web', command: 'ls -la' }, 'call_1'),
-          );
+          return toSSE(createToolCallApiResponse('ssh.execute', { hostId: 'web', command: 'ls -la' }, 'call_1'));
         }
-        return HttpResponse.json(createTextApiResponse('Done'));
+        return toSSE(createTextApiResponse('Done'));
       }),
     );
 
@@ -194,11 +203,9 @@ describe('ssh approval gate flow', () => {
       http.post(RESPONSES_URL, () => {
         callCount++;
         if (callCount === 1) {
-          return HttpResponse.json(
-            createToolCallApiResponse('ssh.execute', { hostId: 'web', command: 'rm /' }, 'call_1'),
-          );
+          return toSSE(createToolCallApiResponse('ssh.execute', { hostId: 'web', command: 'rm /' }, 'call_1'));
         }
-        return HttpResponse.json(createTextApiResponse('Rejected'));
+        return toSSE(createTextApiResponse('Rejected'));
       }),
     );
 
@@ -229,11 +236,9 @@ describe('ssh approval gate flow', () => {
       http.post(RESPONSES_URL, () => {
         callCount++;
         if (callCount === 1) {
-          return HttpResponse.json(
-            createToolCallApiResponse('ssh.execute', { hostId: 'web', command: 'ls -la' }, 'call_1'),
-          );
+          return toSSE(createToolCallApiResponse('ssh.execute', { hostId: 'web', command: 'ls -la' }, 'call_1'));
         }
-        return HttpResponse.json(createTextApiResponse('Done'));
+        return toSSE(createTextApiResponse('Done'));
       }),
     );
 
@@ -260,9 +265,7 @@ describe('ssh approval gate flow', () => {
 
     server.use(
       http.post(RESPONSES_URL, () => {
-        return HttpResponse.json(
-          createToolCallApiResponse('ssh.execute', { hostId: 'web', command: 'ls -la' }, 'call_1'),
-        );
+        return toSSE(createToolCallApiResponse('ssh.execute', { hostId: 'web', command: 'ls -la' }, 'call_1'));
       }),
     );
 
@@ -290,11 +293,9 @@ describe('ssh approval gate flow', () => {
       http.post(RESPONSES_URL, () => {
         callCount++;
         if (callCount === 1) {
-          return HttpResponse.json(
-            createToolCallApiResponse('ssh.execute', { hostId: 'web', command: 'rm -rf /' }, 'call_1'),
-          );
+          return toSSE(createToolCallApiResponse('ssh.execute', { hostId: 'web', command: 'rm -rf /' }, 'call_1'));
         }
-        return HttpResponse.json(createTextApiResponse('Cannot do that'));
+        return toSSE(createTextApiResponse('Cannot do that'));
       }),
     );
 
@@ -318,7 +319,7 @@ describe('ssh approval gate flow', () => {
   it('always requires approval for add-host', async () => {
     server.use(
       http.post(RESPONSES_URL, () => {
-        return HttpResponse.json(
+        return toSSE(
           createToolCallApiResponse(
             'ssh.add-host',
             { id: 'db', hostname: '10.0.0.2', port: 22, username: 'admin' },
@@ -350,7 +351,7 @@ describe('ssh approval gate flow', () => {
   it('always requires approval for add-rule', async () => {
     server.use(
       http.post(RESPONSES_URL, () => {
-        return HttpResponse.json(
+        return toSSE(
           createToolCallApiResponse('ssh.add-rule', { pattern: 'ls *', host: '*', type: 'allow' }, 'call_1'),
         );
       }),

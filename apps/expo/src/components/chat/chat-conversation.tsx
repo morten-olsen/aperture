@@ -8,6 +8,8 @@ import type { ApprovalRequest } from '../../hooks/use-prompt.ts';
 import { AnimatedChatItem } from '../animation/animated-chat-item.tsx';
 import { GlassView } from '../glass/glass-view.tsx';
 
+import { MarkdownView } from '../markdown/markdown-view.tsx';
+
 import { ApprovalBanner } from './approval-banner.tsx';
 import { ChatMessage } from './chat-message.tsx';
 import { StreamingIndicator } from './streaming-indicator.tsx';
@@ -47,6 +49,7 @@ const groupMessages = (messages: ChatEntry[]): DisplayItem[] => {
 type ChatConversationProps = {
   messages: ChatEntry[];
   isStreaming?: boolean;
+  streamingText?: string;
   error?: string | null;
   pendingApproval?: ApprovalRequest | null;
   onSend?: (text: string) => void;
@@ -58,6 +61,7 @@ type ChatConversationProps = {
 const ChatConversation = ({
   messages,
   isStreaming = false,
+  streamingText = '',
   error = null,
   pendingApproval = null,
   onSend,
@@ -114,7 +118,17 @@ const ChatConversation = ({
 
       {isStreaming && (
         <XStack paddingHorizontal="$4">
-          <StreamingIndicator />
+          {streamingText ? (
+            <YStack alignSelf="flex-start" maxWidth="88%">
+              <GlassView intensity="medium" borderRadius={20} padding={0} style={{ borderBottomLeftRadius: 8 }}>
+                <YStack paddingHorizontal={14} paddingVertical={10}>
+                  <MarkdownView content={streamingText} />
+                </YStack>
+              </GlassView>
+            </YStack>
+          ) : (
+            <StreamingIndicator />
+          )}
         </XStack>
       )}
 

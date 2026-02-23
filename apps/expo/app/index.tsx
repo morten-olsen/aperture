@@ -89,7 +89,8 @@ const HomeScreen = () => {
   const setActiveConversation = useToolInvoke('conversation.setActive');
 
   // Chat
-  const { send, promptId, outputs, pendingApproval, isStreaming, error, approve, reject, clear } = usePrompt();
+  const { send, promptId, outputs, pendingApproval, isStreaming, streamingText, error, approve, reject, clear } =
+    usePrompt();
 
   // Clear pending input and refetch conversation when prompt completes
   useEffect(() => {
@@ -290,6 +291,7 @@ const HomeScreen = () => {
             <ChatConversation
               messages={allMessages}
               isStreaming={isStreaming}
+              streamingText={streamingText}
               error={error?.message ?? null}
               pendingApproval={pendingApproval}
               onSend={handleSend}

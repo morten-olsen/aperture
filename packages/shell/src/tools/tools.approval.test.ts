@@ -83,6 +83,19 @@ const createToolCallApiResponse = (name: string, args: Record<string, unknown>, 
   text: { format: { type: 'text' } },
 });
 
+const toSSE = (response: Record<string, unknown>) => {
+  const created = `event: response.created\ndata: ${JSON.stringify({ type: 'response.created', response })}\n\n`;
+  const completed = `event: response.completed\ndata: ${JSON.stringify({ type: 'response.completed', response })}\n\n`;
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(created + completed));
+      controller.close();
+    },
+  });
+  return new HttpResponse(stream, { headers: { 'Content-Type': 'text/event-stream' } });
+};
+
 const server = setupServer();
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
@@ -101,7 +114,7 @@ describe('shell approval gate flow', () => {
   it('pauses for approval when executing a non-whitelisted command', async () => {
     server.use(
       http.post(RESPONSES_URL, () => {
-        return HttpResponse.json(createToolCallApiResponse('shell.execute', { command: 'ls -la' }, 'call_1'));
+        return toSSE(createToolCallApiResponse('shell.execute', { command: 'ls -la' }, 'call_1'));
       }),
     );
 
@@ -137,9 +150,9 @@ describe('shell approval gate flow', () => {
       http.post(RESPONSES_URL, () => {
         callCount++;
         if (callCount === 1) {
-          return HttpResponse.json(createToolCallApiResponse('shell.execute', { command: 'echo hello' }, 'call_1'));
+          return toSSE(createToolCallApiResponse('shell.execute', { command: 'echo hello' }, 'call_1'));
         }
-        return HttpResponse.json(createTextApiResponse('Command executed'));
+        return toSSE(createTextApiResponse('Command executed'));
       }),
     );
 
@@ -167,9 +180,9 @@ describe('shell approval gate flow', () => {
       http.post(RESPONSES_URL, () => {
         callCount++;
         if (callCount === 1) {
-          return HttpResponse.json(createToolCallApiResponse('shell.execute', { command: 'rm -rf /' }, 'call_1'));
+          return toSSE(createToolCallApiResponse('shell.execute', { command: 'rm -rf /' }, 'call_1'));
         }
-        return HttpResponse.json(createTextApiResponse('I cannot run that command'));
+        return toSSE(createTextApiResponse('I cannot run that command'));
       }),
     );
 
@@ -203,9 +216,9 @@ describe('shell approval gate flow', () => {
       http.post(RESPONSES_URL, () => {
         callCount++;
         if (callCount === 1) {
-          return HttpResponse.json(createToolCallApiResponse('shell.execute', { command: 'echo hello' }, 'call_1'));
+          return toSSE(createToolCallApiResponse('shell.execute', { command: 'echo hello' }, 'call_1'));
         }
-        return HttpResponse.json(createTextApiResponse('Done'));
+        return toSSE(createTextApiResponse('Done'));
       }),
     );
 
@@ -233,7 +246,7 @@ describe('shell approval gate flow', () => {
 
     server.use(
       http.post(RESPONSES_URL, () => {
-        return HttpResponse.json(createToolCallApiResponse('shell.execute', { command: 'echo hello' }, 'call_1'));
+        return toSSE(createToolCallApiResponse('shell.execute', { command: 'echo hello' }, 'call_1'));
       }),
     );
 
@@ -259,9 +272,9 @@ describe('shell approval gate flow', () => {
       http.post(RESPONSES_URL, () => {
         callCount++;
         if (callCount === 1) {
-          return HttpResponse.json(createToolCallApiResponse('shell.execute', { command: 'rm -rf /' }, 'call_1'));
+          return toSSE(createToolCallApiResponse('shell.execute', { command: 'rm -rf /' }, 'call_1'));
         }
-        return HttpResponse.json(createTextApiResponse('Cannot do that'));
+        return toSSE(createTextApiResponse('Cannot do that'));
       }),
     );
 
@@ -291,11 +304,9 @@ describe('shell approval gate flow', () => {
       http.post(RESPONSES_URL, () => {
         callCount++;
         if (callCount === 1) {
-          return HttpResponse.json(
-            createToolCallApiResponse('shell.add-rule', { pattern: 'git *', type: 'allow' }, 'call_1'),
-          );
+          return toSSE(createToolCallApiResponse('shell.add-rule', { pattern: 'git *', type: 'allow' }, 'call_1'));
         }
-        return HttpResponse.json(createTextApiResponse('Rule added'));
+        return toSSE(createTextApiResponse('Rule added'));
       }),
     );
 

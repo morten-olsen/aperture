@@ -45,6 +45,19 @@ const createTextApiResponse = (text: string) => ({
   text: { format: { type: 'text' } },
 });
 
+const toSSE = (response: Record<string, unknown>) => {
+  const created = `event: response.created\ndata: ${JSON.stringify({ type: 'response.created', response })}\n\n`;
+  const completed = `event: response.completed\ndata: ${JSON.stringify({ type: 'response.completed', response })}\n\n`;
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(created + completed));
+      controller.close();
+    },
+  });
+  return new HttpResponse(stream, { headers: { 'Content-Type': 'text/event-stream' } });
+};
+
 const server = setupServer();
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
@@ -85,7 +98,7 @@ describe('ConversationService', () => {
   it('persists conversation after prompt and rehydrates from DB', async () => {
     server.use(
       http.post(RESPONSES_URL, () => {
-        return HttpResponse.json(createTextApiResponse('Hi there'));
+        return toSSE(createTextApiResponse('Hi there'));
       }),
     );
 
@@ -114,7 +127,7 @@ describe('ConversationService', () => {
     server.use(
       http.post(RESPONSES_URL, async ({ request }) => {
         capturedBodies.push(await request.json());
-        return HttpResponse.json(createTextApiResponse('Reply'));
+        return toSSE(createTextApiResponse('Reply'));
       }),
     );
 
@@ -152,7 +165,7 @@ describe('ConversationService', () => {
       // Trigger persistence by prompting
       server.use(
         http.post(RESPONSES_URL, () => {
-          return HttpResponse.json(createTextApiResponse('OK'));
+          return toSSE(createTextApiResponse('OK'));
         }),
       );
       const completion = await conv.prompt({ model: 'normal', input: 'Hi' });

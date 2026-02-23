@@ -10,7 +10,12 @@ import { EventService } from '../event/event.service.js';
 
 import { contextToMessages, promptsToMessages } from './prompt.utils.js';
 import type { Prompt, PromptOutputFile, PromptOutputText, PromptOutputTool, PromptUsage } from './prompt.schema.js';
-import { promptOutputEvent, promptCompletedEvent, promptApprovalRequestedEvent } from './prompt.events.js';
+import {
+  promptOutputEvent,
+  promptStreamEvent,
+  promptCompletedEvent,
+  promptApprovalRequestedEvent,
+} from './prompt.events.js';
 
 type PromptCompletionOptions = {
   services: Services;
@@ -152,11 +157,22 @@ class PromptCompletion {
     }));
 
     const modelName = services.config.models[this.#prompt.model];
-    return this.#client.responses.create({
+    const eventService = services.get(EventService);
+    let streamedText = '';
+    const stream = this.#client.responses.stream({
       input: messages,
       tools,
       model: modelName,
     });
+    stream.on('response.output_text.delta', (event) => {
+      streamedText += event.delta;
+      eventService.publish(promptStreamEvent, { promptId: this.id, delta: event.delta }, { userId: this.userId });
+    });
+    const response = (await stream.finalResponse()) as OpenAI.Responses.Response;
+    if (!response.output_text && streamedText) {
+      response.output_text = streamedText;
+    }
+    return response;
   };
 
   #accumulateUsage = (response: OpenAI.Responses.Response) => {

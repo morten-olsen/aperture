@@ -37,6 +37,14 @@ const promptCompletedEvent = createEvent({
   }),
 });
 
+const promptStreamEvent = createEvent({
+  id: 'prompt.stream',
+  schema: z.object({
+    promptId: z.string(),
+    delta: z.string(),
+  }),
+});
+
 const promptErrorEvent = createEvent({
   id: 'prompt.error',
   schema: z.object({
@@ -48,6 +56,7 @@ const promptErrorEvent = createEvent({
 const allPromptEvents = [
   promptCreatedEvent,
   promptOutputEvent,
+  promptStreamEvent,
   promptApprovalRequestedEvent,
   promptCompletedEvent,
   promptErrorEvent,
@@ -56,6 +65,7 @@ const allPromptEvents = [
 export {
   promptCreatedEvent,
   promptOutputEvent,
+  promptStreamEvent,
   promptApprovalRequestedEvent,
   promptCompletedEvent,
   promptErrorEvent,

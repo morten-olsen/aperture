@@ -82,6 +82,19 @@ const createToolCallApiResponse = (name: string, args: Record<string, unknown>, 
   text: { format: { type: 'text' } },
 });
 
+const toSSE = (response: Record<string, unknown>) => {
+  const created = `event: response.created\ndata: ${JSON.stringify({ type: 'response.created', response })}\n\n`;
+  const completed = `event: response.completed\ndata: ${JSON.stringify({ type: 'response.completed', response })}\n\n`;
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(created + completed));
+      controller.close();
+    },
+  });
+  return new HttpResponse(stream, { headers: { 'Content-Type': 'text/event-stream' } });
+};
+
 const server = setupServer();
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
@@ -99,9 +112,7 @@ describe('web-fetch approval gate flow', () => {
   it('pauses for approval when fetching a non-whitelisted domain', async () => {
     server.use(
       http.post(RESPONSES_URL, () => {
-        return HttpResponse.json(
-          createToolCallApiResponse('web-fetch.fetch', { url: 'https://example.com/page' }, 'call_1'),
-        );
+        return toSSE(createToolCallApiResponse('web-fetch.fetch', { url: 'https://example.com/page' }, 'call_1'));
       }),
     );
 
@@ -143,11 +154,11 @@ describe('web-fetch approval gate flow', () => {
       http.post(RESPONSES_URL, () => {
         callCount++;
         if (callCount === 1) {
-          return HttpResponse.json(
+          return toSSE(
             createToolCallApiResponse('web-fetch.fetch', { url: 'https://example.com/page', mode: 'html' }, 'call_1'),
           );
         }
-        return HttpResponse.json(createTextApiResponse('Here is the page content'));
+        return toSSE(createTextApiResponse('Here is the page content'));
       }),
     );
 
@@ -187,11 +198,9 @@ describe('web-fetch approval gate flow', () => {
       http.post(RESPONSES_URL, () => {
         callCount++;
         if (callCount === 1) {
-          return HttpResponse.json(
-            createToolCallApiResponse('web-fetch.fetch', { url: 'https://blocked.com/page' }, 'call_1'),
-          );
+          return toSSE(createToolCallApiResponse('web-fetch.fetch', { url: 'https://blocked.com/page' }, 'call_1'));
         }
-        return HttpResponse.json(createTextApiResponse('I cannot fetch that domain'));
+        return toSSE(createTextApiResponse('I cannot fetch that domain'));
       }),
     );
 
@@ -226,11 +235,11 @@ describe('web-fetch approval gate flow', () => {
       http.post(RESPONSES_URL, () => {
         callCount++;
         if (callCount === 1) {
-          return HttpResponse.json(
+          return toSSE(
             createToolCallApiResponse('web-fetch.fetch', { url: 'https://allowed.com/page', mode: 'html' }, 'call_1'),
           );
         }
-        return HttpResponse.json(createTextApiResponse('Fetched'));
+        return toSSE(createTextApiResponse('Fetched'));
       }),
     );
 
@@ -261,11 +270,9 @@ describe('web-fetch approval gate flow', () => {
       http.post(RESPONSES_URL, () => {
         callCount++;
         if (callCount === 1) {
-          return HttpResponse.json(
-            createToolCallApiResponse('web-fetch.add-domain', { domain: 'new-site.com' }, 'call_1'),
-          );
+          return toSSE(createToolCallApiResponse('web-fetch.add-domain', { domain: 'new-site.com' }, 'call_1'));
         }
-        return HttpResponse.json(createTextApiResponse('Domain added'));
+        return toSSE(createTextApiResponse('Domain added'));
       }),
     );
 
