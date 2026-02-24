@@ -83,6 +83,7 @@ const promptSchema = z.object({
   id: z.string(),
   userId: z.string(),
   model: z.enum(['normal', 'high']),
+  mode: z.string().default('classic'),
   visible: z.boolean().default(true),
   state: z.enum(['running', 'completed', 'waiting_for_approval']),
   input: z.string().optional(),

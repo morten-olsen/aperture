@@ -16,7 +16,7 @@ type ApprovalRequest = {
 };
 
 type UsePromptReturn = {
-  send: (input: string, options?: { conversationId?: string; model?: 'normal' | 'high' }) => void;
+  send: (input: string, options?: { conversationId?: string; model?: 'normal' | 'high'; mode?: string }) => void;
   promptId: string | null;
   outputs: PromptOutput[];
   pendingApproval: ApprovalRequest | null;
@@ -82,7 +82,7 @@ const usePrompt = (): UsePromptReturn => {
   }, []);
 
   const send = useCallback(
-    async (input: string, options?: { conversationId?: string; model?: 'normal' | 'high' }) => {
+    async (input: string, options?: { conversationId?: string; model?: 'normal' | 'high'; mode?: string }) => {
       unsubscribeRef.current?.();
       setOutputs([]);
       setPendingApproval(null);
@@ -110,6 +110,7 @@ const usePrompt = (): UsePromptReturn => {
         const { promptId: id } = await client.prompts.create({
           input,
           model: options?.model,
+          mode: options?.mode,
           conversationId: options?.conversationId,
         });
         resolvedId = id;

@@ -12,6 +12,7 @@ import { MarkdownView } from '../markdown/markdown-view.tsx';
 
 import { ApprovalBanner } from './approval-banner.tsx';
 import { ChatMessage } from './chat-message.tsx';
+import { ModeSelector } from './mode-selector.tsx';
 import { StreamingIndicator } from './streaming-indicator.tsx';
 import { ToolCallGroup } from './tool-call-card.tsx';
 
@@ -52,6 +53,8 @@ type ChatConversationProps = {
   streamingText?: string;
   error?: string | null;
   pendingApproval?: ApprovalRequest | null;
+  mode?: string;
+  onModeChange?: (mode: string) => void;
   onSend?: (text: string) => void;
   onApprove?: () => void;
   onReject?: () => void;
@@ -64,6 +67,8 @@ const ChatConversation = ({
   streamingText = '',
   error = null,
   pendingApproval = null,
+  mode = 'classic',
+  onModeChange,
   onSend,
   onApprove,
   onReject,
@@ -148,6 +153,8 @@ const ChatConversation = ({
           </GlassView>
         </XStack>
       )}
+
+      {onModeChange && <ModeSelector value={mode} onChange={onModeChange} />}
 
       <YStack paddingHorizontal={12} paddingBottom={8}>
         <GlassView intensity="strong" borderRadius={9999} padding={0}>

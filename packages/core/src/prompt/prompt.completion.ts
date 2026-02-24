@@ -20,6 +20,7 @@ import {
 type PromptCompletionOptions = {
   services: Services;
   model?: 'normal' | 'high';
+  mode?: string;
   userId: string;
   history?: Prompt[];
   input?: string;
@@ -46,6 +47,7 @@ class PromptCompletion {
       state: 'running',
       input: options.input,
       model: options.model || 'normal',
+      mode: options.mode || 'classic',
       output: [],
     };
     this.#state = State.fromInit(options.state || {});

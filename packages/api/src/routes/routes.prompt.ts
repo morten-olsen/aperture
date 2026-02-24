@@ -5,13 +5,14 @@ import { ConversationService } from '@morten-olsen/agentic-conversation';
 import type { ApiService } from '../service/service.js';
 
 const registerPromptRoutes = (app: FastifyInstance, apiService: ApiService) => {
-  app.post<{ Body: { input: string; model?: 'normal' | 'high'; conversationId?: string } }>(
+  app.post<{ Body: { input: string; model?: 'normal' | 'high'; mode?: string; conversationId?: string } }>(
     '/prompt',
     async (request) => {
       const userId = request.headers['x-user-id'] as string;
-      const { input, model, conversationId } = request.body as {
+      const { input, model, mode, conversationId } = request.body as {
         input: string;
         model?: 'normal' | 'high';
+        mode?: string;
         conversationId?: string;
       };
 
@@ -20,10 +21,10 @@ const registerPromptRoutes = (app: FastifyInstance, apiService: ApiService) => {
       if (conversationId) {
         const conversationService = apiService.services.get(ConversationService);
         const conversation = await conversationService.get(conversationId, userId);
-        completion = await conversation.prompt({ input, model });
+        completion = await conversation.prompt({ input, model, mode });
       } else {
         const promptService = apiService.services.get(PromptService);
-        completion = promptService.create({ userId, input, model });
+        completion = promptService.create({ userId, input, model, mode });
       }
 
       const promptId = completion.id;

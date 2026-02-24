@@ -72,6 +72,7 @@ const HomeScreen = () => {
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [pendingInput, setPendingInput] = useState<string | null>(null);
+  const [mode, setMode] = useState('classic');
 
   // Fetch active conversation
   const { data: activeData, refetch: refetchActive } = useToolQuery('conversation.getActive', {});
@@ -154,9 +155,9 @@ const HomeScreen = () => {
     (text: string) => {
       if (!activeId) return;
       setPendingInput(text);
-      send(text, { conversationId: activeId });
+      send(text, { conversationId: activeId, mode });
     },
-    [send, activeId],
+    [send, activeId, mode],
   );
 
   const handleLogout = useCallback(async () => {
@@ -303,6 +304,8 @@ const HomeScreen = () => {
               streamingText={streamingText}
               error={error?.message ?? null}
               pendingApproval={pendingApproval}
+              mode={mode}
+              onModeChange={setMode}
               onSend={handleSend}
               onApprove={pendingApproval ? () => approve(pendingApproval.toolCallId) : undefined}
               onReject={pendingApproval ? () => reject(pendingApproval.toolCallId) : undefined}

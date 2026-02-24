@@ -7,6 +7,7 @@ type ClientPromptsOptions = {
 type CreatePromptInput = {
   input: string;
   model?: 'normal' | 'high';
+  mode?: string;
   conversationId?: string;
 };
 

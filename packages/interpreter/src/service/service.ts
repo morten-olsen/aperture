@@ -9,6 +9,10 @@ import {
 
 import type { RunCodeInput } from '../schemas/schemas.js';
 
+type ExecuteOptions = RunCodeInput & {
+  evalType?: 'global' | 'module';
+};
+
 type ExposedMethod = (...args: unknown[]) => unknown | Promise<unknown>;
 
 type ExposedMethodEntry = {
@@ -74,7 +78,7 @@ class InterpreterService {
     return Object.keys(this.#modules);
   }
 
-  public execute = async (input: RunCodeInput): Promise<unknown> => {
+  public execute = async (input: ExecuteOptions): Promise<unknown> => {
     const QuickJS = await this.#engine;
     const runtime = QuickJS.newRuntime();
     const modules = this.#modules;
@@ -107,7 +111,10 @@ class InterpreterService {
         vm.setProp(vm.global, name, fnHandle);
       }
 
-      const resultHandle = scope.manage(vm.unwrapResult(await (vm as QuickJSAsyncContext).evalCodeAsync(input.code)));
+      const evalOptions = input.evalType ? { type: input.evalType } : undefined;
+      const resultHandle = scope.manage(
+        vm.unwrapResult(await (vm as QuickJSAsyncContext).evalCodeAsync(input.code, 'eval.js', evalOptions)),
+      );
       return vm.dump(resultHandle);
     } finally {
       scope.dispose();
@@ -116,4 +123,4 @@ class InterpreterService {
 }
 
 export { InterpreterService };
-export type { ExposedMethod };
+export type { ExposedMethod, ExecuteOptions };
