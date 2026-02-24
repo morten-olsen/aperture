@@ -43,6 +43,20 @@ class ArtifactService {
     return id;
   };
 
+  public list = async (): Promise<{ id: string; type: string; description: string | null; createdAt: string }[]> => {
+    const db = await this.#getDb();
+    const rows = await db
+      .selectFrom('artifact_artifacts')
+      .select(['id', 'type', 'description', 'created_at'])
+      .execute();
+    return rows.map((row) => ({
+      id: row.id,
+      type: row.type,
+      description: row.description,
+      createdAt: row.created_at,
+    }));
+  };
+
   public get = async (id: string): Promise<Artifact | undefined> => {
     const db = await this.#getDb();
     const row = await db.selectFrom('artifact_artifacts').selectAll().where('id', '=', id).executeTakeFirst();

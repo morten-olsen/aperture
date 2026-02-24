@@ -5,3 +5,4 @@ const interpreterTools = {
 };
 
 export { interpreterTools };
+export type { CreateRunCodeToolOptions } from './tools.run-code.js';

@@ -14,6 +14,7 @@ type CompletionMessagesInput = {
   messages: ChatMessage[];
   maxTokens?: number;
   model?: string;
+  responseFormat?: { type: 'json_object' | 'text' };
 };
 
 class CompletionService {
@@ -50,6 +51,7 @@ class CompletionService {
       model: input.model || models.normal,
       messages: input.messages,
       max_tokens: input.maxTokens,
+      response_format: input.responseFormat,
     });
     return response.choices[0]?.message?.content?.trim() ?? null;
   };

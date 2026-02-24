@@ -11,7 +11,37 @@ import type { RunCodeInput } from '../schemas/schemas.js';
 
 type ExecuteOptions = RunCodeInput & {
   evalType?: 'global' | 'module';
+  timeout?: number; // milliseconds, default 30000
 };
+
+type ExecutionError = {
+  error: string;
+  line?: number;
+  column?: number;
+  context?: string;
+};
+
+const DEFAULT_TIMEOUT = 30000;
+
+const parseErrorLocation = (text: string, code: string): { line?: number; column?: number; context?: string } => {
+  // QuickJS stack format: "at <eval> (eval.js:3:11)" or message format "eval.js:3:5"
+  const match = text.match(/eval\.js:(\d+)(?::(\d+))?/);
+  if (!match) return {};
+
+  const line = parseInt(match[1], 10);
+  const column = match[2] ? parseInt(match[2], 10) : undefined;
+  const lines = code.split('\n');
+  const context = line > 0 && line <= lines.length ? lines[line - 1].trim() : undefined;
+
+  return { line, column, context };
+};
+
+class TimeoutError extends Error {
+  constructor(timeout: number) {
+    super(`Execution timed out after ${timeout}ms`);
+    this.name = 'TimeoutError';
+  }
+}
 
 type ExposedMethod = (...args: unknown[]) => unknown | Promise<unknown>;
 
@@ -78,10 +108,29 @@ class InterpreterService {
     return Object.keys(this.#modules);
   }
 
+  public clone = (): InterpreterService => {
+    const copy = new InterpreterService();
+    copy.#methods = { ...this.#methods };
+    copy.#modules = { ...this.#modules };
+    return copy;
+  };
+
   public execute = async (input: ExecuteOptions): Promise<unknown> => {
+    const timeout = input.timeout ?? DEFAULT_TIMEOUT;
     const QuickJS = await this.#engine;
     const runtime = QuickJS.newRuntime();
     const modules = this.#modules;
+
+    // Set up interrupt handler for timeout
+    let interrupted = false;
+    const startTime = Date.now();
+    runtime.setInterruptHandler(() => {
+      if (Date.now() - startTime > timeout) {
+        interrupted = true;
+        return true; // Interrupt execution
+      }
+      return false;
+    });
 
     runtime.setModuleLoader((moduleName) => {
       const source = modules[moduleName];
@@ -99,7 +148,9 @@ class InterpreterService {
       const inputHandle = marshal(vm, scope, input.input ?? null);
       vm.setProp(vm.global, 'input', inputHandle);
 
-      // Expose host methods with automatic marshalling (supports async)
+      // Expose host methods with automatic marshalling (supports async via asyncify)
+      // Note: These functions appear synchronous to the sandbox but suspend internally
+      // for async operations. Do NOT use explicit 'await' in sandbox code.
       for (const [name, { fn }] of Object.entries(this.#methods)) {
         const fnHandle = scope.manage(
           (vm as QuickJSAsyncContext).newAsyncifiedFunction(name, async (...argHandles: QuickJSHandle[]) => {
@@ -111,16 +162,50 @@ class InterpreterService {
         vm.setProp(vm.global, name, fnHandle);
       }
 
-      const evalOptions = input.evalType ? { type: input.evalType } : undefined;
-      const resultHandle = scope.manage(
-        vm.unwrapResult(await (vm as QuickJSAsyncContext).evalCodeAsync(input.code, 'eval.js', evalOptions)),
-      );
+      // Use module mode only for actual imports (not for await - asyncify handles that transparently)
+      const needsModule = input.evalType === 'module' || /\bimport\s/.test(input.code);
+      const evalOptions = needsModule ? { type: 'module' as const } : undefined;
+
+      const evalResult = await (vm as QuickJSAsyncContext).evalCodeAsync(input.code, 'eval.js', evalOptions);
+
+      // Check if we were interrupted by timeout
+      if (interrupted) {
+        return {
+          error: `Execution timed out after ${timeout}ms`,
+          timeout: true,
+        } as ExecutionError & { timeout: boolean };
+      }
+
+      // Handle error results with enhanced info
+      if (evalResult.error) {
+        const errorHandle = evalResult.error;
+        const errorObj = vm.dump(errorHandle) as { name?: string; message?: string; stack?: string };
+
+        // Try to get stack for line info
+        const stackHandle = vm.getProp(errorHandle, 'stack');
+        const stack = vm.dump(stackHandle) as string | undefined;
+        stackHandle.dispose();
+        errorHandle.dispose();
+
+        const message = errorObj.message ?? String(errorObj);
+        const location = parseErrorLocation(stack ?? message, input.code);
+        return { error: message, ...location } as ExecutionError;
+      }
+
+      const resultHandle = scope.manage(evalResult.value);
       return vm.dump(resultHandle);
+    } catch (error) {
+      // Handle unexpected exceptions
+      if (error instanceof Error) {
+        const location = parseErrorLocation(error.stack ?? error.message, input.code);
+        return { error: error.message, ...location } as ExecutionError;
+      }
+      return { error: String(error) } as ExecutionError;
     } finally {
       scope.dispose();
     }
   };
 }
 
-export { InterpreterService };
-export type { ExposedMethod, ExecuteOptions };
+export { InterpreterService, TimeoutError };
+export type { ExposedMethod, ExecuteOptions, ExecutionError };

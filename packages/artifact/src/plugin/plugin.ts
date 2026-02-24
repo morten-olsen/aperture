@@ -21,13 +21,37 @@ const artifactPlugin = createPlugin({
       description: 'Get an artifact by id `getArtifact("artifact-id")`',
       fn: async (id: string) => {
         const { ArtifactService } = await import('../service/service.js');
-        const artifaceService = services.get(ArtifactService);
-        return await artifaceService.get(id);
+        const artifactService = services.get(ArtifactService);
+        return await artifactService.get(id);
+      },
+    });
+    interpreterService.expose({
+      name: 'storeArtifact',
+      description: 'Store data as an artifact. Returns the artifact ID. `storeArtifact(data, "description")`',
+      fn: async (data: unknown, description?: string) => {
+        const { ArtifactService } = await import('../service/service.js');
+        const artifactService = services.get(ArtifactService);
+        return await artifactService.add({
+          type: 'code-output',
+          description: description ?? '',
+          data,
+        });
+      },
+    });
+    interpreterService.expose({
+      name: 'listArtifacts',
+      description: 'List stored artifacts. Returns [{id, type, description, createdAt}].',
+      fn: async () => {
+        const { ArtifactService } = await import('../service/service.js');
+        const artifactService = services.get(ArtifactService);
+        return await artifactService.list();
       },
     });
   },
   prepare: async ({ tools }) => {
     tools.push(artifactTools.get);
+    tools.push(artifactTools.store);
+    tools.push(artifactTools.list);
   },
 });
 

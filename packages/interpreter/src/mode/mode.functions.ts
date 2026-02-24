@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type { PromptOutputTool, Services, State, Tool } from '@morten-olsen/agentic-core';
+import { CompletionService } from '@morten-olsen/agentic-core';
 import type { ZodType } from 'zod';
 
 import type { InterpreterService } from '../service/service.js';
@@ -45,6 +46,31 @@ const setupAgentFunctions = (options: SetupAgentFunctionsOptions): AgentFunction
   });
 
   interpreter.expose({
+    name: 'complete',
+    description:
+      'Structured way to finish: outputs response text, optionally stores data, and calls done(). ' +
+      'Takes { response: string, data?: any, followUp?: string }.',
+    fn: (opts: unknown) => {
+      const { response, data, followUp } = (opts ?? {}) as {
+        response?: string;
+        data?: unknown;
+        followUp?: string;
+      };
+      if (response) {
+        onOutput(response);
+      }
+      if (followUp) {
+        onOutput('\n\n' + followUp);
+      }
+      if (data !== undefined) {
+        store.set('_lastData', data);
+      }
+      done = true;
+      return { stored: data !== undefined, followUp: !!followUp };
+    },
+  });
+
+  interpreter.expose({
     name: 'discoverTools',
     description: 'List available tool functions with their IDs and descriptions',
     fn: () =>
@@ -84,6 +110,98 @@ const setupAgentFunctions = (options: SetupAgentFunctionsOptions): AgentFunction
     description: 'Log debug output (visible to you on next iteration)',
     fn: (...args: unknown[]) => {
       logs.push(args.map((a) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' '));
+    },
+  });
+
+  interpreter.expose({
+    name: 'parallel',
+    description:
+      'Execute multiple tool calls in parallel. Takes an array of {tool, input} objects. Returns an array of results (or {error} for failures).',
+    fn: async (calls: unknown) => {
+      if (!Array.isArray(calls)) {
+        throw new Error('parallel() expects an array of {tool, input} objects');
+      }
+      const results = await Promise.all(
+        calls.map(async (call: unknown) => {
+          const { tool: toolId, input } = call as { tool: string; input: unknown };
+          const tool = tools.find((t) => t.id === toolId);
+          if (!tool) {
+            return { error: `Tool "${toolId}" not found` };
+          }
+          const start = new Date().toISOString();
+          try {
+            const parsed = tool.input.parse(input);
+            const result = await tool.invoke({
+              input: parsed,
+              userId,
+              state,
+              services,
+              secrets: services.secrets,
+              addFileOutput: () => undefined,
+            });
+            if (onToolCall) {
+              onToolCall({
+                type: 'tool',
+                id: randomUUID(),
+                function: tool.id,
+                input: parsed,
+                result: { type: 'success', output: result },
+                start,
+                end: new Date().toISOString(),
+              });
+            }
+            return result;
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            if (onToolCall) {
+              onToolCall({
+                type: 'tool',
+                id: randomUUID(),
+                function: tool.id,
+                input,
+                result: { type: 'error', error: errorMessage },
+                start,
+                end: new Date().toISOString(),
+              });
+            }
+            return { error: errorMessage };
+          }
+        }),
+      );
+      return results;
+    },
+  });
+
+  interpreter.expose({
+    name: 'llm',
+    description: 'Call the LLM with a text prompt and get a text response',
+    fn: async (prompt: unknown) => {
+      const completionService = services.get(CompletionService);
+      return await completionService.complete({
+        systemPrompt: 'You are a helpful assistant. Respond concisely.',
+        userMessage: String(prompt),
+      });
+    },
+  });
+
+  interpreter.expose({
+    name: 'llmJson',
+    description: 'Call the LLM with a prompt and get a JSON response',
+    fn: async (prompt: unknown) => {
+      const completionService = services.get(CompletionService);
+      const result = await completionService.completeMessages({
+        messages: [
+          { role: 'system', content: 'You are a helpful assistant. Respond with valid JSON only.' },
+          { role: 'user', content: String(prompt) },
+        ],
+        responseFormat: { type: 'json_object' },
+      });
+      if (!result) return null;
+      try {
+        return JSON.parse(result);
+      } catch {
+        return result;
+      }
     },
   });
 

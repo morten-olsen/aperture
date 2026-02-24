@@ -113,7 +113,12 @@ class CodeExecutor implements PromptExecutor {
     const maxIterations = this.#options.maxRounds ?? 10;
 
     const prepared = await this.#prepare();
-    const systemPrompt = buildSystemPrompt({ tools: prepared.tools, context: prepared.context });
+    const interpreterSingleton = services.get(InterpreterService);
+    const systemPrompt = buildSystemPrompt({
+      tools: prepared.tools,
+      context: prepared.context,
+      moduleNames: interpreterSingleton.moduleNames,
+    });
     const completionService = services.get(CompletionService);
 
     const store = new Map<string, unknown>();
@@ -140,7 +145,7 @@ class CodeExecutor implements PromptExecutor {
 
       // Record the code generation as a tool output
       const codeStart = new Date().toISOString();
-      const interpreter = new InterpreterService();
+      const interpreter = services.get(InterpreterService).clone();
       const controls = setupAgentFunctions({
         interpreter,
         tools: prepared.tools,

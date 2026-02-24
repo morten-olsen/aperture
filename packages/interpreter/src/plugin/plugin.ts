@@ -19,9 +19,17 @@ const interpreterPlugin = createPlugin({
       createExecutor: (options) => new CodeExecutor(options),
     });
   },
-  prepare: async ({ tools, services }) => {
+  prepare: async ({ tools, services, userId, state }) => {
     const interpreterService = services.get(InterpreterService);
-    tools.push(interpreterTools.createRunCode(interpreterService));
+    tools.push(
+      interpreterTools.createRunCode({
+        interpreterService,
+        tools,
+        userId,
+        state,
+        services,
+      }),
+    );
   },
 });
 

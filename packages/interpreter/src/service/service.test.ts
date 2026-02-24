@@ -62,9 +62,10 @@ describe('InterpreterService', () => {
     expect(result).toBe('undefined');
   });
 
-  it('should throw on invalid code', async () => {
+  it('should return error object on invalid code', async () => {
     const service = new InterpreterService();
-    await expect(service.execute({ code: 'throw new Error("boom")' })).rejects.toThrow();
+    const result = await service.execute({ code: 'throw new Error("boom")' });
+    expect(result).toMatchObject({ error: 'boom', line: 1, column: 16 });
   });
 
   it('should not have access to fetch, filesystem, or network APIs', async () => {
@@ -85,9 +86,10 @@ describe('InterpreterService', () => {
     });
   });
 
-  it('should reject unregistered module imports', async () => {
+  it('should return error for unregistered module imports', async () => {
     const service = new InterpreterService();
-    await expect(service.execute({ code: `import fs from 'fs'; fs` })).rejects.toThrow();
+    const result = await service.execute({ code: `import fs from 'fs'; fs` });
+    expect(result).toMatchObject({ error: 'Module not found: fs' });
   });
 
   it('should support async exposed methods', async () => {
@@ -117,5 +119,27 @@ describe('InterpreterService', () => {
       `,
     });
     expect(result).toEqual({ default: 42 });
+  });
+
+  it('should timeout on infinite loops', async () => {
+    const service = new InterpreterService();
+    const result = await service.execute({ code: 'while(true) {}', timeout: 100 });
+    expect(result).toMatchObject({ error: 'Execution timed out after 100ms', timeout: true });
+  });
+
+  it('should include line and column in error context', async () => {
+    const service = new InterpreterService();
+    const result = await service.execute({
+      code: `const x = 1;
+const y = 2;
+const z = unknownVar;
+z`,
+    });
+    expect(result).toMatchObject({
+      error: "'unknownVar' is not defined",
+      line: 3,
+      column: 11,
+      context: 'const z = unknownVar;',
+    });
   });
 });
