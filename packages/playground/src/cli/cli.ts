@@ -16,6 +16,7 @@ Commands:
 
 Options:
   -c, --conversation <id>  Conversation ID (for prompt command)
+  -m, --mode <mode>        Execution mode: classic or code (for prompt command)
   -h, --help               Show this help message
 
 Environment:
@@ -27,6 +28,7 @@ const main = async () => {
   const { values, positionals } = parseArgs({
     options: {
       conversation: { type: 'string', short: 'c' },
+      mode: { type: 'string', short: 'm' },
       help: { type: 'boolean', short: 'h' },
     },
     allowPositionals: true,
@@ -59,7 +61,7 @@ const main = async () => {
     case 'prompt': {
       const message = positionals[1];
       if (!message) throw new Error('prompt requires a <message> argument');
-      await prompt(client, message, { conversationId: values.conversation });
+      await prompt(client, message, { conversationId: values.conversation, mode: values.mode });
       break;
     }
     case 'capabilities':

@@ -94,29 +94,45 @@ const setupAgentFunctions = (options: SetupAgentFunctionsOptions): AgentFunction
       description: tool.description,
       fn: async (input: unknown) => {
         const start = new Date().toISOString();
-        const parsed = tool.input.parse(input);
-        const result = await tool.invoke({
-          input: parsed,
-          userId,
-          state,
-          services,
-          secrets: services.secrets,
-          addFileOutput: () => undefined,
-        });
-
-        if (onToolCall) {
-          onToolCall({
-            type: 'tool',
-            id: randomUUID(),
-            function: tool.id,
+        try {
+          const parsed = tool.input.parse(input);
+          const result = await tool.invoke({
             input: parsed,
-            result: { type: 'success', output: result },
-            start,
-            end: new Date().toISOString(),
+            userId,
+            state,
+            services,
+            secrets: services.secrets,
+            addFileOutput: () => undefined,
           });
-        }
 
-        return result;
+          if (onToolCall) {
+            onToolCall({
+              type: 'tool',
+              id: randomUUID(),
+              function: tool.id,
+              input: parsed,
+              result: { type: 'success', output: result },
+              start,
+              end: new Date().toISOString(),
+            });
+          }
+
+          return result;
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          if (onToolCall) {
+            onToolCall({
+              type: 'tool',
+              id: randomUUID(),
+              function: tool.id,
+              input,
+              result: { type: 'error', error: errorMessage },
+              start,
+              end: new Date().toISOString(),
+            });
+          }
+          throw new Error(`Tool "${tool.id}" failed: ${errorMessage}`);
+        }
       },
     });
   }

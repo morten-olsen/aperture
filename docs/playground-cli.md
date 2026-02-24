@@ -54,17 +54,27 @@ pnpm --filter @morten-olsen/agentic-playground cli invoke configuration.connecti
 pnpm --filter @morten-olsen/agentic-playground cli invoke trigger.create '{"name":"test","cron":"0 * * * *"}'
 ```
 
-### `prompt <message> [-c conversationId]`
+### `prompt <message> [-c conversationId] [-m mode]`
 
 Send a prompt to the agent and stream SSE events as NDJSON (one JSON object per line). The command resolves when the prompt completes or errors, with a 5-minute timeout.
 
 ```bash
-# New conversation
+# New conversation (classic mode — text + tools)
 pnpm --filter @morten-olsen/agentic-playground cli prompt "What tools do you have?"
+
+# Use code execution mode (LLM writes JavaScript, runs in QuickJS sandbox)
+pnpm --filter @morten-olsen/agentic-playground cli prompt "What's the weather?" -m code
 
 # Continue an existing conversation
 pnpm --filter @morten-olsen/agentic-playground cli prompt "Tell me more" -c my-session
 ```
+
+**Execution modes:**
+
+| Mode | Description |
+|------|-------------|
+| `classic` (default) | Standard agent loop: LLM responds with text and structured tool calls |
+| `code` | Code execution mode: LLM writes JavaScript that runs in a QuickJS sandbox. Tools are called as functions within the code. Requires the interpreter plugin. |
 
 Each line is a JSON object with `event` and `data` fields:
 

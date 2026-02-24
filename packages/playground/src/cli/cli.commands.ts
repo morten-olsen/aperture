@@ -36,12 +36,14 @@ const capabilities = async (client: ApertureClient) => {
 
 type PromptOptions = {
   conversationId?: string;
+  mode?: string;
 };
 
 const prompt = async (client: ApertureClient, message: string, options: PromptOptions) => {
   const { promptId } = await client.prompts.create({
     input: message,
     conversationId: options.conversationId,
+    mode: options.mode,
   });
   process.stderr.write(`promptId: ${promptId}\n`);
 

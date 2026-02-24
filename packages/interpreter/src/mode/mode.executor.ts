@@ -16,6 +16,7 @@ import {
   PluginService,
   State,
   promptOutputEvent,
+  promptStreamEvent,
   promptCompletedEvent,
 } from '@morten-olsen/agentic-core';
 
@@ -148,6 +149,8 @@ class CodeExecutor implements PromptExecutor {
         services,
         store,
         onOutput: (text) => {
+          const eventService = services.get(EventService);
+          eventService.publish(promptStreamEvent, { promptId: this.id, delta: text }, { userId: this.userId });
           this.#publishOutput({
             type: 'text',
             content: text,
@@ -168,14 +171,16 @@ class CodeExecutor implements PromptExecutor {
         error = e;
       }
 
+      const codeResult = error
+        ? { type: 'error' as const, error: error instanceof Error ? error.message : String(error) }
+        : { type: 'success' as const, output: result ?? null };
+
       this.#publishOutput({
         type: 'tool',
         id: randomUUID(),
         function: 'code.execute',
         input: { code },
-        result: error
-          ? { type: 'error', error: error instanceof Error ? error.message : String(error) }
-          : { type: 'success', output: result },
+        result: codeResult,
         start: codeStart,
         end: new Date().toISOString(),
       });
@@ -184,14 +189,16 @@ class CodeExecutor implements PromptExecutor {
         break;
       }
 
+      // Feed the code back as assistant message so the model remembers what it wrote
+      iterationMessages.push({ role: 'assistant', content: code });
+
       const logs = controls.logs();
       const parts: string[] = [];
       if (logs.length > 0) {
         parts.push(`Logs:\n${logs.join('\n')}`);
       }
       if (error) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        parts.push(`Execution error: ${errMsg}`);
+        parts.push(`Execution error: ${codeResult.error}`);
       } else if (result !== undefined) {
         parts.push(`Execution result: ${JSON.stringify(result)}`);
       }
@@ -228,11 +235,11 @@ class CodeExecutor implements PromptExecutor {
     return this.#prompt;
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function
-  approve = async (toolCallId: string): Promise<void> => {};
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  approve = async (toolCallId: string): Promise<void> => undefined;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function
-  reject = async (toolCallId: string, reason?: string): Promise<void> => {};
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  reject = async (toolCallId: string, reason?: string): Promise<void> => undefined;
 }
 
 export { CodeExecutor };
