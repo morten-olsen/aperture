@@ -1,11 +1,11 @@
-mod error;
 mod command;
-mod output;
+mod error;
 mod execute;
+mod output;
 mod platform;
 
-pub use error::{SandboxError, Result};
 pub use command::SandboxedCommand;
+pub use error::{Result, SandboxError};
 pub use output::CommandOutput;
 
 /// Execute a command inside an OS-native sandbox.
@@ -94,13 +94,11 @@ mod tests {
         let tmp = std::env::temp_dir().join("aperture-test-sandbox-os");
         let _ = std::fs::create_dir_all(&tmp);
 
-        let cmd = SandboxedCommand::new(
-            "echo test-content > testfile.txt && cat testfile.txt",
-            &tmp,
-        )
-        .readable_path("/")
-        .writable_path(&tmp)
-        .timeout(Duration::from_secs(10));
+        let cmd =
+            SandboxedCommand::new("echo test-content > testfile.txt && cat testfile.txt", &tmp)
+                .readable_path("/")
+                .writable_path(&tmp)
+                .timeout(Duration::from_secs(10));
 
         let output = execute(&cmd).await.unwrap();
         assert_eq!(output.exit_code, 0);

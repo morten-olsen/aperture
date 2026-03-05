@@ -20,8 +20,7 @@ impl ServerConfig {
             openai_api_key: api_key,
             openai_base_url: std::env::var("OPENAI_BASE_URL")
                 .unwrap_or_else(|_| "https://api.openai.com/v1".into()),
-            openai_model: std::env::var("OPENAI_MODEL")
-                .unwrap_or_else(|_| "gpt-4o".into()),
+            openai_model: std::env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4o".into()),
         })
     }
 }

@@ -102,9 +102,7 @@ mod tests {
         .unwrap();
 
         let name: String = db
-            .call(|conn| {
-                conn.query_row("SELECT name FROM test WHERE id = 1", [], |row| row.get(0))
-            })
+            .call(|conn| conn.query_row("SELECT name FROM test WHERE id = 1", [], |row| row.get(0)))
             .await
             .unwrap();
 

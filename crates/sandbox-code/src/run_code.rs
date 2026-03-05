@@ -22,9 +22,7 @@ fn check_inner_approval(
 ) -> Option<String> {
     match &tool.require_approval {
         None => None,
-        Some(aperture_engine::tool::ApprovalRequirement::Always { reason }) => {
-            Some(reason.clone())
-        }
+        Some(aperture_engine::tool::ApprovalRequirement::Always { reason }) => Some(reason.clone()),
         Some(aperture_engine::tool::ApprovalRequirement::Dynamic(f)) => {
             let ctx = ApprovalContext {
                 extensions,
@@ -155,9 +153,8 @@ pub(crate) async fn run_in_sandbox(
                             );
                             replay_mismatch = Some(msg);
                             interrupt.store(true, Ordering::Release);
-                            let _ = response.send(Err(EngineError::ToolInvocation(
-                                "replay mismatch".into(),
-                            )));
+                            let _ = response
+                                .send(Err(EngineError::ToolInvocation("replay mismatch".into())));
                             continue;
                         }
                         ReplayEntry::ToolCallError {
@@ -170,9 +167,7 @@ pub(crate) async fn run_in_sandbox(
                                 let rec_entry = entry.clone();
                                 replay_iter.next();
                                 recording.push(rec_entry);
-                                let _ = response.send(Err(
-                                    EngineError::ToolInvocation(err),
-                                ));
+                                let _ = response.send(Err(EngineError::ToolInvocation(err)));
                                 continue;
                             }
                             let msg = format!(
@@ -182,9 +177,8 @@ pub(crate) async fn run_in_sandbox(
                             );
                             replay_mismatch = Some(msg);
                             interrupt.store(true, Ordering::Release);
-                            let _ = response.send(Err(EngineError::ToolInvocation(
-                                "replay mismatch".into(),
-                            )));
+                            let _ = response
+                                .send(Err(EngineError::ToolInvocation("replay mismatch".into())));
                             continue;
                         }
                         _ => {
@@ -197,9 +191,8 @@ pub(crate) async fn run_in_sandbox(
                             );
                             replay_mismatch = Some(msg);
                             interrupt.store(true, Ordering::Release);
-                            let _ = response.send(Err(EngineError::ToolInvocation(
-                                "replay mismatch".into(),
-                            )));
+                            let _ = response
+                                .send(Err(EngineError::ToolInvocation("replay mismatch".into())));
                             continue;
                         }
                     }
@@ -235,9 +228,8 @@ pub(crate) async fn run_in_sandbox(
                             approval_reason: reason,
                         });
                         interrupt.store(true, Ordering::Release);
-                        let _ = response.send(Err(EngineError::ToolInvocation(
-                            "approval required".into(),
-                        )));
+                        let _ = response
+                            .send(Err(EngineError::ToolInvocation("approval required".into())));
                         continue;
                     }
                 }
@@ -361,7 +353,14 @@ impl ToolInvoke for RunScriptInvoke {
 
         let skip_approval = resolver.is_approved(&ctx.user_id, &path, &content);
 
-        run_in_sandbox(&content, &self.sandbox, &self.tools, &mut ctx, skip_approval).await
+        run_in_sandbox(
+            &content,
+            &self.sandbox,
+            &self.tools,
+            &mut ctx,
+            skip_approval,
+        )
+        .await
     }
 }
 
@@ -440,13 +439,7 @@ mod tests {
         let mut state = State::new();
         let ext = Extensions::new();
         let events = EventBus::new();
-        let ctx = make_ctx(
-            r#"echo({msg: "hello"})"#,
-            &mut state,
-            &ext,
-            &events,
-            None,
-        );
+        let ctx = make_ctx(r#"echo({msg: "hello"})"#, &mut state, &ext, &events, None);
 
         let result = run_code.invoke(ctx).await.unwrap();
         assert!(result["value"]["msg"].as_str().is_some());
@@ -630,7 +623,9 @@ mod tests {
         };
 
         // With skip_approval=true, the dangerous tool should execute without halting.
-        let result = run_in_sandbox(code, &sandbox, &tools, &mut ctx, true).await.unwrap();
+        let result = run_in_sandbox(code, &sandbox, &tools, &mut ctx, true)
+            .await
+            .unwrap();
         assert_eq!(result["value"]["cmd"], "deploy");
     }
 
@@ -638,7 +633,11 @@ mod tests {
     async fn run_script_resolves_and_executes() {
         struct TestResolver;
         impl ScriptResolver for TestResolver {
-            fn read_script(&self, _user_id: &str, path: &str) -> std::result::Result<String, String> {
+            fn read_script(
+                &self,
+                _user_id: &str,
+                path: &str,
+            ) -> std::result::Result<String, String> {
                 if path == "test.js" {
                     Ok(r#"echo({msg: "from script"})"#.to_string())
                 } else {
@@ -652,10 +651,7 @@ mod tests {
 
         let tools = Arc::new(vec![make_echo_tool()]);
         let sandbox: Arc<dyn CodeSandbox> = Arc::new(QuickJsSandbox::new());
-        let invoke = RunScriptInvoke {
-            sandbox,
-            tools,
-        };
+        let invoke = RunScriptInvoke { sandbox, tools };
 
         let mut state = State::new();
         let mut ext = Extensions::new();
@@ -679,7 +675,11 @@ mod tests {
     async fn run_script_approved_skips_approval() {
         struct ApprovedResolver;
         impl ScriptResolver for ApprovedResolver {
-            fn read_script(&self, _user_id: &str, _path: &str) -> std::result::Result<String, String> {
+            fn read_script(
+                &self,
+                _user_id: &str,
+                _path: &str,
+            ) -> std::result::Result<String, String> {
                 Ok(r#"dangerous({cmd: "deploy"})"#.to_string())
             }
             fn is_approved(&self, _user_id: &str, _path: &str, _content: &str) -> bool {
@@ -689,10 +689,7 @@ mod tests {
 
         let tools = Arc::new(vec![make_echo_tool(), make_approval_tool()]);
         let sandbox: Arc<dyn CodeSandbox> = Arc::new(QuickJsSandbox::new());
-        let invoke = RunScriptInvoke {
-            sandbox,
-            tools,
-        };
+        let invoke = RunScriptInvoke { sandbox, tools };
 
         let mut state = State::new();
         let mut ext = Extensions::new();
@@ -717,7 +714,11 @@ mod tests {
     async fn run_script_unapproved_halts_on_approval() {
         struct UnapprovedResolver;
         impl ScriptResolver for UnapprovedResolver {
-            fn read_script(&self, _user_id: &str, _path: &str) -> std::result::Result<String, String> {
+            fn read_script(
+                &self,
+                _user_id: &str,
+                _path: &str,
+            ) -> std::result::Result<String, String> {
                 Ok(r#"dangerous({cmd: "deploy"})"#.to_string())
             }
             fn is_approved(&self, _user_id: &str, _path: &str, _content: &str) -> bool {
@@ -727,10 +728,7 @@ mod tests {
 
         let tools = Arc::new(vec![make_echo_tool(), make_approval_tool()]);
         let sandbox: Arc<dyn CodeSandbox> = Arc::new(QuickJsSandbox::new());
-        let invoke = RunScriptInvoke {
-            sandbox,
-            tools,
-        };
+        let invoke = RunScriptInvoke { sandbox, tools };
 
         let mut state = State::new();
         let mut ext = Extensions::new();

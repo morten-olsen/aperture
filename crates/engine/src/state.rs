@@ -26,8 +26,9 @@ impl State {
     pub fn get<T: DeserializeOwned>(&self, plugin_id: &str) -> Result<Option<T>> {
         match self.map.get(plugin_id) {
             Some(value) => {
-                let deserialized = serde_json::from_value(value.clone())
-                    .map_err(|e| EngineError::StateError(format!("deserialize {plugin_id}: {e}")))?;
+                let deserialized = serde_json::from_value(value.clone()).map_err(|e| {
+                    EngineError::StateError(format!("deserialize {plugin_id}: {e}"))
+                })?;
                 Ok(Some(deserialized))
             }
             None => Ok(None),

@@ -1,3 +1,7 @@
+mod exec;
+mod rules;
+mod rules_tools;
+
 use async_trait::async_trait;
 use serde_json::json;
 
@@ -5,9 +9,9 @@ use aperture_engine::error::Result;
 use aperture_engine::plugin::{Plugin, PrepareContext};
 use aperture_engine::tool::{ApprovalRequirement, Tool};
 
-use crate::cli_exec::CliExec;
-use crate::cli_rules::{check_command, load_rules, CommandCheck};
-use crate::cli_rules_tools::{CliRulesAdd, CliRulesList, CliRulesRemove};
+use self::exec::CliExec;
+use self::rules::{check_command, load_rules, CommandCheck};
+use self::rules_tools::{CliRulesAdd, CliRulesList, CliRulesRemove};
 use crate::config::RuntimeConfig;
 
 pub struct CliPlugin;
@@ -72,7 +76,11 @@ impl Plugin for CliPlugin {
 
                     let rules = match load_rules(&rules_path) {
                         Ok(r) => r,
-                        Err(_) => return Some(format!("Command \"{command}\" has no matching allow rule")),
+                        Err(_) => {
+                            return Some(format!(
+                                "Command \"{command}\" has no matching allow rule"
+                            ))
+                        }
                     };
 
                     match check_command(&rules, command) {

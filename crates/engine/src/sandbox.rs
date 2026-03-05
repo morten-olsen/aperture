@@ -110,7 +110,9 @@ mod tests {
                 input: json!({"path": "/nope"}),
                 error: "not found".into(),
             },
-            ReplayEntry::DateNow { value: 1709568000000.0 },
+            ReplayEntry::DateNow {
+                value: 1709568000000.0,
+            },
             ReplayEntry::MathRandom { value: 0.42 },
         ];
 

@@ -5,7 +5,9 @@ use aperture_engine::error::Result;
 use aperture_engine::plugin::{Plugin, PrepareContext};
 use aperture_engine::tool::Tool;
 
-use crate::fs_tools::*;
+mod tools;
+
+use self::tools::*;
 
 pub struct FilesystemPlugin;
 

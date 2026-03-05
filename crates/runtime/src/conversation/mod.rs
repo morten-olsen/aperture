@@ -1,3 +1,7 @@
+pub(crate) mod actions;
+pub(crate) mod db;
+pub(crate) mod events;
+
 use async_trait::async_trait;
 use serde_json::json;
 
@@ -5,12 +9,9 @@ use aperture_engine::action::Action;
 use aperture_engine::error::{EngineError, Result};
 use aperture_engine::plugin::{Plugin, SetupContext};
 use aperture_engine::prompt::Prompt;
-use aperture_engine::prompt_events::{PROMPT_COMPLETED, PROMPT_CREATED, PROMPT_UPDATED};
 
-use crate::conversation_actions;
-use crate::conversation_db;
-use crate::conversation_events::{CONVERSATION_CREATED, CONVERSATION_PROMPT_ATTACHED};
-use crate::db_plugin::DatabaseService;
+use self::events::{CONVERSATION_CREATED, CONVERSATION_PROMPT_ATTACHED};
+use crate::db::DatabaseService;
 
 pub struct ConversationPlugin;
 
@@ -32,7 +33,7 @@ impl Plugin for ConversationPlugin {
             .ok_or_else(|| EngineError::PluginSetup("DatabaseService not found".into()))?
             .clone();
 
-        db.call(conversation_db::migrate).await?;
+        db.call(db::migrate).await?;
 
         // 2. Register conversation events.
         ctx.events.register_event(&CONVERSATION_CREATED).await;
@@ -41,42 +42,48 @@ impl Plugin for ConversationPlugin {
             .await;
 
         // 3. Subscribe to prompt events and persist to DB.
+        //
+        // Uses the wildcard listener (single channel) instead of select! on
+        // three separate broadcast channels. A single channel guarantees
+        // in-order delivery and avoids scheduling-dependent event loss.
         let db_for_listener = db.clone();
-        let mut rx_created = ctx.events.subscribe::<Prompt>(&PROMPT_CREATED).await;
-        let mut rx_updated = ctx.events.subscribe::<Prompt>(&PROMPT_UPDATED).await;
-        let mut rx_completed = ctx.events.subscribe::<Prompt>(&PROMPT_COMPLETED).await;
+        let mut rx = ctx.events.listen_all();
 
         tokio::spawn(async move {
-            loop {
-                let prompt: Option<Prompt> = tokio::select! {
-                    Ok(val) = rx_created.recv() => serde_json::from_value(val).ok(),
-                    Ok(val) = rx_updated.recv() => serde_json::from_value(val).ok(),
-                    Ok(val) = rx_completed.recv() => serde_json::from_value(val).ok(),
-                    else => break,
+            while let Ok(envelope) = rx.recv().await {
+                let is_prompt_event = matches!(
+                    envelope.event_id.as_str(),
+                    "prompt.created" | "prompt.updated" | "prompt.completed"
+                );
+                if !is_prompt_event {
+                    continue;
+                }
+
+                let prompt: Prompt = match serde_json::from_value(envelope.payload) {
+                    Ok(p) => p,
+                    Err(_) => continue,
                 };
 
-                if let Some(prompt) = prompt {
-                    let id = prompt.id.clone();
-                    let user_id = prompt.user_id.clone();
-                    let state = conversation_db::state_to_str(&prompt.state).to_string();
-                    let input = prompt.input.clone();
-                    let output_json = serde_json::to_string(&prompt.output).unwrap_or_default();
-                    let usage_json = serde_json::to_string(&prompt.usage).unwrap_or_default();
+                let id = prompt.id.clone();
+                let user_id = prompt.user_id.clone();
+                let state = db::state_to_str(&prompt.state).to_string();
+                let input = prompt.input.clone();
+                let output_json = serde_json::to_string(&prompt.output).unwrap_or_default();
+                let usage_json = serde_json::to_string(&prompt.usage).unwrap_or_default();
 
-                    let _ = db_for_listener
-                        .call(move |conn| {
-                            conversation_db::upsert_prompt(
-                                conn,
-                                &id,
-                                &user_id,
-                                &state,
-                                input.as_deref(),
-                                &output_json,
-                                &usage_json,
-                            )
-                        })
-                        .await;
-                }
+                let _ = db_for_listener
+                    .call(move |conn| {
+                        db::upsert_prompt(
+                            conn,
+                            &id,
+                            &user_id,
+                            &state,
+                            input.as_deref(),
+                            &output_json,
+                            &usage_json,
+                        )
+                    })
+                    .await;
             }
         });
 
@@ -92,7 +99,7 @@ impl Plugin for ConversationPlugin {
                 }
             }),
             output_schema: None,
-            invoke: Box::new(conversation_actions::CreateConversation),
+            invoke: Box::new(actions::CreateConversation),
         });
 
         ctx.actions.push(Action {
@@ -100,7 +107,7 @@ impl Plugin for ConversationPlugin {
             description: "List conversations for the current user".into(),
             input_schema: json!({"type": "object"}),
             output_schema: None,
-            invoke: Box::new(conversation_actions::ListConversations),
+            invoke: Box::new(actions::ListConversations),
         });
 
         ctx.actions.push(Action {
@@ -114,7 +121,7 @@ impl Plugin for ConversationPlugin {
                 "required": ["conversation_id"]
             }),
             output_schema: None,
-            invoke: Box::new(conversation_actions::GetConversation),
+            invoke: Box::new(actions::GetConversation),
         });
 
         ctx.actions.push(Action {
@@ -129,7 +136,7 @@ impl Plugin for ConversationPlugin {
                 "required": ["conversation_id", "message"]
             }),
             output_schema: None,
-            invoke: Box::new(conversation_actions::SendMessage),
+            invoke: Box::new(actions::SendMessage),
         });
 
         ctx.actions.push(Action {
@@ -144,7 +151,7 @@ impl Plugin for ConversationPlugin {
                 "required": ["conversation_id", "prompt_id"]
             }),
             output_schema: None,
-            invoke: Box::new(conversation_actions::AttachPrompt),
+            invoke: Box::new(actions::AttachPrompt),
         });
 
         Ok(())
@@ -154,7 +161,8 @@ impl Plugin for ConversationPlugin {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aperture_engine::engine::{Engine, LlmClient, LlmMessage, LlmResponse};
+    use aperture_engine::engine::Engine;
+    use aperture_engine::llm::{LlmClient, LlmMessage, LlmResponse};
     use aperture_engine::prompt::{PromptOutput, PromptState};
     use aperture_engine::prompt_runner::PromptRunner;
     use aperture_engine::tool::Tool;
@@ -196,12 +204,7 @@ mod tests {
 
     #[async_trait]
     impl PromptRunner for MockPromptRunner {
-        async fn run(
-            &self,
-            user_id: &str,
-            input: &str,
-            _history: &[Prompt],
-        ) -> Result<Prompt> {
+        async fn run(&self, user_id: &str, input: &str, _history: &[Prompt]) -> Result<Prompt> {
             Ok(Prompt {
                 id: uuid::Uuid::new_v4().to_string(),
                 user_id: user_id.to_string(),
@@ -222,14 +225,8 @@ mod tests {
     #[tokio::test]
     async fn full_conversation_integration() {
         let mut engine = Engine::new();
-        engine
-            .register(Box::new(InMemoryDbPlugin))
-            .await
-            .unwrap();
-        engine
-            .register(Box::new(ConversationPlugin))
-            .await
-            .unwrap();
+        engine.register(Box::new(InMemoryDbPlugin)).await.unwrap();
+        engine.register(Box::new(ConversationPlugin)).await.unwrap();
 
         // Insert PromptRunner after plugins are registered.
         let runner: Box<dyn PromptRunner> = Box::new(MockPromptRunner);
@@ -283,24 +280,12 @@ mod tests {
     #[tokio::test]
     async fn prompt_events_persisted_to_db() {
         let mut engine = Engine::new();
-        engine
-            .register(Box::new(InMemoryDbPlugin))
-            .await
-            .unwrap();
-        engine
-            .register(Box::new(ConversationPlugin))
-            .await
-            .unwrap();
+        engine.register(Box::new(InMemoryDbPlugin)).await.unwrap();
+        engine.register(Box::new(ConversationPlugin)).await.unwrap();
 
         // Run a prompt through the engine — events should be captured.
         let llm = MockLlm;
-        let prompt = engine
-            .run(&llm, "user-1", "test input", &[])
-            .await
-            .unwrap();
-
-        // Give the background task time to process all events (created + completed).
-        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        let prompt = engine.run(&llm, "user-1", "test input", &[]).await.unwrap();
 
         // Create a conversation and attach the prompt.
         let result = engine
@@ -322,16 +307,29 @@ mod tests {
             .await
             .unwrap();
 
-        let result = engine
-            .invoke_action(
-                "get_conversation",
-                "user-1",
-                json!({"conversation_id": conv_id}),
-            )
-            .await
-            .unwrap();
-        let prompts = result["prompts"].as_array().unwrap();
-        assert_eq!(prompts.len(), 1);
-        assert_eq!(prompts[0]["state"], "completed");
+        // Poll until the background event listener has persisted the "completed" state.
+        // The listener processes PROMPT_CREATED then PROMPT_COMPLETED asynchronously,
+        // so we retry instead of relying on a fixed sleep.
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+        loop {
+            let result = engine
+                .invoke_action(
+                    "get_conversation",
+                    "user-1",
+                    json!({"conversation_id": conv_id}),
+                )
+                .await
+                .unwrap();
+            let prompts = result["prompts"].as_array().unwrap();
+            if prompts.len() == 1 && prompts[0]["state"] == "completed" {
+                break;
+            }
+            assert!(
+                tokio::time::Instant::now() < deadline,
+                "timed out waiting for prompt state 'completed', got: {:?}",
+                prompts.first().map(|p| &p["state"])
+            );
+            tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+        }
     }
 }

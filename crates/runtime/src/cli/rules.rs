@@ -63,8 +63,8 @@ pub fn load_rules(path: &std::path::Path) -> Result<CliRulesFile, String> {
         return Ok(CliRulesFile::default());
     }
 
-    let content = std::fs::read_to_string(path)
-        .map_err(|e| format!("failed to read cli-rules.toml: {e}"))?;
+    let content =
+        std::fs::read_to_string(path).map_err(|e| format!("failed to read cli-rules.toml: {e}"))?;
 
     toml::from_str(&content).map_err(|e| format!("failed to parse cli-rules.toml: {e}"))
 }
@@ -173,7 +173,10 @@ mod tests {
     #[test]
     fn unmatched_command() {
         let rules = sample_rules();
-        assert_eq!(check_command(&rules, "python script.py"), CommandCheck::Unmatched);
+        assert_eq!(
+            check_command(&rules, "python script.py"),
+            CommandCheck::Unmatched
+        );
     }
 
     #[test]

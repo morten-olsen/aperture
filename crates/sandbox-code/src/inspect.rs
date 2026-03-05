@@ -36,7 +36,12 @@ mod tests {
     use aperture_engine::state::State;
     use serde_json::json;
 
-    fn make_ctx<'a>(input: Value, state: &'a mut State, ext: &'a Extensions, events: &'a EventBus) -> ToolContext<'a> {
+    fn make_ctx<'a>(
+        input: Value,
+        state: &'a mut State,
+        ext: &'a Extensions,
+        events: &'a EventBus,
+    ) -> ToolContext<'a> {
         ToolContext {
             input,
             state,

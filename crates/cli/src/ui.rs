@@ -97,8 +97,7 @@ fn render_input(f: &mut Frame, app: &App, area: Rect) {
         " > "
     };
 
-    let input = Paragraph::new(app.input.as_str())
-        .block(Block::bordered().title(title));
+    let input = Paragraph::new(app.input.as_str()).block(Block::bordered().title(title));
 
     f.render_widget(input, area);
 

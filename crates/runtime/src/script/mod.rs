@@ -1,15 +1,18 @@
+mod rules;
+mod rules_tools;
+
 use async_trait::async_trait;
-use sha2::{Digest, Sha256};
 use serde_json::json;
+use sha2::{Digest, Sha256};
 
 use aperture_engine::error::Result;
-use aperture_engine::plugin::{Plugin, SetupContext, PrepareContext};
+use aperture_engine::plugin::{Plugin, PrepareContext, SetupContext};
 use aperture_engine::sandbox::ScriptResolver;
 use aperture_engine::tool::{ApprovalRequirement, Tool};
 
+use self::rules::{check_script, load_script_rules};
+use self::rules_tools::{ScriptRulesAdd, ScriptRulesList, ScriptRulesRemove};
 use crate::config::RuntimeConfig;
-use crate::script_rules::{check_script, load_script_rules};
-use crate::script_rules_tools::{ScriptRulesAdd, ScriptRulesList, ScriptRulesRemove};
 use crate::workspace::resolve_sandboxed_path;
 
 /// Runtime implementation of `ScriptResolver`.
@@ -19,10 +22,9 @@ struct RuntimeScriptResolver {
 
 impl ScriptResolver for RuntimeScriptResolver {
     fn read_script(&self, user_id: &str, path: &str) -> std::result::Result<String, String> {
-        let resolved = resolve_sandboxed_path(&self.config, user_id, path)
-            .map_err(|e| e.to_string())?;
-        std::fs::read_to_string(&resolved)
-            .map_err(|e| format!("failed to read script: {e}"))
+        let resolved =
+            resolve_sandboxed_path(&self.config, user_id, path).map_err(|e| e.to_string())?;
+        std::fs::read_to_string(&resolved).map_err(|e| format!("failed to read script: {e}"))
     }
 
     fn is_approved(&self, user_id: &str, path: &str, content: &str) -> bool {
@@ -54,9 +56,8 @@ impl Plugin for ScriptPlugin {
             .cloned()
             .unwrap_or_default();
 
-        ctx.extensions.insert(
-            Box::new(RuntimeScriptResolver { config }) as Box<dyn ScriptResolver>,
-        );
+        ctx.extensions
+            .insert(Box::new(RuntimeScriptResolver { config }) as Box<dyn ScriptResolver>);
 
         Ok(())
     }
@@ -142,17 +143,13 @@ mod tests {
         let expected_hash = format!("{:x}", Sha256::digest(script_content.as_bytes()));
 
         // Write a matching script-rules.toml.
-        let rules = crate::script_rules::ScriptRulesFile {
-            allow: vec![crate::script_rules::ScriptAllowEntry {
+        let rules = rules::ScriptRulesFile {
+            allow: vec![rules::ScriptAllowEntry {
                 path: "scripts/test.js".into(),
                 sha256: expected_hash.clone(),
             }],
         };
-        crate::script_rules::save_script_rules(
-            &user_configs.join("script-rules.toml"),
-            &rules,
-        )
-        .unwrap();
+        rules::save_script_rules(&user_configs.join("script-rules.toml"), &rules).unwrap();
 
         let config = RuntimeConfig {
             data_root: tmp.clone(),
@@ -189,7 +186,9 @@ mod tests {
 
         let resolver = RuntimeScriptResolver { config };
 
-        let err = resolver.read_script("testuser", "../../../etc/passwd").unwrap_err();
+        let err = resolver
+            .read_script("testuser", "../../../etc/passwd")
+            .unwrap_err();
         assert!(err.contains(".."));
 
         let _ = std::fs::remove_dir_all(&tmp);

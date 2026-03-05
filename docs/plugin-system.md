@@ -120,7 +120,7 @@ Plugins push context items during `prepare()`. They are converted to system mess
 Plugins are registered through the `Engine`. **Registration order matters** — a plugin that depends on another plugin's service must be registered after it:
 
 ```rust
-let mut engine = Engine::new(llm_client);
+let mut engine = Engine::new();
 
 // HomeAssistant registers its service in setup()
 engine.register(Box::new(HomeAssistantPlugin::new(ha_config))).await?;

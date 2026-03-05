@@ -38,24 +38,20 @@ pub fn resolve_sandboxed_path(
     // Ensure the workspace directory exists.
     if !workspace.exists() {
         std::fs::create_dir_all(&workspace).map_err(|e| {
-            EngineError::ToolInvocation(format!(
-                "failed to create workspace directory: {e}"
-            ))
+            EngineError::ToolInvocation(format!("failed to create workspace directory: {e}"))
         })?;
     }
 
     // Canonicalize the workspace root.
     let canonical_workspace = workspace.canonicalize().map_err(|e| {
-        EngineError::ToolInvocation(format!(
-            "workspace directory is inaccessible: {e}"
-        ))
+        EngineError::ToolInvocation(format!("workspace directory is inaccessible: {e}"))
     })?;
 
     // For existing paths, canonicalize directly.
     if target.exists() {
-        let canonical_target = target.canonicalize().map_err(|e| {
-            EngineError::ToolInvocation(format!("failed to resolve path: {e}"))
-        })?;
+        let canonical_target = target
+            .canonicalize()
+            .map_err(|e| EngineError::ToolInvocation(format!("failed to resolve path: {e}")))?;
 
         if !canonical_target.starts_with(&canonical_workspace) {
             return Err(EngineError::ToolInvocation(
@@ -86,9 +82,9 @@ pub fn resolve_sandboxed_path(
         }
     }
 
-    let canonical_ancestor = ancestor.canonicalize().map_err(|e| {
-        EngineError::ToolInvocation(format!("failed to resolve parent path: {e}"))
-    })?;
+    let canonical_ancestor = ancestor
+        .canonicalize()
+        .map_err(|e| EngineError::ToolInvocation(format!("failed to resolve parent path: {e}")))?;
 
     if !canonical_ancestor.starts_with(&canonical_workspace) {
         return Err(EngineError::ToolInvocation(

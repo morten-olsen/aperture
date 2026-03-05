@@ -67,3 +67,61 @@ impl Plugin for RuntimeConfigPlugin {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use aperture_engine::action::Action;
+    use aperture_engine::event::EventBus;
+    use aperture_engine::extensions::Extensions;
+
+    #[tokio::test]
+    async fn config_plugin_inserts_into_extensions() {
+        let config = RuntimeConfig {
+            data_root: PathBuf::from("/tmp/test-data"),
+            cli_timeout_ms: 5_000,
+            cli_max_output_bytes: 1_000,
+        };
+        let plugin = RuntimeConfigPlugin::new(config.clone());
+
+        let mut extensions = Extensions::new();
+        let events = EventBus::new();
+        let mut actions: Vec<Action> = Vec::new();
+        let mut ctx = SetupContext {
+            extensions: &mut extensions,
+            events: &events,
+            actions: &mut actions,
+        };
+
+        plugin.setup(&mut ctx).await.unwrap();
+
+        let retrieved = extensions.get::<RuntimeConfig>().unwrap();
+        assert_eq!(retrieved.data_root, PathBuf::from("/tmp/test-data"));
+        assert_eq!(retrieved.cli_timeout_ms, 5_000);
+        assert_eq!(retrieved.cli_max_output_bytes, 1_000);
+    }
+
+    #[test]
+    fn workspace_and_configs_dir_helpers() {
+        let config = RuntimeConfig {
+            data_root: PathBuf::from("/data"),
+            cli_timeout_ms: 30_000,
+            cli_max_output_bytes: 10_000_000,
+        };
+
+        assert_eq!(config.workspace_dir("alice"), PathBuf::from("/data/alice/workspace"));
+        assert_eq!(config.configs_dir("alice"), PathBuf::from("/data/alice/configs"));
+    }
+
+    #[test]
+    fn default_config_uses_home_dir() {
+        let config = RuntimeConfig::default();
+        assert!(
+            config.data_root.ends_with(".aperture/data"),
+            "expected data_root ending with '.aperture/data', got: {:?}",
+            config.data_root
+        );
+        assert_eq!(config.cli_timeout_ms, 30_000);
+        assert_eq!(config.cli_max_output_bytes, 10_000_000);
+    }
+}

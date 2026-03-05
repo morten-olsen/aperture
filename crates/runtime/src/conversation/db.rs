@@ -245,16 +245,7 @@ mod tests {
     fn upsert_prompt_round_trip() {
         let conn = setup_db();
 
-        upsert_prompt(
-            &conn,
-            "p1",
-            "user-1",
-            "running",
-            Some("hello"),
-            "[]",
-            "{}",
-        )
-        .unwrap();
+        upsert_prompt(&conn, "p1", "user-1", "running", Some("hello"), "[]", "{}").unwrap();
 
         // Update the same prompt.
         upsert_prompt(

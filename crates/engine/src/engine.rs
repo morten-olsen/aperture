@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use serde_json::Value;
 use uuid::Uuid;
 
@@ -7,6 +6,7 @@ use crate::context::ContextItem;
 use crate::error::{EngineError, Result};
 use crate::event::EventBus;
 use crate::extensions::Extensions;
+use crate::llm::{LlmClient, LlmMessage};
 use crate::plugin::{Plugin, PrepareContext, SetupContext};
 use crate::prompt::{Prompt, PromptOutput, PromptState, ToolResult};
 use crate::prompt_events::{
@@ -14,40 +14,6 @@ use crate::prompt_events::{
 };
 use crate::state::State;
 use crate::tool::{Tool, ToolContext};
-
-// ── LLM abstraction ──────────────────────────────────────────────────
-
-/// A message in the format expected by the LLM.
-#[derive(Debug, Clone)]
-pub enum LlmMessage {
-    System(String),
-    User(String),
-    Assistant(String),
-    ToolCall {
-        tool_id: String,
-        input: Value,
-    },
-    ToolResponse {
-        tool_id: String,
-        output: Value,
-    },
-}
-
-/// The response the LLM produces for a single turn.
-#[derive(Debug, Clone)]
-pub struct LlmResponse {
-    /// The outputs the model wants to produce (text, tool calls, etc.).
-    pub outputs: Vec<PromptOutput>,
-    /// Token usage for this turn.
-    pub prompt_tokens: u32,
-    pub completion_tokens: u32,
-}
-
-/// Trait abstracting the model call, making the engine testable without a real LLM.
-#[async_trait]
-pub trait LlmClient: Send + Sync {
-    async fn call(&self, messages: &[LlmMessage], tools: &[&Tool]) -> Result<LlmResponse>;
-}
 
 // ── Engine ───────────────────────────────────────────────────────────
 
@@ -177,11 +143,7 @@ impl Engine {
     ///
     /// Finds the pending `ToolResult` with approval data, re-invokes `run_code`
     /// with the replay log, and continues the agent loop.
-    pub async fn approve(
-        &self,
-        llm: &dyn LlmClient,
-        mut prompt: Prompt,
-    ) -> Result<Prompt> {
+    pub async fn approve(&self, llm: &dyn LlmClient, mut prompt: Prompt) -> Result<Prompt> {
         let mut state = State::new();
 
         // Find the pending tool result with approval data.
@@ -202,18 +164,18 @@ impl Engine {
             .ok_or_else(|| EngineError::ToolInvocation("no pending approval found".into()))?;
 
         // Extract the pending approval data.
-        let (tool_id_outer, tool_input_outer, approval_data) =
-            match &prompt.output[pending_idx] {
-                PromptOutput::Tool {
-                    tool_id,
-                    input,
-                    result: Some(ToolResult::Pending {
+        let (tool_id_outer, tool_input_outer, approval_data) = match &prompt.output[pending_idx] {
+            PromptOutput::Tool {
+                tool_id,
+                input,
+                result:
+                    Some(ToolResult::Pending {
                         approval: Some(approval),
                         ..
                     }),
-                } => (tool_id.clone(), input.clone(), approval.clone()),
-                _ => unreachable!(),
-            };
+            } => (tool_id.clone(), input.clone(), approval.clone()),
+            _ => unreachable!(),
+        };
 
         // Re-prepare plugins to get tools.
         let (tools, _context) = self.prepare_all(&mut state, &prompt.output).await?;
@@ -236,12 +198,10 @@ impl Engine {
 
         let result = match run_code_tool.invoke.invoke(tool_ctx).await {
             Ok(value) => ToolResult::Success { output: value },
-            Err(EngineError::ApprovalRequired { reason, approval }) => {
-                ToolResult::Pending {
-                    reason,
-                    approval: Some(*approval),
-                }
-            }
+            Err(EngineError::ApprovalRequired { reason, approval }) => ToolResult::Pending {
+                reason,
+                approval: Some(*approval),
+            },
             Err(e) => ToolResult::Error {
                 error: e.to_string(),
             },
@@ -249,7 +209,10 @@ impl Engine {
 
         let is_pending = matches!(
             &result,
-            ToolResult::Pending { approval: Some(_), .. }
+            ToolResult::Pending {
+                approval: Some(_),
+                ..
+            }
         );
 
         // Replace the pending result.
@@ -297,16 +260,10 @@ impl Engine {
             .ok_or_else(|| EngineError::ToolInvocation("no pending approval found".into()))?;
 
         // Replace with error result.
-        if let PromptOutput::Tool {
-            tool_id,
-            input,
-            result,
-        } = &mut prompt.output[pending_idx]
-        {
+        if let PromptOutput::Tool { result, .. } = &mut prompt.output[pending_idx] {
             *result = Some(ToolResult::Error {
                 error: format!("approval rejected: {reason}"),
             });
-            let _ = (tool_id, input); // suppress unused warnings
         }
 
         prompt.state = PromptState::Running;
@@ -329,99 +286,7 @@ impl Engine {
             let (tools, context) = self.prepare_all(state, &prompt.output).await?;
 
             // 2. Build message list for the LLM.
-            let mut messages = Vec::new();
-
-            // System context.
-            if !context.is_empty() {
-                let ctx_text: String = context
-                    .iter()
-                    .map(|c| c.content.as_str())
-                    .collect::<Vec<_>>()
-                    .join("\n\n");
-                messages.push(LlmMessage::System(ctx_text));
-            }
-
-            // Project historical prompts as conversation history.
-            for hist in history {
-                if let Some(ref hist_input) = hist.input {
-                    messages.push(LlmMessage::User(hist_input.clone()));
-                }
-                for output in &hist.output {
-                    match output {
-                        PromptOutput::Text { content } => {
-                            messages.push(LlmMessage::Assistant(content.clone()));
-                        }
-                        PromptOutput::Tool {
-                            tool_id,
-                            input,
-                            result,
-                        } => {
-                            messages.push(LlmMessage::ToolCall {
-                                tool_id: tool_id.clone(),
-                                input: input.clone(),
-                            });
-                            if let Some(result) = result {
-                                let output_value = match result {
-                                    ToolResult::Success { output } => output.clone(),
-                                    ToolResult::Error { error } => {
-                                        Value::String(format!("error: {error}"))
-                                    }
-                                    ToolResult::Pending { reason, .. } => {
-                                        Value::String(format!("pending: {reason}"))
-                                    }
-                                };
-                                messages.push(LlmMessage::ToolResponse {
-                                    tool_id: tool_id.clone(),
-                                    output: output_value,
-                                });
-                            }
-                        }
-                        PromptOutput::File { .. } => {}
-                    }
-                }
-            }
-
-            // User input (only on first turn when output is empty).
-            if prompt.output.is_empty() {
-                messages.push(LlmMessage::User(input_text.clone()));
-            }
-
-            // Replay prior outputs as conversation history.
-            for output in &prompt.output {
-                match output {
-                    PromptOutput::Text { content } => {
-                        messages.push(LlmMessage::Assistant(content.clone()));
-                    }
-                    PromptOutput::Tool {
-                        tool_id,
-                        input,
-                        result,
-                    } => {
-                        messages.push(LlmMessage::ToolCall {
-                            tool_id: tool_id.clone(),
-                            input: input.clone(),
-                        });
-                        if let Some(result) = result {
-                            let output_value = match result {
-                                ToolResult::Success { output } => output.clone(),
-                                ToolResult::Error { error } => {
-                                    Value::String(format!("error: {error}"))
-                                }
-                                ToolResult::Pending { reason, .. } => {
-                                    Value::String(format!("pending: {reason}"))
-                                }
-                            };
-                            messages.push(LlmMessage::ToolResponse {
-                                tool_id: tool_id.clone(),
-                                output: output_value,
-                            });
-                        }
-                    }
-                    PromptOutput::File { .. } => {
-                        // Files are not projected into the LLM conversation.
-                    }
-                }
-            }
+            let messages = build_messages(&input_text, &context, history, &prompt.output);
 
             // 3. Call the LLM.
             let tool_refs: Vec<&Tool> = tools.iter().collect();
@@ -494,13 +359,12 @@ impl Engine {
 
                         let result = match tool.invoke.invoke(tool_ctx).await {
                             Ok(value) => ToolResult::Success { output: value },
-                            Err(EngineError::ApprovalRequired {
-                                reason,
-                                approval,
-                            }) => ToolResult::Pending {
-                                reason,
-                                approval: Some(*approval),
-                            },
+                            Err(EngineError::ApprovalRequired { reason, approval }) => {
+                                ToolResult::Pending {
+                                    reason,
+                                    approval: Some(*approval),
+                                }
+                            }
                             Err(e) => ToolResult::Error {
                                 error: e.to_string(),
                             },
@@ -508,7 +372,10 @@ impl Engine {
 
                         let is_pending_approval = matches!(
                             &result,
-                            ToolResult::Pending { approval: Some(_), .. }
+                            ToolResult::Pending {
+                                approval: Some(_),
+                                ..
+                            }
                         );
 
                         prompt.output.push(PromptOutput::Tool {
@@ -547,6 +414,81 @@ impl Engine {
     }
 }
 
+// ── Message building helpers ─────────────────────────────────────────
+
+/// Convert a slice of `PromptOutput` into LLM messages.
+fn project_outputs(outputs: &[PromptOutput], messages: &mut Vec<LlmMessage>) {
+    for output in outputs {
+        match output {
+            PromptOutput::Text { content } => {
+                messages.push(LlmMessage::Assistant(content.clone()));
+            }
+            PromptOutput::Tool {
+                tool_id,
+                input,
+                result,
+            } => {
+                messages.push(LlmMessage::ToolCall {
+                    tool_id: tool_id.clone(),
+                    input: input.clone(),
+                });
+                if let Some(result) = result {
+                    let output_value = match result {
+                        ToolResult::Success { output } => output.clone(),
+                        ToolResult::Error { error } => Value::String(format!("error: {error}")),
+                        ToolResult::Pending { reason, .. } => {
+                            Value::String(format!("pending: {reason}"))
+                        }
+                    };
+                    messages.push(LlmMessage::ToolResponse {
+                        tool_id: tool_id.clone(),
+                        output: output_value,
+                    });
+                }
+            }
+            PromptOutput::File { .. } => {}
+        }
+    }
+}
+
+/// Build the full message list for an LLM call.
+fn build_messages(
+    input: &str,
+    context: &[ContextItem],
+    history: &[Prompt],
+    current_output: &[PromptOutput],
+) -> Vec<LlmMessage> {
+    let mut messages = Vec::new();
+
+    // System context.
+    if !context.is_empty() {
+        let ctx_text: String = context
+            .iter()
+            .map(|c| c.content.as_str())
+            .collect::<Vec<_>>()
+            .join("\n\n");
+        messages.push(LlmMessage::System(ctx_text));
+    }
+
+    // Project historical prompts as conversation history.
+    for hist in history {
+        if let Some(ref hist_input) = hist.input {
+            messages.push(LlmMessage::User(hist_input.clone()));
+        }
+        project_outputs(&hist.output, &mut messages);
+    }
+
+    // User input (only on first turn when output is empty).
+    if current_output.is_empty() {
+        messages.push(LlmMessage::User(input.to_string()));
+    }
+
+    // Replay prior outputs as conversation history.
+    project_outputs(current_output, &mut messages);
+
+    messages
+}
+
 impl Default for Engine {
     fn default() -> Self {
         Self::new()
@@ -556,6 +498,7 @@ impl Default for Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::llm::LlmResponse;
     use crate::plugin::Plugin;
     use crate::prompt::PromptUsage;
     use crate::tool::{Tool, ToolInvoke};
@@ -698,7 +641,9 @@ mod tests {
 
         // Verify the tool was invoked and the result recorded.
         match &prompt.output[0] {
-            PromptOutput::Tool { tool_id, result, .. } => {
+            PromptOutput::Tool {
+                tool_id, result, ..
+            } => {
                 assert_eq!(tool_id, "echo");
                 match result.as_ref().unwrap() {
                     ToolResult::Success { output } => {
@@ -1016,7 +961,10 @@ mod tests {
             },
         ]);
 
-        let prompt = engine.run(&llm, "user-1", "count twice", &[]).await.unwrap();
+        let prompt = engine
+            .run(&llm, "user-1", "count twice", &[])
+            .await
+            .unwrap();
 
         match &prompt.output[0] {
             PromptOutput::Tool { result, .. } => match result.as_ref().unwrap() {
@@ -1389,16 +1337,26 @@ mod tests {
         assert_eq!(prompt.output.len(), 3); // 2 tool calls + 1 text
 
         match &prompt.output[0] {
-            PromptOutput::Tool { tool_id, result, .. } => {
+            PromptOutput::Tool {
+                tool_id, result, ..
+            } => {
                 assert_eq!(tool_id, "tool_x");
-                assert!(matches!(result.as_ref().unwrap(), ToolResult::Success { .. }));
+                assert!(matches!(
+                    result.as_ref().unwrap(),
+                    ToolResult::Success { .. }
+                ));
             }
             other => panic!("expected Tool, got {other:?}"),
         }
         match &prompt.output[1] {
-            PromptOutput::Tool { tool_id, result, .. } => {
+            PromptOutput::Tool {
+                tool_id, result, ..
+            } => {
                 assert_eq!(tool_id, "tool_y");
-                assert!(matches!(result.as_ref().unwrap(), ToolResult::Success { .. }));
+                assert!(matches!(
+                    result.as_ref().unwrap(),
+                    ToolResult::Success { .. }
+                ));
             }
             other => panic!("expected Tool, got {other:?}"),
         }
@@ -1447,7 +1405,10 @@ mod tests {
         }
 
         let mut engine = Engine::new();
-        engine.register(Box::new(SandboxApprovalPlugin)).await.unwrap();
+        engine
+            .register(Box::new(SandboxApprovalPlugin))
+            .await
+            .unwrap();
 
         let llm = MockLlm::new(vec![LlmResponse {
             outputs: vec![PromptOutput::Tool {
@@ -1509,7 +1470,10 @@ mod tests {
                     })
                 } else {
                     // Second invocation (after approval): succeeds.
-                    assert!(ctx.replay.is_some(), "replay log should be passed on resume");
+                    assert!(
+                        ctx.replay.is_some(),
+                        "replay log should be passed on resume"
+                    );
                     Ok(json!({"value": "completed", "console_output": []}))
                 }
             }
@@ -1651,7 +1615,10 @@ mod tests {
             },
         ]);
 
-        let prompt = engine.run(&llm, "user-1", "delete stuff", &[]).await.unwrap();
+        let prompt = engine
+            .run(&llm, "user-1", "delete stuff", &[])
+            .await
+            .unwrap();
         assert_eq!(prompt.state, PromptState::WaitingForApproval);
 
         let prompt = engine.reject(&llm, prompt, "not allowed").await.unwrap();
@@ -1661,7 +1628,10 @@ mod tests {
         match &prompt.output[0] {
             PromptOutput::Tool { result, .. } => match result.as_ref().unwrap() {
                 ToolResult::Error { error } => {
-                    assert!(error.contains("not allowed"), "expected rejection reason in: {error}");
+                    assert!(
+                        error.contains("not allowed"),
+                        "expected rejection reason in: {error}"
+                    );
                 }
                 other => panic!("expected Error, got {other:?}"),
             },
@@ -1689,13 +1659,11 @@ mod tests {
 
         let prompt = engine.run(&llm, "user-1", "hello", &[]).await.unwrap();
 
-        let created: Prompt =
-            serde_json::from_value(rx_created.recv().await.unwrap()).unwrap();
+        let created: Prompt = serde_json::from_value(rx_created.recv().await.unwrap()).unwrap();
         assert_eq!(created.id, prompt.id);
         assert_eq!(created.state, PromptState::Running);
 
-        let completed: Prompt =
-            serde_json::from_value(rx_completed.recv().await.unwrap()).unwrap();
+        let completed: Prompt = serde_json::from_value(rx_completed.recv().await.unwrap()).unwrap();
         assert_eq!(completed.id, prompt.id);
         assert_eq!(completed.state, PromptState::Completed);
     }
@@ -1730,8 +1698,7 @@ mod tests {
 
         engine.run(&llm, "user-1", "test", &[]).await.unwrap();
 
-        let updated: Prompt =
-            serde_json::from_value(rx_updated.recv().await.unwrap()).unwrap();
+        let updated: Prompt = serde_json::from_value(rx_updated.recv().await.unwrap()).unwrap();
         assert_eq!(updated.state, PromptState::Running);
         assert_eq!(updated.output.len(), 1); // tool call recorded
     }
@@ -1838,5 +1805,310 @@ mod tests {
             .await
             .unwrap_err();
         assert!(matches!(err, EngineError::ActionNotFound(ref id) if id == "nonexistent"));
+    }
+
+    // ── Coverage: error & approval paths ────────────────────────────
+
+    struct FailingLlm;
+
+    #[async_trait]
+    impl LlmClient for FailingLlm {
+        async fn call(&self, _messages: &[LlmMessage], _tools: &[&Tool]) -> Result<LlmResponse> {
+            Err(EngineError::ToolInvocation("llm failure".into()))
+        }
+    }
+
+    struct FailingSetupPlugin;
+
+    #[async_trait]
+    impl Plugin for FailingSetupPlugin {
+        fn id(&self) -> &str {
+            "failing-setup"
+        }
+        async fn setup(&self, _ctx: &mut crate::plugin::SetupContext<'_>) -> Result<()> {
+            Err(EngineError::PluginSetup("setup exploded".into()))
+        }
+    }
+
+    use std::sync::atomic::{AtomicU32, Ordering};
+    use std::sync::Arc;
+
+    #[tokio::test]
+    async fn llm_call_failure_propagates() {
+        let mut engine = Engine::new();
+        engine.register(Box::new(TestPlugin)).await.unwrap();
+
+        let err = engine
+            .run(&FailingLlm, "user-1", "hi", &[])
+            .await
+            .unwrap_err();
+
+        assert!(
+            matches!(&err, EngineError::ToolInvocation(msg) if msg.contains("llm failure")),
+            "expected ToolInvocation with 'llm failure', got: {err:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn plugin_setup_failure_returns_error() {
+        let mut engine = Engine::new();
+        let err = engine
+            .register(Box::new(FailingSetupPlugin))
+            .await
+            .unwrap_err();
+
+        assert!(
+            matches!(&err, EngineError::PluginSetup(msg) if msg.contains("setup exploded")),
+            "expected PluginSetup error, got: {err:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn approve_tool_error_after_reinvoke() {
+        use crate::sandbox::PendingApproval;
+
+        struct FailOnSecondRunCode {
+            call_count: Arc<AtomicU32>,
+        }
+
+        #[async_trait]
+        impl ToolInvoke for FailOnSecondRunCode {
+            async fn invoke(&self, _ctx: ToolContext<'_>) -> Result<Value> {
+                let n = self.call_count.fetch_add(1, Ordering::SeqCst);
+                if n == 0 {
+                    Err(EngineError::ApprovalRequired {
+                        reason: "needs approval".into(),
+                        approval: Box::new(PendingApproval {
+                            code: "code()".into(),
+                            replay_log: vec![],
+                            tool_id: "inner".into(),
+                            tool_input: json!({}),
+                            approval_reason: "needs approval".into(),
+                        }),
+                    })
+                } else {
+                    Err(EngineError::ToolInvocation("second call failed".into()))
+                }
+            }
+        }
+
+        struct FailOnSecondPlugin {
+            call_count: Arc<AtomicU32>,
+        }
+
+        #[async_trait]
+        impl Plugin for FailOnSecondPlugin {
+            fn id(&self) -> &str {
+                "fail-second"
+            }
+            async fn prepare(&self, ctx: &mut crate::plugin::PrepareContext<'_>) -> Result<()> {
+                ctx.tools.push(Tool {
+                    id: "run_code".into(),
+                    description: "Run code".into(),
+                    input_schema: json!({"type": "object", "properties": {"code": {"type": "string"}}, "required": ["code"]}),
+                    output_schema: None,
+                    require_approval: None,
+                    invoke: Box::new(FailOnSecondRunCode {
+                        call_count: self.call_count.clone(),
+                    }),
+                });
+                Ok(())
+            }
+        }
+
+        let counter = Arc::new(AtomicU32::new(0));
+        let mut engine = Engine::new();
+        engine
+            .register(Box::new(FailOnSecondPlugin {
+                call_count: counter,
+            }))
+            .await
+            .unwrap();
+
+        let llm = MockLlm::new(vec![
+            LlmResponse {
+                outputs: vec![PromptOutput::Tool {
+                    tool_id: "run_code".into(),
+                    input: json!({"code": "code()"}),
+                    result: None,
+                }],
+                prompt_tokens: 0,
+                completion_tokens: 0,
+            },
+            // After approve error, loop continues — model produces text.
+            LlmResponse {
+                outputs: vec![PromptOutput::Text {
+                    content: "handled error".into(),
+                }],
+                prompt_tokens: 0,
+                completion_tokens: 0,
+            },
+        ]);
+
+        let prompt = engine.run(&llm, "user-1", "go", &[]).await.unwrap();
+        assert_eq!(prompt.state, PromptState::WaitingForApproval);
+
+        let prompt = engine.approve(&llm, prompt).await.unwrap();
+        assert_eq!(prompt.state, PromptState::Completed);
+
+        // The tool result should be Error (from the second call).
+        match &prompt.output[0] {
+            PromptOutput::Tool { result, .. } => match result.as_ref().unwrap() {
+                ToolResult::Error { error } => {
+                    assert!(
+                        error.contains("second call failed"),
+                        "expected 'second call failed', got: {error}"
+                    );
+                }
+                other => panic!("expected Error, got {other:?}"),
+            },
+            other => panic!("expected Tool, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn approve_nested_approval_pauses_again() {
+        use crate::sandbox::PendingApproval;
+
+        struct AlwaysApprovalRunCode;
+
+        #[async_trait]
+        impl ToolInvoke for AlwaysApprovalRunCode {
+            async fn invoke(&self, _ctx: ToolContext<'_>) -> Result<Value> {
+                Err(EngineError::ApprovalRequired {
+                    reason: "always needs approval".into(),
+                    approval: Box::new(PendingApproval {
+                        code: "code()".into(),
+                        replay_log: vec![],
+                        tool_id: "inner".into(),
+                        tool_input: json!({}),
+                        approval_reason: "always needs approval".into(),
+                    }),
+                })
+            }
+        }
+
+        struct AlwaysApprovalPlugin;
+
+        #[async_trait]
+        impl Plugin for AlwaysApprovalPlugin {
+            fn id(&self) -> &str {
+                "always-approval"
+            }
+            async fn prepare(&self, ctx: &mut crate::plugin::PrepareContext<'_>) -> Result<()> {
+                ctx.tools.push(Tool {
+                    id: "run_code".into(),
+                    description: "Run code".into(),
+                    input_schema: json!({"type": "object", "properties": {"code": {"type": "string"}}, "required": ["code"]}),
+                    output_schema: None,
+                    require_approval: None,
+                    invoke: Box::new(AlwaysApprovalRunCode),
+                });
+                Ok(())
+            }
+        }
+
+        let mut engine = Engine::new();
+        engine
+            .register(Box::new(AlwaysApprovalPlugin))
+            .await
+            .unwrap();
+
+        let llm = MockLlm::new(vec![LlmResponse {
+            outputs: vec![PromptOutput::Tool {
+                tool_id: "run_code".into(),
+                input: json!({"code": "code()"}),
+                result: None,
+            }],
+            prompt_tokens: 0,
+            completion_tokens: 0,
+        }]);
+
+        let prompt = engine.run(&llm, "user-1", "go", &[]).await.unwrap();
+        assert_eq!(prompt.state, PromptState::WaitingForApproval);
+
+        // Approve — but the tool raises ApprovalRequired again.
+        let prompt = engine.approve(&llm, prompt).await.unwrap();
+        assert_eq!(prompt.state, PromptState::WaitingForApproval);
+    }
+
+    #[tokio::test]
+    async fn reject_without_pending_returns_error() {
+        let engine = Engine::new();
+        let llm = MockLlm::new(vec![]);
+
+        let prompt = Prompt::new("p1".into(), "user-1".into(), Some("hello".into()));
+
+        let err = engine.reject(&llm, prompt, "nope").await.unwrap_err();
+        assert!(
+            err.to_string().contains("no pending approval found"),
+            "expected 'no pending approval found', got: {err}"
+        );
+    }
+
+    #[test]
+    fn project_outputs_handles_file_and_pending() {
+        let outputs = vec![
+            PromptOutput::File {
+                path: "test.txt".into(),
+                content: "hello".into(),
+            },
+            PromptOutput::Tool {
+                tool_id: "run_code".into(),
+                input: json!({}),
+                result: Some(ToolResult::Pending {
+                    reason: "needs approval".into(),
+                    approval: None,
+                }),
+            },
+        ];
+
+        let mut messages = Vec::new();
+        project_outputs(&outputs, &mut messages);
+
+        // File entries produce no messages.
+        // Pending tool produces ToolCall + ToolResponse.
+        assert_eq!(messages.len(), 2);
+        assert!(matches!(&messages[0], LlmMessage::ToolCall { .. }));
+        match &messages[1] {
+            LlmMessage::ToolResponse { output, .. } => {
+                let s = output.as_str().unwrap_or("");
+                assert!(
+                    s.contains("pending"),
+                    "expected 'pending' in output, got: {s}"
+                );
+            }
+            other => panic!("expected ToolResponse, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn build_messages_history_with_none_input() {
+        let history = vec![Prompt {
+            id: "h1".into(),
+            user_id: "user-1".into(),
+            state: PromptState::Completed,
+            input: None,
+            output: vec![PromptOutput::Text {
+                content: "response".into(),
+            }],
+            usage: PromptUsage::default(),
+        }];
+
+        let messages = build_messages("current input", &[], &history, &[]);
+
+        // No User message for the history entry (input was None).
+        // Should have: Assistant("response"), User("current input").
+        let user_msgs: Vec<_> = messages
+            .iter()
+            .filter(|m| matches!(m, LlmMessage::User(_)))
+            .collect();
+        assert_eq!(user_msgs.len(), 1, "expected 1 User message for current input only");
+
+        let assistant_msgs: Vec<_> = messages
+            .iter()
+            .filter(|m| matches!(m, LlmMessage::Assistant(_)))
+            .collect();
+        assert_eq!(assistant_msgs.len(), 1, "expected 1 Assistant message from history");
     }
 }

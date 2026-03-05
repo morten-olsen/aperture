@@ -4,13 +4,13 @@ use serde_json::{json, Value};
 use aperture_engine::error::{EngineError, Result};
 use aperture_engine::tool::{ToolContext, ToolInvoke};
 
-use crate::cli_rules::{AllowEntry, DenyEntry, load_rules, save_rules};
+use super::rules::{load_rules, save_rules, AllowEntry, DenyEntry};
 use crate::config::RuntimeConfig;
 
 fn get_config<'a>(ctx: &'a ToolContext<'a>) -> Result<&'a RuntimeConfig> {
-    ctx.extensions.get::<RuntimeConfig>().ok_or_else(|| {
-        EngineError::ToolInvocation("RuntimeConfig not found in extensions".into())
-    })
+    ctx.extensions
+        .get::<RuntimeConfig>()
+        .ok_or_else(|| EngineError::ToolInvocation("RuntimeConfig not found in extensions".into()))
 }
 
 // ── cli_rules_list ──────────────────────────────────────────────────

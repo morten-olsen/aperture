@@ -1,8 +1,8 @@
 use std::path::Path;
 
+use super::WrappedCommand;
 use crate::command::SandboxedCommand;
 use crate::error::Result;
-use super::WrappedCommand;
 
 /// Generate a Seatbelt (sandbox-exec) profile for the given command.
 fn generate_profile(cmd: &SandboxedCommand) -> String {

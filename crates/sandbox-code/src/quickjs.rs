@@ -165,16 +165,12 @@ fn register_console(ctx: &Ctx<'_>, buf: Arc<Mutex<Vec<String>>>) -> rquickjs::Re
 }
 
 /// Register the `__tool_call(tool_id, input_json) -> result_json` bridge function.
-fn register_tool_call(
-    ctx: &Ctx<'_>,
-    tx: mpsc::Sender<SandboxRequest>,
-) -> rquickjs::Result<()> {
+fn register_tool_call(ctx: &Ctx<'_>, tx: mpsc::Sender<SandboxRequest>) -> rquickjs::Result<()> {
     let func = Function::new(
         ctx.clone(),
         move |ctx: Ctx<'_>, tool_id: String, input_json: String| -> rquickjs::Result<String> {
-            let input: serde_json::Value = serde_json::from_str(&input_json).map_err(|e| {
-                throw(&ctx, &format!("Invalid JSON input: {e}"))
-            })?;
+            let input: serde_json::Value = serde_json::from_str(&input_json)
+                .map_err(|e| throw(&ctx, &format!("Invalid JSON input: {e}")))?;
 
             let (resp_tx, resp_rx) = tokio::sync::oneshot::channel();
             let request = SandboxRequest::ToolCall {
@@ -208,21 +204,15 @@ fn register_tool_call(
 
 /// Register `__date_now()` bridge that sends a `SandboxRequest::DateNow`
 /// and returns the value from the host loop.
-fn register_date_now(
-    ctx: &Ctx<'_>,
-    tx: mpsc::Sender<SandboxRequest>,
-) -> rquickjs::Result<()> {
-    let func = Function::new(
-        ctx.clone(),
-        move |ctx: Ctx<'_>| -> rquickjs::Result<f64> {
-            let (resp_tx, resp_rx) = tokio::sync::oneshot::channel();
-            tx.blocking_send(SandboxRequest::DateNow { response: resp_tx })
-                .map_err(|_| throw(&ctx, "Host loop closed"))?;
-            resp_rx
-                .blocking_recv()
-                .map_err(|_| throw(&ctx, "Host dropped response channel"))
-        },
-    )?
+fn register_date_now(ctx: &Ctx<'_>, tx: mpsc::Sender<SandboxRequest>) -> rquickjs::Result<()> {
+    let func = Function::new(ctx.clone(), move |ctx: Ctx<'_>| -> rquickjs::Result<f64> {
+        let (resp_tx, resp_rx) = tokio::sync::oneshot::channel();
+        tx.blocking_send(SandboxRequest::DateNow { response: resp_tx })
+            .map_err(|_| throw(&ctx, "Host loop closed"))?;
+        resp_rx
+            .blocking_recv()
+            .map_err(|_| throw(&ctx, "Host dropped response channel"))
+    })?
     .with_name("__date_now")?;
 
     ctx.globals().set("__date_now", func)?;
@@ -235,21 +225,15 @@ fn register_date_now(
 
 /// Register `__math_random()` bridge that sends a `SandboxRequest::MathRandom`
 /// and returns the value from the host loop.
-fn register_math_random(
-    ctx: &Ctx<'_>,
-    tx: mpsc::Sender<SandboxRequest>,
-) -> rquickjs::Result<()> {
-    let func = Function::new(
-        ctx.clone(),
-        move |ctx: Ctx<'_>| -> rquickjs::Result<f64> {
-            let (resp_tx, resp_rx) = tokio::sync::oneshot::channel();
-            tx.blocking_send(SandboxRequest::MathRandom { response: resp_tx })
-                .map_err(|_| throw(&ctx, "Host loop closed"))?;
-            resp_rx
-                .blocking_recv()
-                .map_err(|_| throw(&ctx, "Host dropped response channel"))
-        },
-    )?
+fn register_math_random(ctx: &Ctx<'_>, tx: mpsc::Sender<SandboxRequest>) -> rquickjs::Result<()> {
+    let func = Function::new(ctx.clone(), move |ctx: Ctx<'_>| -> rquickjs::Result<f64> {
+        let (resp_tx, resp_rx) = tokio::sync::oneshot::channel();
+        tx.blocking_send(SandboxRequest::MathRandom { response: resp_tx })
+            .map_err(|_| throw(&ctx, "Host loop closed"))?;
+        resp_rx
+            .blocking_recv()
+            .map_err(|_| throw(&ctx, "Host dropped response channel"))
+    })?
     .with_name("__math_random")?;
 
     ctx.globals().set("__math_random", func)?;
@@ -293,7 +277,10 @@ fn throw_structured(ctx: &Ctx<'_>, message: &str, data: &Value) -> rquickjs::Err
     if let (Some(err_obj), Some(data_map)) = (err_val.as_object(), data.as_object()) {
         for (key, val) in data_map {
             let json_str = serde_json::to_string(val).unwrap_or_default();
-            let parse_code = format!("JSON.parse({})", serde_json::to_string(&json_str).unwrap_or_default());
+            let parse_code = format!(
+                "JSON.parse({})",
+                serde_json::to_string(&json_str).unwrap_or_default()
+            );
             if let Ok(js_val) = ctx.eval::<rquickjs::Value, _>(parse_code.as_bytes()) {
                 let _ = err_obj.set(key.as_str(), js_val);
             }
@@ -437,7 +424,9 @@ fn format_js_error(
 
     // Fall back to string representation
     if let Some(s) = caught.as_string() {
-        let msg = s.to_string().unwrap_or_else(|_| format!("{original_error}"));
+        let msg = s
+            .to_string()
+            .unwrap_or_else(|_| format!("{original_error}"));
         return EngineError::ToolInvocation(msg);
     }
 
@@ -456,9 +445,7 @@ mod tests {
         let interrupt = Arc::new(AtomicBool::new(false));
         let code = code.to_string();
 
-        let handle = tokio::spawn(async move {
-            sandbox.execute(&code, &[], tx, interrupt).await
-        });
+        let handle = tokio::spawn(async move { sandbox.execute(&code, &[], tx, interrupt).await });
 
         // Service Date.now/Math.random requests even in "simple" mode.
         while let Some(req) = rx.recv().await {
@@ -470,9 +457,8 @@ mod tests {
                     let _ = response.send(0.5);
                 }
                 SandboxRequest::ToolCall { response, .. } => {
-                    let _ = response.send(Err(EngineError::ToolNotFound(
-                        "no tools registered".into(),
-                    )));
+                    let _ =
+                        response.send(Err(EngineError::ToolNotFound("no tools registered".into())));
                 }
             }
         }
@@ -496,9 +482,8 @@ mod tests {
         let interrupt = Arc::new(AtomicBool::new(false));
         let code = code.to_string();
 
-        let handle = tokio::spawn(async move {
-            sandbox.execute(&code, &tools, tx, interrupt).await
-        });
+        let handle =
+            tokio::spawn(async move { sandbox.execute(&code, &tools, tx, interrupt).await });
 
         // Host loop: service requests.
         while let Some(req) = rx.recv().await {
@@ -561,11 +546,9 @@ mod tests {
 
     #[tokio::test]
     async fn calls_bridged_tool() {
-        let result = run_with_tool(
-            r#"echo({msg: "ping"})"#,
-            echo_tool(),
-            |_tool_id, input| Ok(json!({"echoed": input["msg"]})),
-        )
+        let result = run_with_tool(r#"echo({msg: "ping"})"#, echo_tool(), |_tool_id, input| {
+            Ok(json!({"echoed": input["msg"]}))
+        })
         .await
         .unwrap();
 
@@ -594,7 +577,9 @@ mod tests {
 
     #[tokio::test]
     async fn uncaught_exception_returns_error() {
-        let err = run_simple("throw new Error('intentional')").await.unwrap_err();
+        let err = run_simple("throw new Error('intentional')")
+            .await
+            .unwrap_err();
         let msg = err.to_string();
         // The error JSON should contain our message and console output.
         assert!(
@@ -746,7 +731,10 @@ mod tests {
         .unwrap();
 
         let caught = result.value["caught"].as_str().unwrap();
-        assert!(caught.contains("plain error"), "expected 'plain error' in: {caught}");
+        assert!(
+            caught.contains("plain error"),
+            "expected 'plain error' in: {caught}"
+        );
     }
 
     #[tokio::test]
@@ -786,16 +774,12 @@ mod tests {
 
     #[tokio::test]
     async fn uncaught_structured_error_includes_message() {
-        let err = run_with_tool(
-            r#"echo({msg: "fail"})"#,
-            echo_tool(),
-            |_tool_id, _input| {
-                Err(EngineError::tool_error(
-                    "structured boom",
-                    json!({"code": 42}),
-                ))
-            },
-        )
+        let err = run_with_tool(r#"echo({msg: "fail"})"#, echo_tool(), |_tool_id, _input| {
+            Err(EngineError::tool_error(
+                "structured boom",
+                json!({"code": 42}),
+            ))
+        })
         .await
         .unwrap_err();
 
@@ -871,11 +855,9 @@ mod tests {
             output_schema: None,
         };
 
-        let result = run_with_tool(
-            r#"get_time()"#,
-            no_param_tool,
-            |_tool_id, _input| Ok(json!({"ts": 12345})),
-        )
+        let result = run_with_tool(r#"get_time()"#, no_param_tool, |_tool_id, _input| {
+            Ok(json!({"ts": 12345}))
+        })
         .await
         .unwrap();
 
@@ -931,9 +913,7 @@ mod tests {
 
         let handle = tokio::spawn(async move {
             // Infinite loop — should be interrupted.
-            sandbox
-                .execute("while(true) {}", &[], tx, int_clone)
-                .await
+            sandbox.execute("while(true) {}", &[], tx, int_clone).await
         });
 
         // Give the sandbox a moment to start, then interrupt.
@@ -959,7 +939,12 @@ mod tests {
         let interrupt = Arc::new(AtomicBool::new(true)); // pre-set
 
         let result = sandbox
-            .execute("try { while(true) {} } catch(e) { 'caught' }", &[], tx, interrupt)
+            .execute(
+                "try { while(true) {} } catch(e) { 'caught' }",
+                &[],
+                tx,
+                interrupt,
+            )
             .await;
 
         assert!(result.is_err());

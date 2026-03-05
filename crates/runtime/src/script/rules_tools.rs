@@ -1,18 +1,18 @@
 use async_trait::async_trait;
-use sha2::{Digest, Sha256};
 use serde_json::{json, Value};
+use sha2::{Digest, Sha256};
 
 use aperture_engine::error::{EngineError, Result};
 use aperture_engine::tool::{ToolContext, ToolInvoke};
 
+use super::rules::{load_script_rules, save_script_rules, ScriptAllowEntry};
 use crate::config::RuntimeConfig;
-use crate::script_rules::{ScriptAllowEntry, load_script_rules, save_script_rules};
 use crate::workspace::resolve_sandboxed_path;
 
 fn get_config<'a>(ctx: &'a ToolContext<'a>) -> Result<&'a RuntimeConfig> {
-    ctx.extensions.get::<RuntimeConfig>().ok_or_else(|| {
-        EngineError::ToolInvocation("RuntimeConfig not found in extensions".into())
-    })
+    ctx.extensions
+        .get::<RuntimeConfig>()
+        .ok_or_else(|| EngineError::ToolInvocation("RuntimeConfig not found in extensions".into()))
 }
 
 // ── script_rules_list ──────────────────────────────────────────────

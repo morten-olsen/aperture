@@ -105,16 +105,16 @@ impl App {
                     }
                 }
                 Some("tool") => {
-                    let tool_id =
-                        output.get("tool_id").and_then(|t| t.as_str()).unwrap_or("?");
+                    let tool_id = output
+                        .get("tool_id")
+                        .and_then(|t| t.as_str())
+                        .unwrap_or("?");
                     let status = match output.get("result") {
-                        Some(r) if !r.is_null() => {
-                            match r.get("status").and_then(|s| s.as_str()) {
-                                Some("success") => "ok",
-                                Some("error") => "err",
-                                _ => "...",
-                            }
-                        }
+                        Some(r) if !r.is_null() => match r.get("status").and_then(|s| s.as_str()) {
+                            Some("success") => "ok",
+                            Some("error") => "err",
+                            _ => "...",
+                        },
                         _ => "...",
                     };
                     lines.push(format!("[tool: {tool_id}] {status}"));

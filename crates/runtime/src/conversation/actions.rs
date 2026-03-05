@@ -7,12 +7,12 @@ use aperture_engine::error::{EngineError, Result};
 use aperture_engine::prompt::Prompt;
 use aperture_engine::prompt_runner::PromptRunner;
 
-use crate::conversation_db;
-use crate::conversation_events::{
+use super::db;
+use super::events::{
     ConversationCreatedPayload, ConversationPromptAttachedPayload, CONVERSATION_CREATED,
     CONVERSATION_PROMPT_ATTACHED,
 };
-use crate::db_plugin::DatabaseService;
+use crate::db::DatabaseService;
 
 fn get_db<'a>(ctx: &'a ActionContext<'a>) -> Result<&'a DatabaseService> {
     ctx.extensions
@@ -35,7 +35,7 @@ impl aperture_engine::action::ActionInvoke for CreateConversation {
 
         let id_clone = id.clone();
         db.call(move |conn| {
-            conversation_db::create_conversation(
+            db::create_conversation(
                 conn,
                 &id_clone,
                 &user_id,
@@ -69,8 +69,8 @@ impl aperture_engine::action::ActionInvoke for ListConversations {
         let db = get_db(&ctx)?;
         let user_id = ctx.user_id.clone();
 
-        let conversations: Vec<conversation_db::ConversationRow> = db
-            .call(move |conn| conversation_db::list_conversations(conn, &user_id))
+        let conversations: Vec<db::ConversationRow> = db
+            .call(move |conn| db::list_conversations(conn, &user_id))
             .await?;
 
         Ok(serde_json::to_value(conversations)
@@ -91,16 +91,14 @@ impl aperture_engine::action::ActionInvoke for GetConversation {
             .ok_or_else(|| EngineError::ToolInvocation("conversation_id required".into()))?
             .to_string();
 
-        let (conv, prompts): (conversation_db::ConversationRow, Vec<conversation_db::PromptRow>) = db
-            .call(move |conn| {
-                conversation_db::get_conversation_with_prompts(conn, &conversation_id)
-            })
+        let (conv, prompts): (db::ConversationRow, Vec<db::PromptRow>) = db
+            .call(move |conn| db::get_conversation_with_prompts(conn, &conversation_id))
             .await?;
 
         // Convert prompt rows to engine Prompts.
         let engine_prompts: Vec<Prompt> = prompts
             .iter()
-            .filter_map(|row| conversation_db::row_to_prompt(row).ok())
+            .filter_map(|row| db::row_to_prompt(row).ok())
             .collect();
 
         Ok(json!({
@@ -129,15 +127,13 @@ impl aperture_engine::action::ActionInvoke for SendMessage {
 
         // Load history from DB.
         let conv_id_clone = conversation_id.clone();
-        let (_, prompt_rows): (conversation_db::ConversationRow, Vec<conversation_db::PromptRow>) = db
-            .call(move |conn| {
-                conversation_db::get_conversation_with_prompts(conn, &conv_id_clone)
-            })
+        let (_, prompt_rows): (db::ConversationRow, Vec<db::PromptRow>) = db
+            .call(move |conn| db::get_conversation_with_prompts(conn, &conv_id_clone))
             .await?;
 
         let history: Vec<Prompt> = prompt_rows
             .iter()
-            .filter_map(|row| conversation_db::row_to_prompt(row).ok())
+            .filter_map(|row| db::row_to_prompt(row).ok())
             .collect();
 
         // Get the PromptRunner from extensions and run.
@@ -151,7 +147,7 @@ impl aperture_engine::action::ActionInvoke for SendMessage {
         // Persist the prompt.
         let prompt_id = prompt.id.clone();
         let user_id = prompt.user_id.clone();
-        let state = conversation_db::state_to_str(&prompt.state).to_string();
+        let state = db::state_to_str(&prompt.state).to_string();
         let input = prompt.input.clone();
         let output_json = serde_json::to_string(&prompt.output)
             .map_err(|e| EngineError::ToolInvocation(format!("serialize output: {e}")))?;
@@ -160,7 +156,7 @@ impl aperture_engine::action::ActionInvoke for SendMessage {
 
         let pid = prompt_id.clone();
         db.call(move |conn| {
-            conversation_db::upsert_prompt(
+            db::upsert_prompt(
                 conn,
                 &pid,
                 &user_id,
@@ -175,7 +171,7 @@ impl aperture_engine::action::ActionInvoke for SendMessage {
         // Attach to conversation.
         let conv_id_clone = conversation_id.clone();
         let pid = prompt_id.clone();
-        db.call(move |conn| conversation_db::attach_prompt(conn, &conv_id_clone, &pid))
+        db.call(move |conn| db::attach_prompt(conn, &conv_id_clone, &pid))
             .await?;
 
         ctx.events
@@ -212,7 +208,7 @@ impl aperture_engine::action::ActionInvoke for AttachPrompt {
 
         let conv_id_clone = conversation_id.clone();
         let pid = prompt_id.clone();
-        db.call(move |conn| conversation_db::attach_prompt(conn, &conv_id_clone, &pid))
+        db.call(move |conn| db::attach_prompt(conn, &conv_id_clone, &pid))
             .await?;
 
         ctx.events

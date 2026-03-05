@@ -95,9 +95,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
     writer_handle.abort();
 }
 
-async fn wait_for_hello(
-    receiver: &mut futures::stream::SplitStream<WebSocket>,
-) -> Option<String> {
+async fn wait_for_hello(receiver: &mut futures::stream::SplitStream<WebSocket>) -> Option<String> {
     while let Some(Ok(frame)) = receiver.next().await {
         let text = match frame {
             Message::Text(t) => t,

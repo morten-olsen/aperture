@@ -7,8 +7,14 @@ use serde_json::Value;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ClientMessage {
-    Hello { user_id: String },
-    InvokeAction { id: String, action: String, input: Value },
+    Hello {
+        user_id: String,
+    },
+    InvokeAction {
+        id: String,
+        action: String,
+        input: Value,
+    },
 }
 
 /// Messages sent from server to client.
@@ -74,7 +80,9 @@ mod tests {
         assert_eq!(json["action"], "create_conversation");
 
         let decoded: ClientMessage = serde_json::from_value(json).unwrap();
-        assert!(matches!(decoded, ClientMessage::InvokeAction { id, action, .. } if id == "corr-1" && action == "create_conversation"));
+        assert!(
+            matches!(decoded, ClientMessage::InvokeAction { id, action, .. } if id == "corr-1" && action == "create_conversation")
+        );
     }
 
     #[test]
@@ -99,7 +107,9 @@ mod tests {
         assert_eq!(json["type"], "event");
 
         let decoded: ServerMessage = serde_json::from_value(json).unwrap();
-        assert!(matches!(decoded, ServerMessage::Event { event_id, .. } if event_id == "prompt.created"));
+        assert!(
+            matches!(decoded, ServerMessage::Event { event_id, .. } if event_id == "prompt.created")
+        );
     }
 
     #[test]
@@ -126,7 +136,9 @@ mod tests {
         assert_eq!(json["error"], "not found");
 
         let decoded: ServerMessage = serde_json::from_value(json).unwrap();
-        assert!(matches!(decoded, ServerMessage::ActionError { id, error } if id == "corr-3" && error == "not found"));
+        assert!(
+            matches!(decoded, ServerMessage::ActionError { id, error } if id == "corr-3" && error == "not found")
+        );
     }
 
     #[test]

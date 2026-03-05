@@ -1,7 +1,8 @@
 use std::sync::{Arc, OnceLock};
 
-use aperture_engine::engine::{Engine, LlmClient, LlmMessage, LlmResponse};
+use aperture_engine::engine::Engine;
 use aperture_engine::error::{EngineError, Result};
+use aperture_engine::llm::{LlmClient, LlmMessage, LlmResponse};
 use aperture_engine::prompt::{Prompt, PromptOutput};
 use aperture_engine::prompt_runner::PromptRunner;
 use aperture_engine::tool::Tool;
@@ -331,7 +332,11 @@ pub async fn build_engine(config: &ServerConfig) -> Result<Arc<Engine>> {
     engine.insert_extension(runner);
 
     let engine = Arc::new(engine);
-    handle.0.set(engine.clone()).ok().expect("handle already set");
+    handle
+        .0
+        .set(engine.clone())
+        .ok()
+        .expect("handle already set");
 
     Ok(engine)
 }

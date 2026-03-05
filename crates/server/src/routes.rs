@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use axum::Router;
 use axum::routing::get;
+use axum::Router;
 
 use crate::schema::schema_handler;
 use crate::ws::{ws_handler, AppState};

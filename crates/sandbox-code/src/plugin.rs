@@ -126,10 +126,9 @@ impl Plugin for SandboxPlugin {
         // Push the inspect_tool tool (lightweight descriptors only).
         ctx.tools.push(Tool {
             id: "inspect_tool".into(),
-            description:
-                "Get the full JSON schema for a sandbox function. Use this to understand \
+            description: "Get the full JSON schema for a sandbox function. Use this to understand \
                  a function's parameters before calling it."
-                    .into(),
+                .into(),
             input_schema: json!({
                 "type": "object",
                 "properties": {

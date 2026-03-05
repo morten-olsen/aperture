@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use aperture_engine::{
-    engine::{Engine, LlmClient, LlmMessage, LlmResponse},
+    engine::Engine,
     error::{EngineError, Result},
+    llm::{LlmClient, LlmMessage, LlmResponse},
     prompt::{PromptOutput, PromptState, ToolResult},
     tool::{Tool, ToolContext, ToolInvoke},
 };
@@ -198,10 +199,7 @@ impl LlmClient for OpenAiClient {
 
         if !resp.status().is_success() {
             let status = resp.status();
-            let body = resp
-                .text()
-                .await
-                .unwrap_or_else(|_| "no body".to_string());
+            let body = resp.text().await.unwrap_or_else(|_| "no body".to_string());
             return Err(EngineError::ToolInvocation(format!(
                 "OpenAI API error {status}: {body}"
             )));
@@ -279,8 +277,8 @@ impl aperture_engine::Plugin for EchoPlugin {
     async fn prepare(&self, ctx: &mut aperture_engine::PrepareContext<'_>) -> Result<()> {
         ctx.tools.push(Tool {
             id: "echo".into(),
-            description: "Echoes the input text back unchanged. Use when asked to repeat something."
-                .into(),
+            description:
+                "Echoes the input text back unchanged. Use when asked to repeat something.".into(),
             input_schema: json!({
                 "type": "object",
                 "properties": {

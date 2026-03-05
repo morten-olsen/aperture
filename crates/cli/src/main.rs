@@ -168,19 +168,13 @@ fn config_interactive() -> Result<(), String> {
     let config = load_config();
     let path = config_path();
 
-    println!(
-        "Aperture CLI configuration ({})\n",
-        path.display()
-    );
+    println!("Aperture CLI configuration ({})\n", path.display());
 
     let url = prompt_field(
         "Server URL",
         config.url.as_deref().unwrap_or("ws://localhost:3000/ws"),
     );
-    let user = prompt_field(
-        "User ID",
-        config.user.as_deref().unwrap_or("cli-user"),
-    );
+    let user = prompt_field("User ID", config.user.as_deref().unwrap_or("cli-user"));
 
     let new_config = CliConfig {
         url: Some(url),

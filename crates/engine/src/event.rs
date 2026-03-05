@@ -170,7 +170,8 @@ mod tests {
     #[tokio::test]
     async fn register_and_retrieve_event_schemas() {
         let bus = EventBus::new();
-        let schema = serde_json::json!({"type": "object", "properties": {"id": {"type": "string"}}});
+        let schema =
+            serde_json::json!({"type": "object", "properties": {"id": {"type": "string"}}});
         bus.register_event_schema("test.event", schema.clone())
             .await;
 

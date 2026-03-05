@@ -1,6 +1,6 @@
+use super::WrappedCommand;
 use crate::command::SandboxedCommand;
 use crate::error::{Result, SandboxError};
-use super::WrappedCommand;
 
 /// On Linux, the command runs directly — sandboxing is applied via pre_exec.
 pub fn wrap(cmd: &SandboxedCommand) -> Result<WrappedCommand> {
@@ -35,12 +35,16 @@ fn apply_landlock(cmd: &SandboxedCommand) -> Result<()> {
         RulesetStatus, ABI,
     };
 
-    let abi = ABI::new_current()
-        .map_err(|e| SandboxError::SetupFailed(format!("Landlock ABI: {e}")))?;
+    let abi =
+        ABI::new_current().map_err(|e| SandboxError::SetupFailed(format!("Landlock ABI: {e}")))?;
 
     let read_access = AccessFs::ReadFile | AccessFs::ReadDir | AccessFs::Execute;
-    let write_access = read_access | AccessFs::WriteFile | AccessFs::RemoveFile
-        | AccessFs::RemoveDir | AccessFs::MakeReg | AccessFs::MakeDir
+    let write_access = read_access
+        | AccessFs::WriteFile
+        | AccessFs::RemoveFile
+        | AccessFs::RemoveDir
+        | AccessFs::MakeReg
+        | AccessFs::MakeDir
         | AccessFs::MakeSym;
 
     let mut ruleset = Ruleset::default()
@@ -50,7 +54,9 @@ fn apply_landlock(cmd: &SandboxedCommand) -> Result<()> {
         .map_err(|e| SandboxError::SetupFailed(format!("Landlock create: {e}")))?;
 
     // System paths: read-only.
-    for path in &["/usr", "/bin", "/lib", "/lib64", "/etc", "/dev", "/proc", "/sys"] {
+    for path in &[
+        "/usr", "/bin", "/lib", "/lib64", "/etc", "/dev", "/proc", "/sys",
+    ] {
         if let Ok(fd) = PathFd::new(path) {
             let _ = ruleset.add_rule(PathBeneath::new(fd, read_access));
         }
@@ -108,34 +114,31 @@ fn apply_seccomp_network_deny() -> Result<()> {
     rules.insert(
         socket_nr,
         vec![
-            SeccompRule::new(vec![
-                seccompiler::SeccompCondition::new(
-                    0,
-                    seccompiler::SeccompCmpArgLen::Dword,
-                    seccompiler::SeccompCmpOp::Eq,
-                    af_inet,
-                )
-                .map_err(|e| SandboxError::SetupFailed(format!("seccomp condition: {e}")))?,
-            ])
+            SeccompRule::new(vec![seccompiler::SeccompCondition::new(
+                0,
+                seccompiler::SeccompCmpArgLen::Dword,
+                seccompiler::SeccompCmpOp::Eq,
+                af_inet,
+            )
+            .map_err(|e| SandboxError::SetupFailed(format!("seccomp condition: {e}")))?])
             .map_err(|e| SandboxError::SetupFailed(format!("seccomp rule: {e}")))?,
-            SeccompRule::new(vec![
-                seccompiler::SeccompCondition::new(
-                    0,
-                    seccompiler::SeccompCmpArgLen::Dword,
-                    seccompiler::SeccompCmpOp::Eq,
-                    af_inet6,
-                )
-                .map_err(|e| SandboxError::SetupFailed(format!("seccomp condition: {e}")))?,
-            ])
+            SeccompRule::new(vec![seccompiler::SeccompCondition::new(
+                0,
+                seccompiler::SeccompCmpArgLen::Dword,
+                seccompiler::SeccompCmpOp::Eq,
+                af_inet6,
+            )
+            .map_err(|e| SandboxError::SetupFailed(format!("seccomp condition: {e}")))?])
             .map_err(|e| SandboxError::SetupFailed(format!("seccomp rule: {e}")))?,
         ],
     );
 
     let filter = SeccompFilter::new(
         rules,
-        SeccompAction::Allow,   // default: allow everything
+        SeccompAction::Allow,                      // default: allow everything
         SeccompAction::Errno(libc::EACCES as u32), // matched rules: deny with EACCES
-        std::env::consts::ARCH.try_into()
+        std::env::consts::ARCH
+            .try_into()
             .map_err(|_| SandboxError::SetupFailed("unsupported architecture".into()))?,
     )
     .map_err(|e| SandboxError::SetupFailed(format!("seccomp filter: {e}")))?;

@@ -124,15 +124,10 @@ See [Filesystem](./filesystem.md) and [CLI](./cli.md).
 The `Engine` struct is the central owner of shared infrastructure — plugin registry, extensions (type map), event bus, and the agent loop. Plugins receive what they need through their lifecycle method parameters (`SetupContext`, `PrepareContext`).
 
 ```rust
-let mut engine = Engine::new(llm_client);
+let mut engine = Engine::new();
 engine.register(Box::new(MyPlugin::new())).await?;
 
-let prompt = engine.run(PromptInput {
-    user_id: "alice".into(),
-    input: Some("What can you do?".into()),
-    state: State::new(),
-    history: vec![],
-}).await?;
+let prompt = engine.run(&llm, "alice", "What can you do?", &[]).await?;
 ```
 
 ### Tools vs Services

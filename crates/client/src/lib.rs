@@ -139,9 +139,7 @@ impl ApertureClient {
             .send(msg)
             .map_err(|_| ClientError::ConnectionClosed)?;
 
-        let result = rx
-            .await
-            .map_err(|_| ClientError::ConnectionClosed)?;
+        let result = rx.await.map_err(|_| ClientError::ConnectionClosed)?;
 
         match result {
             Ok(value) => Ok(value),
