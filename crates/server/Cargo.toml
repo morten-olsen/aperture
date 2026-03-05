@@ -7,6 +7,7 @@ edition = "2021"
 aperture-engine = { path = "../engine" }
 aperture-runtime = { path = "../runtime" }
 aperture-sandbox-code = { path = "../sandbox-code" }
+aperture-calendar = { path = "../calendar" }
 aperture-protocol = { path = "../protocol" }
 axum = { version = "0.8", features = ["ws"] }
 tokio = { version = "1", features = ["full"] }

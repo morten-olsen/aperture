@@ -6,6 +6,7 @@ use serde_json::Value;
 use tokio::sync::mpsc;
 
 use aperture_engine::error::{EngineError, Result};
+use aperture_engine::redaction::RedactionRegistry;
 use aperture_engine::sandbox::{
     PendingApproval, ReplayEntry, SandboxRequest, ScriptResolver, ToolDescriptor,
 };
@@ -44,6 +45,11 @@ pub(crate) async fn run_in_sandbox(
     ctx: &mut ToolContext<'_>,
     skip_approval: bool,
 ) -> Result<Value> {
+    // Clear any previously tracked redaction values for this execution.
+    if let Some(registry) = ctx.extensions.get::<RedactionRegistry>() {
+        registry.clear();
+    }
+
     let descriptors: Vec<ToolDescriptor> = tools.iter().map(Into::into).collect();
 
     // Extract replay log if this is a resumed invocation.
@@ -287,7 +293,12 @@ pub(crate) async fn run_in_sandbox(
     }
 
     match sandbox_result {
-        Ok(result) => serde_json::to_value(&result).map_err(EngineError::from),
+        Ok(mut result) => {
+            if let Some(registry) = ctx.extensions.get::<RedactionRegistry>() {
+                registry.redact_result(&mut result);
+            }
+            serde_json::to_value(&result).map_err(EngineError::from)
+        }
         Err(e) => {
             // Try to parse structured error JSON (with console_output).
             if let Ok(parsed) = serde_json::from_str::<Value>(&e.to_string()) {

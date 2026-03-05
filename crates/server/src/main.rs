@@ -29,6 +29,11 @@ enum Commands {
         #[command(subcommand)]
         action: UserAction,
     },
+    /// Manage secrets
+    Secret {
+        #[command(subcommand)]
+        action: SecretAction,
+    },
 }
 
 #[derive(Subcommand)]
@@ -48,6 +53,20 @@ enum UserAction {
     SetPassword { username: String },
 }
 
+#[derive(Subcommand)]
+enum SecretAction {
+    /// Add or update a secret
+    Add {
+        user_id: String,
+        secret_id: String,
+        /// Human-readable name for the secret
+        #[arg(long)]
+        name: Option<String>,
+    },
+    /// Remove a secret
+    Remove { user_id: String, secret_id: String },
+}
+
 #[tokio::main]
 async fn main() {
     let _ = dotenvy::dotenv();
@@ -56,6 +75,7 @@ async fn main() {
     match cli.command.unwrap_or(Commands::Serve) {
         Commands::Serve => run_serve().await,
         Commands::User { action } => run_user(action).await,
+        Commands::Secret { action } => run_secret(action).await,
     }
 }
 
@@ -216,5 +236,64 @@ async fn run_user(action: UserAction) {
                 }
             }
         }
+    }
+}
+
+async fn run_secret(action: SecretAction) {
+    use aperture_engine::engine::Engine;
+    use aperture_runtime::{RuntimeConfig, RuntimeConfigPlugin, SecretPlugin, SecretStore};
+
+    let mut engine = Engine::new();
+    if let Err(e) = engine
+        .register(Box::new(RuntimeConfigPlugin::new(RuntimeConfig::default())))
+        .await
+    {
+        eprintln!("error: {e}");
+        std::process::exit(1);
+    }
+    if let Err(e) = engine.register(Box::new(SecretPlugin)).await {
+        eprintln!("error: {e}");
+        std::process::exit(1);
+    }
+
+    let store = match engine.get_extension::<SecretStore>() {
+        Some(s) => s.clone(),
+        None => {
+            eprintln!("error: secret store not available");
+            std::process::exit(1);
+        }
+    };
+
+    match action {
+        SecretAction::Add {
+            user_id,
+            secret_id,
+            name,
+        } => {
+            let display_name = name.unwrap_or_else(|| secret_id.clone());
+            eprint!("Secret value: ");
+            let value = rpassword::read_password().unwrap_or_else(|e| {
+                eprintln!("error reading secret: {e}");
+                std::process::exit(1);
+            });
+            match store.add(&user_id, &secret_id, &display_name, &value) {
+                Ok(()) => println!("secret '{secret_id}' added for user '{user_id}'"),
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    std::process::exit(1);
+                }
+            }
+        }
+        SecretAction::Remove { user_id, secret_id } => match store.remove(&user_id, &secret_id) {
+            Ok(true) => println!("secret '{secret_id}' removed for user '{user_id}'"),
+            Ok(false) => {
+                eprintln!("secret '{secret_id}' not found for user '{user_id}'");
+                std::process::exit(1);
+            }
+            Err(e) => {
+                eprintln!("error: {e}");
+                std::process::exit(1);
+            }
+        },
     }
 }

@@ -10,6 +10,7 @@ pub mod plugin;
 pub mod prompt;
 pub mod prompt_events;
 pub mod prompt_runner;
+pub mod redaction;
 pub mod sandbox;
 pub mod state;
 pub mod tool;
@@ -28,6 +29,7 @@ pub use prompt_events::{
     PROMPT_COMPLETED, PROMPT_CREATED, PROMPT_UPDATED, PROMPT_WAITING_FOR_APPROVAL,
 };
 pub use prompt_runner::PromptRunner;
+pub use redaction::RedactionRegistry;
 pub use sandbox::{
     PendingApproval, ReplayEntry, SandboxRequest, SandboxResult, ScriptResolver, ToolDescriptor,
 };

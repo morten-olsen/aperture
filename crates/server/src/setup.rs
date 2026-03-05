@@ -1,5 +1,6 @@
 use std::sync::{Arc, OnceLock};
 
+use aperture_calendar::CalendarPlugin;
 use aperture_engine::embedding::EmbeddingClient;
 use aperture_engine::engine::Engine;
 use aperture_engine::error::{EngineError, Result};
@@ -9,7 +10,7 @@ use aperture_engine::prompt_runner::PromptRunner;
 use aperture_engine::tool::Tool;
 use aperture_runtime::{
     AgentsMdPlugin, AuthPlugin, BehaviourPlugin, CliPlugin, ConversationPlugin, DatabasePlugin,
-    FilesystemPlugin, RuntimeConfig, RuntimeConfigPlugin,
+    FilesystemPlugin, RuntimeConfig, RuntimeConfigPlugin, SecretPlugin,
 };
 use aperture_sandbox_code::{QuickJsSandbox, SandboxPlugin};
 use async_trait::async_trait;
@@ -367,6 +368,8 @@ pub async fn build_engine(config: &ServerConfig) -> Result<Arc<Engine>> {
     engine.register(Box::new(CliPlugin)).await?;
     engine.register(Box::new(AgentsMdPlugin)).await?;
     engine.register(Box::new(BehaviourPlugin)).await?;
+    engine.register(Box::new(SecretPlugin)).await?;
+    engine.register(Box::new(CalendarPlugin)).await?;
 
     let sandbox = Arc::new(QuickJsSandbox::new());
     engine
