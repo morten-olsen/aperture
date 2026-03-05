@@ -1,15 +1,24 @@
+use landlock::{
+    path_beneath_rules, Access, AccessFs, Ruleset, RulesetAttr, RulesetCreatedAttr, RulesetStatus,
+    ABI,
+};
+
 use super::WrappedCommand;
 use crate::command::SandboxedCommand;
 use crate::error::{Result, SandboxError};
 
+const ABI_VERSION: ABI = ABI::V4;
+
 /// On Linux, the command runs directly — sandboxing is applied via pre_exec.
 pub fn wrap(cmd: &SandboxedCommand) -> Result<WrappedCommand> {
-    // Check Landlock availability (requires kernel 5.13+).
-    let abi = landlock::ABI::new_current()
-        .map_err(|e| SandboxError::SetupFailed(format!("Landlock ABI check: {e}")))?;
-    if abi < landlock::ABI::V1 {
-        return Err(SandboxError::Unavailable);
-    }
+    // Probe Landlock support by attempting to create a minimal ruleset.
+    // Ruleset::default() probes kernel support; create() will fail if
+    // Landlock is not available (requires kernel 5.13+).
+    Ruleset::default()
+        .handle_access(AccessFs::from_all(ABI_VERSION))
+        .map_err(|e| SandboxError::SetupFailed(format!("Landlock handle_access: {e}")))?
+        .create()
+        .map_err(|_| SandboxError::Unavailable)?;
 
     Ok(WrappedCommand {
         program: "/bin/sh".to_string(),
@@ -30,60 +39,31 @@ pub unsafe fn pre_exec_setup(cmd: &SandboxedCommand) -> Result<()> {
 }
 
 fn apply_landlock(cmd: &SandboxedCommand) -> Result<()> {
-    use landlock::{
-        Access, AccessFs, PathBeneath, PathFd, Ruleset, RulesetAttr, RulesetCreatedAttr,
-        RulesetStatus, ABI,
-    };
+    let access_all = AccessFs::from_all(ABI_VERSION);
+    let access_read = AccessFs::from_read(ABI_VERSION);
 
-    let abi =
-        ABI::new_current().map_err(|e| SandboxError::SetupFailed(format!("Landlock ABI: {e}")))?;
+    let system_paths = [
+        "/usr", "/bin", "/lib", "/lib64", "/etc", "/dev", "/proc", "/sys",
+    ];
+    let temp_paths = ["/tmp", "/var/tmp"];
 
-    let read_access = AccessFs::ReadFile | AccessFs::ReadDir | AccessFs::Execute;
-    let write_access = read_access
-        | AccessFs::WriteFile
-        | AccessFs::RemoveFile
-        | AccessFs::RemoveDir
-        | AccessFs::MakeReg
-        | AccessFs::MakeDir
-        | AccessFs::MakeSym;
-
-    let mut ruleset = Ruleset::default()
-        .handle_access(AccessFs::from_all(abi))
+    let status = Ruleset::default()
+        .handle_access(access_all)
         .map_err(|e| SandboxError::SetupFailed(format!("Landlock ruleset: {e}")))?
         .create()
-        .map_err(|e| SandboxError::SetupFailed(format!("Landlock create: {e}")))?;
-
-    // System paths: read-only.
-    for path in &[
-        "/usr", "/bin", "/lib", "/lib64", "/etc", "/dev", "/proc", "/sys",
-    ] {
-        if let Ok(fd) = PathFd::new(path) {
-            let _ = ruleset.add_rule(PathBeneath::new(fd, read_access));
-        }
-    }
-
-    // Temp paths: read+write.
-    for path in &["/tmp", "/var/tmp"] {
-        if let Ok(fd) = PathFd::new(path) {
-            let _ = ruleset.add_rule(PathBeneath::new(fd, write_access));
-        }
-    }
-
-    // User-specified readable paths.
-    for path in &cmd.readable_paths {
-        if let Ok(fd) = PathFd::new(path) {
-            let _ = ruleset.add_rule(PathBeneath::new(fd, read_access));
-        }
-    }
-
-    // User-specified writable paths.
-    for path in &cmd.writable_paths {
-        if let Ok(fd) = PathFd::new(path) {
-            let _ = ruleset.add_rule(PathBeneath::new(fd, write_access));
-        }
-    }
-
-    let status = ruleset
+        .map_err(|e| SandboxError::SetupFailed(format!("Landlock create: {e}")))?
+        // System paths: read-only.
+        .add_rules(path_beneath_rules(system_paths, access_read))
+        .map_err(|e| SandboxError::SetupFailed(format!("Landlock system rules: {e}")))?
+        // Temp paths: read+write.
+        .add_rules(path_beneath_rules(temp_paths, access_all))
+        .map_err(|e| SandboxError::SetupFailed(format!("Landlock temp rules: {e}")))?
+        // User-specified readable paths.
+        .add_rules(path_beneath_rules(&cmd.readable_paths, access_read))
+        .map_err(|e| SandboxError::SetupFailed(format!("Landlock read rules: {e}")))?
+        // User-specified writable paths.
+        .add_rules(path_beneath_rules(&cmd.writable_paths, access_all))
+        .map_err(|e| SandboxError::SetupFailed(format!("Landlock write rules: {e}")))?
         .restrict_self()
         .map_err(|e| SandboxError::SetupFailed(format!("Landlock restrict: {e}")))?;
 

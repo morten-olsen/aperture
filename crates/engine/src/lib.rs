@@ -1,5 +1,6 @@
 pub mod action;
 pub mod context;
+pub mod embedding;
 pub mod engine;
 pub mod error;
 pub mod event;
@@ -15,12 +16,13 @@ pub mod tool;
 
 pub use action::{Action, ActionContext, ActionInvoke};
 pub use context::ContextItem;
+pub use embedding::EmbeddingClient;
 pub use engine::Engine;
 pub use error::{EngineError, Result};
 pub use event::{EventBus, EventDescriptor, EventEnvelope};
 pub use extensions::Extensions;
 pub use llm::{LlmClient, LlmMessage, LlmResponse};
-pub use plugin::{Plugin, PrepareContext, SetupContext};
+pub use plugin::{Plugin, PreflightContext, PrepareContext, SetupContext};
 pub use prompt::{Prompt, PromptOutput, PromptState, PromptUsage, ToolResult};
 pub use prompt_events::{
     PROMPT_COMPLETED, PROMPT_CREATED, PROMPT_UPDATED, PROMPT_WAITING_FOR_APPROVAL,

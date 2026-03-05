@@ -22,7 +22,22 @@ pub struct SetupContext<'a> {
 ///
 /// Plugins use this to register tools, inject context, and read shared state.
 pub struct PrepareContext<'a> {
+    pub user_id: &'a str,
+    pub input: &'a str,
     pub tools: &'a mut Vec<Tool>,
+    pub context: &'a mut Vec<ContextItem>,
+    pub state: &'a mut State,
+    pub extensions: &'a Extensions,
+    pub events: &'a EventBus,
+    pub history: &'a [PromptOutput],
+}
+
+/// Context provided during the preflight phase (after prepare, before LLM call).
+///
+/// Tools are finalized and read-only. Plugins can invoke tools and inject context.
+pub struct PreflightContext<'a> {
+    pub user_id: &'a str,
+    pub tools: &'a [Tool],
     pub context: &'a mut Vec<ContextItem>,
     pub state: &'a mut State,
     pub extensions: &'a Extensions,
@@ -56,6 +71,11 @@ pub trait Plugin: Send + Sync {
 
     /// Called once per prompt. Register tools and inject context here.
     async fn prepare(&self, _ctx: &mut PrepareContext<'_>) -> Result<()> {
+        Ok(())
+    }
+
+    /// Called after prepare, once tools are finalized. Run setup scripts here.
+    async fn preflight(&self, _ctx: &mut PreflightContext<'_>) -> Result<()> {
         Ok(())
     }
 }

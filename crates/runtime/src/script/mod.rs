@@ -155,6 +155,8 @@ mod tests {
             data_root: tmp.clone(),
             cli_timeout_ms: 30_000,
             cli_max_output_bytes: 10_000_000,
+            web_timeout_ms: 30_000,
+            web_max_response_bytes: 10_000_000,
         };
 
         let resolver = RuntimeScriptResolver { config };
@@ -182,6 +184,8 @@ mod tests {
             data_root: tmp.clone(),
             cli_timeout_ms: 30_000,
             cli_max_output_bytes: 10_000_000,
+            web_timeout_ms: 30_000,
+            web_max_response_bytes: 10_000_000,
         };
 
         let resolver = RuntimeScriptResolver { config };

@@ -4,6 +4,7 @@ pub struct ServerConfig {
     pub openai_api_key: String,
     pub openai_base_url: String,
     pub openai_model: String,
+    pub openai_embedding_model: String,
 }
 
 impl ServerConfig {
@@ -21,6 +22,8 @@ impl ServerConfig {
             openai_base_url: std::env::var("OPENAI_BASE_URL")
                 .unwrap_or_else(|_| "https://api.openai.com/v1".into()),
             openai_model: std::env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4o".into()),
+            openai_embedding_model: std::env::var("OPENAI_EMBEDDING_MODEL")
+                .unwrap_or_else(|_| "openai/text-embedding-3-small".into()),
         })
     }
 }

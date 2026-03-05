@@ -1,0 +1,9 @@
+target/
+.git/
+.github/
+.claude/
+.env*
+docs/
+refs/
+*.md
+!crates/**/*.md

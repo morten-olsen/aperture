@@ -5,6 +5,7 @@ use aperture_engine::error::{EngineError, Result};
 use aperture_engine::tool::{ToolContext, ToolInvoke};
 
 use crate::config::RuntimeConfig;
+use crate::validation::{self, FileValidationService};
 use crate::workspace::resolve_sandboxed_path;
 
 fn get_config<'a>(ctx: &'a ToolContext<'a>) -> Result<&'a RuntimeConfig> {
@@ -50,18 +51,16 @@ impl ToolInvoke for FsWrite {
         let config = get_config(&ctx)?;
         let rel_path = get_path_param(&ctx.input, "path")?;
         let content = get_path_param(&ctx.input, "content")?;
-        let path = resolve_sandboxed_path(config, &ctx.user_id, &rel_path)?;
+        let validation_service = ctx.extensions.get::<FileValidationService>();
 
-        // Create parent directories if needed.
-        if let Some(parent) = path.parent() {
-            tokio::fs::create_dir_all(parent).await.map_err(|e| {
-                EngineError::ToolInvocation(format!("failed to create directory: {e}"))
-            })?;
-        }
-
-        tokio::fs::write(&path, content.as_bytes())
-            .await
-            .map_err(|e| EngineError::ToolInvocation(format!("failed to write file: {e}")))?;
+        validation::validated_write(
+            config,
+            &ctx.user_id,
+            &rel_path,
+            &content,
+            validation_service,
+        )
+        .await?;
 
         Ok(json!({}))
     }
@@ -244,6 +243,8 @@ mod tests {
             data_root: tmp.clone(),
             cli_timeout_ms: 30_000,
             cli_max_output_bytes: 10_000_000,
+            web_timeout_ms: 30_000,
+            web_max_response_bytes: 10_000_000,
         };
         let mut ext = Extensions::new();
         ext.insert(config);
@@ -296,12 +297,7 @@ mod tests {
         let ws = tmp.join("testuser").join("workspace");
         std::fs::write(ws.join("read-me.txt"), "world").unwrap();
 
-        let ctx = make_ctx(
-            json!({"path": "read-me.txt"}),
-            &mut state,
-            &ext,
-            &events,
-        );
+        let ctx = make_ctx(json!({"path": "read-me.txt"}), &mut state, &ext, &events);
         let result = FsRead.invoke(ctx).await.unwrap();
         assert_eq!(result["content"], "world");
 
@@ -324,7 +320,10 @@ mod tests {
         let entries = result["entries"].as_array().unwrap();
         assert_eq!(entries.len(), 2);
 
-        let names: Vec<&str> = entries.iter().map(|e| e["name"].as_str().unwrap()).collect();
+        let names: Vec<&str> = entries
+            .iter()
+            .map(|e| e["name"].as_str().unwrap())
+            .collect();
         assert!(names.contains(&"file.txt"));
         assert!(names.contains(&"subdir"));
 
@@ -388,7 +387,10 @@ mod tests {
         FsMove.invoke(ctx).await.unwrap();
 
         assert!(!ws.join("a.txt").exists());
-        assert_eq!(std::fs::read_to_string(ws.join("b.txt")).unwrap(), "content");
+        assert_eq!(
+            std::fs::read_to_string(ws.join("b.txt")).unwrap(),
+            "content"
+        );
 
         let _ = std::fs::remove_dir_all(&tmp);
     }

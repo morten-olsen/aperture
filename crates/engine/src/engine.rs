@@ -7,7 +7,7 @@ use crate::error::{EngineError, Result};
 use crate::event::EventBus;
 use crate::extensions::Extensions;
 use crate::llm::{LlmClient, LlmMessage};
-use crate::plugin::{Plugin, PrepareContext, SetupContext};
+use crate::plugin::{Plugin, PreflightContext, PrepareContext, SetupContext};
 use crate::prompt::{Prompt, PromptOutput, PromptState, ToolResult};
 use crate::prompt_events::{
     PROMPT_COMPLETED, PROMPT_CREATED, PROMPT_UPDATED, PROMPT_WAITING_FOR_APPROVAL,
@@ -54,6 +54,8 @@ impl Engine {
     /// Run the prepare phase on all registered plugins, collecting tools and context.
     pub async fn prepare_all(
         &self,
+        user_id: &str,
+        input: &str,
         state: &mut State,
         history: &[PromptOutput],
     ) -> Result<(Vec<Tool>, Vec<ContextItem>)> {
@@ -62,6 +64,8 @@ impl Engine {
 
         for plugin in &self.plugins {
             let mut ctx = PrepareContext {
+                user_id,
+                input,
                 tools: &mut tools,
                 context: &mut context,
                 state,
@@ -76,6 +80,33 @@ impl Engine {
         }
 
         Ok((tools, context))
+    }
+
+    /// Run the preflight phase on all registered plugins after tools are finalized.
+    pub async fn preflight_all(
+        &self,
+        user_id: &str,
+        tools: &[Tool],
+        context: &mut Vec<ContextItem>,
+        state: &mut State,
+        history: &[PromptOutput],
+    ) -> Result<()> {
+        for plugin in &self.plugins {
+            let mut ctx = PreflightContext {
+                user_id,
+                tools,
+                context,
+                state,
+                extensions: &self.extensions,
+                events: &self.events,
+                history,
+            };
+            plugin
+                .preflight(&mut ctx)
+                .await
+                .map_err(|e| EngineError::PluginPreflight(format!("{}: {e}", plugin.id())))?;
+        }
+        Ok(())
     }
 
     /// Get a reference to all registered actions.
@@ -111,6 +142,11 @@ impl Engine {
         self.extensions.insert(value);
     }
 
+    /// Get a reference to an extension by type.
+    pub fn get_extension<T: Send + Sync + 'static>(&self) -> Option<&T> {
+        self.extensions.get::<T>()
+    }
+
     /// Get a reference to the event bus.
     pub fn events(&self) -> &EventBus {
         &self.events
@@ -127,7 +163,22 @@ impl Engine {
         input: &str,
         history: &[Prompt],
     ) -> Result<Prompt> {
-        let mut state = State::new();
+        let state = State::new();
+        self.run_with_state(llm, user_id, input, history, state)
+            .await
+    }
+
+    /// Like `run()` but accepts a pre-populated `State`.
+    ///
+    /// Used by the trigger scheduler to inject trigger metadata before the loop starts.
+    pub async fn run_with_state(
+        &self,
+        llm: &dyn LlmClient,
+        user_id: &str,
+        input: &str,
+        history: &[Prompt],
+        mut state: State,
+    ) -> Result<Prompt> {
         let prompt = Prompt::new(
             Uuid::new_v4().to_string(),
             user_id.to_string(),
@@ -178,7 +229,10 @@ impl Engine {
         };
 
         // Re-prepare plugins to get tools.
-        let (tools, _context) = self.prepare_all(&mut state, &prompt.output).await?;
+        let input = prompt.input.as_deref().unwrap_or_default();
+        let (tools, _context) = self
+            .prepare_all(&prompt.user_id, input, &mut state, &prompt.output)
+            .await?;
 
         // Find the run_code tool.
         let run_code_tool = tools
@@ -283,7 +337,13 @@ impl Engine {
 
         loop {
             // 1. Prepare — collect tools and context from all plugins.
-            let (tools, context) = self.prepare_all(state, &prompt.output).await?;
+            let (tools, mut context) = self
+                .prepare_all(&user_id, &input_text, state, &prompt.output)
+                .await?;
+
+            // 1b. Preflight — run after tools are finalized.
+            self.preflight_all(&user_id, &tools, &mut context, state, &prompt.output)
+                .await?;
 
             // 2. Build message list for the LLM.
             let messages = build_messages(&input_text, &context, history, &prompt.output);
@@ -581,7 +641,10 @@ mod tests {
         engine.register(Box::new(TestPlugin)).await.unwrap();
 
         let mut state = State::new();
-        let (tools, _context) = engine.prepare_all(&mut state, &[]).await.unwrap();
+        let (tools, _context) = engine
+            .prepare_all("test-user", "", &mut state, &[])
+            .await
+            .unwrap();
 
         assert_eq!(tools.len(), 1);
         assert_eq!(tools[0].id, "echo");
@@ -757,7 +820,10 @@ mod tests {
         engine.register(Box::new(PluginB)).await.unwrap();
 
         let mut state = State::new();
-        let (tools, _) = engine.prepare_all(&mut state, &[]).await.unwrap();
+        let (tools, _) = engine
+            .prepare_all("test-user", "", &mut state, &[])
+            .await
+            .unwrap();
 
         assert_eq!(tools.len(), 2);
         let ids: Vec<&str> = tools.iter().map(|t| t.id.as_str()).collect();
@@ -800,7 +866,10 @@ mod tests {
             .unwrap();
 
         let mut state = State::new();
-        engine.prepare_all(&mut state, &[]).await.unwrap();
+        engine
+            .prepare_all("test-user", "", &mut state, &[])
+            .await
+            .unwrap();
 
         let alpha: String = state.get("alpha").unwrap().unwrap();
         let beta: String = state.get("beta").unwrap().unwrap();
@@ -2103,12 +2172,20 @@ mod tests {
             .iter()
             .filter(|m| matches!(m, LlmMessage::User(_)))
             .collect();
-        assert_eq!(user_msgs.len(), 1, "expected 1 User message for current input only");
+        assert_eq!(
+            user_msgs.len(),
+            1,
+            "expected 1 User message for current input only"
+        );
 
         let assistant_msgs: Vec<_> = messages
             .iter()
             .filter(|m| matches!(m, LlmMessage::Assistant(_)))
             .collect();
-        assert_eq!(assistant_msgs.len(), 1, "expected 1 Assistant message from history");
+        assert_eq!(
+            assistant_msgs.len(),
+            1,
+            "expected 1 Assistant message from history"
+        );
     }
 }

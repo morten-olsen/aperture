@@ -11,6 +11,8 @@ pub struct RuntimeConfig {
     pub data_root: PathBuf,
     pub cli_timeout_ms: u64,
     pub cli_max_output_bytes: usize,
+    pub web_timeout_ms: u64,
+    pub web_max_response_bytes: usize,
 }
 
 impl RuntimeConfig {
@@ -36,6 +38,8 @@ impl Default for RuntimeConfig {
             data_root,
             cli_timeout_ms: 30_000,
             cli_max_output_bytes: 10_000_000,
+            web_timeout_ms: 30_000,
+            web_max_response_bytes: 10_000_000,
         }
     }
 }
@@ -81,6 +85,8 @@ mod tests {
             data_root: PathBuf::from("/tmp/test-data"),
             cli_timeout_ms: 5_000,
             cli_max_output_bytes: 1_000,
+            web_timeout_ms: 30_000,
+            web_max_response_bytes: 10_000_000,
         };
         let plugin = RuntimeConfigPlugin::new(config.clone());
 
@@ -107,10 +113,18 @@ mod tests {
             data_root: PathBuf::from("/data"),
             cli_timeout_ms: 30_000,
             cli_max_output_bytes: 10_000_000,
+            web_timeout_ms: 30_000,
+            web_max_response_bytes: 10_000_000,
         };
 
-        assert_eq!(config.workspace_dir("alice"), PathBuf::from("/data/alice/workspace"));
-        assert_eq!(config.configs_dir("alice"), PathBuf::from("/data/alice/configs"));
+        assert_eq!(
+            config.workspace_dir("alice"),
+            PathBuf::from("/data/alice/workspace")
+        );
+        assert_eq!(
+            config.configs_dir("alice"),
+            PathBuf::from("/data/alice/configs")
+        );
     }
 
     #[test]
@@ -123,5 +137,7 @@ mod tests {
         );
         assert_eq!(config.cli_timeout_ms, 30_000);
         assert_eq!(config.cli_max_output_bytes, 10_000_000);
+        assert_eq!(config.web_timeout_ms, 30_000);
+        assert_eq!(config.web_max_response_bytes, 10_000_000);
     }
 }

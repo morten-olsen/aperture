@@ -118,6 +118,16 @@ impl EventBus {
     }
 }
 
+impl Clone for EventBus {
+    fn clone(&self) -> Self {
+        Self {
+            channels: Arc::clone(&self.channels),
+            wildcard: self.wildcard.clone(),
+            schemas: Arc::clone(&self.schemas),
+        }
+    }
+}
+
 impl Default for EventBus {
     fn default() -> Self {
         Self::new()

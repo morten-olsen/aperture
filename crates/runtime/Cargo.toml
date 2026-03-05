@@ -16,3 +16,12 @@ dirs = "6"
 sha2 = "0.10"
 rusqlite = { version = "0.32", features = ["bundled"] }
 uuid = { version = "1", features = ["v4"] }
+cron = "0.15"
+chrono = "0.4"
+reqwest = { version = "0.12", features = ["json"] }
+scraper = "0.22"
+html2text = "0.14"
+url = "2"
+argon2 = "0.5"
+jsonwebtoken = "9"
+rand = "0.8"

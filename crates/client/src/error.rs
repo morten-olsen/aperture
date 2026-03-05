@@ -6,6 +6,12 @@ pub enum ClientError {
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
 
+    #[error("HTTP error: {0}")]
+    Http(#[from] reqwest::Error),
+
+    #[error("Auth error: {0}")]
+    Auth(String),
+
     #[error("Handshake failed: {0}")]
     Handshake(String),
 

@@ -4,6 +4,8 @@ use uuid::Uuid;
 
 use aperture_engine::action::ActionContext;
 use aperture_engine::error::{EngineError, Result};
+use std::sync::Arc;
+
 use aperture_engine::prompt::Prompt;
 use aperture_engine::prompt_runner::PromptRunner;
 
@@ -139,7 +141,7 @@ impl aperture_engine::action::ActionInvoke for SendMessage {
         // Get the PromptRunner from extensions and run.
         let runner = ctx
             .extensions
-            .get::<Box<dyn PromptRunner>>()
+            .get::<Arc<dyn PromptRunner>>()
             .ok_or_else(|| EngineError::ToolInvocation("PromptRunner not found".into()))?;
 
         let prompt = runner.run(&ctx.user_id, &message, &history).await?;

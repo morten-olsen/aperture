@@ -21,11 +21,12 @@ pub fn sandbox_available() -> bool {
     }
     #[cfg(target_os = "linux")]
     {
-        // Check Landlock availability.
-        match landlock::ABI::new_current() {
-            Ok(abi) => abi >= landlock::ABI::V1,
-            Err(_) => false,
-        }
+        use landlock::{Access, AccessFs, Ruleset, RulesetAttr, ABI};
+        // Probe Landlock support by attempting to create a minimal ruleset.
+        Ruleset::default()
+            .handle_access(AccessFs::from_all(ABI::V4))
+            .and_then(|rs| rs.create())
+            .is_ok()
     }
     #[cfg(not(any(target_os = "macos", target_os = "linux")))]
     {
