@@ -4,11 +4,13 @@ mod html_to_md;
 mod rules;
 mod rules_tools;
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use serde_json::json;
 
 use aperture_engine::error::Result;
-use aperture_engine::plugin::{Plugin, PrepareContext};
+use aperture_engine::plugin::{Plugin, PrepareContext, SetupContext};
 use aperture_engine::tool::{ApprovalRequirement, Tool};
 
 use self::extract_links::WebExtractLinks;
@@ -20,6 +22,15 @@ use crate::config::RuntimeConfig;
 
 pub struct WebPlugin;
 
+const WEB_TOOL_IDS: &[&str] = &[
+    "web_fetch",
+    "web_extract_links",
+    "web_html_to_markdown",
+    "web_rules_list",
+    "web_rules_add",
+    "web_rules_remove",
+];
+
 #[async_trait]
 impl Plugin for WebPlugin {
     fn id(&self) -> &str {
@@ -30,10 +41,10 @@ impl Plugin for WebPlugin {
         "Provides web content fetching with configurable domain allow/deny rules"
     }
 
-    async fn prepare(&self, ctx: &mut PrepareContext<'_>) -> Result<()> {
+    async fn setup(&self, ctx: &mut SetupContext<'_>) -> Result<()> {
         let config = ctx.extensions.get::<RuntimeConfig>().cloned();
 
-        ctx.tools.push(Tool {
+        ctx.registry.register(Tool {
             id: "web_fetch".into(),
             description: "Fetch the content of a web page by URL. \
                           Access is controlled by domain allow/deny rules."
@@ -67,7 +78,7 @@ impl Plugin for WebPlugin {
                     "content_type": { "type": "string" }
                 }
             })),
-            require_approval: Some(ApprovalRequirement::Dynamic(Box::new(
+            require_approval: Some(ApprovalRequirement::Dynamic(Arc::new(
                 move |input, approval_ctx| {
                     let url_str = match input.get("url").and_then(|v| v.as_str()) {
                         Some(u) => u,
@@ -111,10 +122,10 @@ impl Plugin for WebPlugin {
                     }
                 },
             ))),
-            invoke: Box::new(WebFetch),
+            invoke: Arc::new(WebFetch),
         });
 
-        ctx.tools.push(Tool {
+        ctx.registry.register(Tool {
             id: "web_extract_links".into(),
             description: "Extract all links from an HTML string. \
                           Optionally resolves relative URLs against a base URL."
@@ -149,10 +160,10 @@ impl Plugin for WebPlugin {
                 }
             })),
             require_approval: None,
-            invoke: Box::new(WebExtractLinks),
+            invoke: Arc::new(WebExtractLinks),
         });
 
-        ctx.tools.push(Tool {
+        ctx.registry.register(Tool {
             id: "web_html_to_markdown".into(),
             description: "Convert HTML content to Markdown text.".into(),
             input_schema: json!({
@@ -172,11 +183,10 @@ impl Plugin for WebPlugin {
                 }
             })),
             require_approval: None,
-            invoke: Box::new(WebHtmlToMarkdown),
+            invoke: Arc::new(WebHtmlToMarkdown),
         });
 
-        // Rules management tools — always require human approval.
-        ctx.tools.push(Tool {
+        ctx.registry.register(Tool {
             id: "web_rules_list".into(),
             description: "List all web domain allow/deny rules for the current user.".into(),
             input_schema: json!({
@@ -187,10 +197,10 @@ impl Plugin for WebPlugin {
             require_approval: Some(ApprovalRequirement::Always {
                 reason: "Listing web rules requires approval".into(),
             }),
-            invoke: Box::new(WebRulesList),
+            invoke: Arc::new(WebRulesList),
         });
 
-        ctx.tools.push(Tool {
+        ctx.registry.register(Tool {
             id: "web_rules_add".into(),
             description: "Add a new web domain allow or deny rule.".into(),
             input_schema: json!({
@@ -212,10 +222,10 @@ impl Plugin for WebPlugin {
             require_approval: Some(ApprovalRequirement::Always {
                 reason: "Adding web rules requires approval".into(),
             }),
-            invoke: Box::new(WebRulesAdd),
+            invoke: Arc::new(WebRulesAdd),
         });
 
-        ctx.tools.push(Tool {
+        ctx.registry.register(Tool {
             id: "web_rules_remove".into(),
             description: "Remove a web domain rule by its exact domain pattern.".into(),
             input_schema: json!({
@@ -232,9 +242,16 @@ impl Plugin for WebPlugin {
             require_approval: Some(ApprovalRequirement::Always {
                 reason: "Removing web rules requires approval".into(),
             }),
-            invoke: Box::new(WebRulesRemove),
+            invoke: Arc::new(WebRulesRemove),
         });
 
+        Ok(())
+    }
+
+    async fn prepare(&self, ctx: &mut PrepareContext<'_>) -> Result<()> {
+        for id in WEB_TOOL_IDS {
+            ctx.activate_tool(id)?;
+        }
         Ok(())
     }
 }

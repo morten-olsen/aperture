@@ -105,6 +105,7 @@ mod tests {
         state: &'a mut State,
         extensions: &'a Extensions,
         events: &'a EventBus,
+        registry: &'a aperture_engine::ToolRegistry,
     ) -> PrepareContext<'a> {
         PrepareContext {
             user_id,
@@ -115,6 +116,7 @@ mod tests {
             extensions,
             events,
             history: &[],
+            registry,
         }
     }
 
@@ -132,6 +134,7 @@ mod tests {
         let mut tools: Vec<Tool> = Vec::new();
         let mut context: Vec<ContextItem> = Vec::new();
 
+        let registry = aperture_engine::ToolRegistry::new();
         let mut ctx = make_ctx(
             "alice",
             &mut tools,
@@ -139,6 +142,7 @@ mod tests {
             &mut state,
             &extensions,
             &events,
+            &registry,
         );
         SkillsPlugin.prepare(&mut ctx).await.unwrap();
 
@@ -163,6 +167,7 @@ mod tests {
         let mut tools: Vec<Tool> = Vec::new();
         let mut context: Vec<ContextItem> = Vec::new();
 
+        let registry = aperture_engine::ToolRegistry::new();
         let mut ctx = make_ctx(
             "bob",
             &mut tools,
@@ -170,6 +175,7 @@ mod tests {
             &mut state,
             &extensions,
             &events,
+            &registry,
         );
         SkillsPlugin.prepare(&mut ctx).await.unwrap();
 
@@ -190,6 +196,7 @@ mod tests {
         let mut tools: Vec<Tool> = Vec::new();
         let mut context: Vec<ContextItem> = Vec::new();
 
+        let registry = aperture_engine::ToolRegistry::new();
         let mut ctx = make_ctx(
             "carol",
             &mut tools,
@@ -197,6 +204,7 @@ mod tests {
             &mut state,
             &extensions,
             &events,
+            &registry,
         );
         SkillsPlugin.prepare(&mut ctx).await.unwrap();
 
@@ -213,6 +221,7 @@ mod tests {
         let mut tools: Vec<Tool> = Vec::new();
         let mut context: Vec<ContextItem> = Vec::new();
 
+        let registry = aperture_engine::ToolRegistry::new();
         let mut ctx = make_ctx(
             "alice",
             &mut tools,
@@ -220,6 +229,7 @@ mod tests {
             &mut state,
             &extensions,
             &events,
+            &registry,
         );
         SkillsPlugin.prepare(&mut ctx).await.unwrap();
 
@@ -241,6 +251,7 @@ mod tests {
         let mut tools: Vec<Tool> = Vec::new();
         let mut context: Vec<ContextItem> = Vec::new();
 
+        let registry = aperture_engine::ToolRegistry::new();
         let mut ctx = make_ctx(
             "dave",
             &mut tools,
@@ -248,6 +259,7 @@ mod tests {
             &mut state,
             &extensions,
             &events,
+            &registry,
         );
         SkillsPlugin.prepare(&mut ctx).await.unwrap();
 

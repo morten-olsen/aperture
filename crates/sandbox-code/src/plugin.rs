@@ -45,16 +45,24 @@ impl Plugin for SandboxPlugin {
     }
 
     async fn prepare(&self, ctx: &mut PrepareContext<'_>) -> Result<()> {
-        // Drain all tools registered by prior plugins.
-        let drained: Arc<Vec<Tool>> = Arc::new(ctx.tools.drain(..).collect());
+        // Build descriptors from the currently active tools (registered by prior plugins).
+        let descriptors: Vec<ToolDescriptor> = ctx.tools.iter().map(Into::into).collect();
 
-        // Build lightweight descriptors for the drained tools.
-        let descriptors: Vec<ToolDescriptor> = drained.iter().map(Into::into).collect();
+        // Clone active tools from the registry (so the registry retains ownership).
+        let inner_tools: Vec<Tool> = ctx
+            .tools
+            .iter()
+            .filter_map(|t| ctx.registry.get(&t.id).cloned())
+            .collect();
+        let inner_tools: Arc<Vec<Tool>> = Arc::new(inner_tools);
+
+        // Clear the active tools — replaced by sandbox tools.
+        ctx.tools.clear();
 
         // Generate the human-readable function listing.
         let listing = generate_listing(&descriptors);
 
-        // Push the run_code tool (carries the drained tools).
+        // Push the run_code tool (carries the cloned inner tools).
         ctx.tools.push(Tool {
             id: "run_code".into(),
             description: "Execute JavaScript code in a sandbox. Tool functions are available \
@@ -83,9 +91,9 @@ impl Plugin for SandboxPlugin {
                 }
             })),
             require_approval: None,
-            invoke: Box::new(RunCodeInvoke {
+            invoke: Arc::new(RunCodeInvoke {
                 sandbox: self.sandbox.clone(),
-                tools: drained.clone(),
+                tools: inner_tools.clone(),
             }),
         });
 
@@ -117,9 +125,9 @@ impl Plugin for SandboxPlugin {
                 }
             })),
             require_approval: None,
-            invoke: Box::new(RunScriptInvoke {
+            invoke: Arc::new(RunScriptInvoke {
                 sandbox: self.sandbox.clone(),
-                tools: drained,
+                tools: inner_tools,
             }),
         });
 
@@ -141,7 +149,7 @@ impl Plugin for SandboxPlugin {
             }),
             output_schema: None,
             require_approval: None,
-            invoke: Box::new(InspectToolInvoke {
+            invoke: Arc::new(InspectToolInvoke {
                 descriptors: descriptors.clone(),
             }),
         });

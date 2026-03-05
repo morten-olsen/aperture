@@ -1,6 +1,8 @@
 mod rules;
 mod rules_tools;
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use serde_json::json;
 use sha2::{Digest, Sha256};
@@ -35,6 +37,12 @@ impl ScriptResolver for RuntimeScriptResolver {
     }
 }
 
+const SCRIPT_TOOL_IDS: &[&str] = &[
+    "script_rules_list",
+    "script_rules_add",
+    "script_rules_remove",
+];
+
 /// Plugin that provides script approval management and the `ScriptResolver`
 /// extension for the sandbox-code crate.
 pub struct ScriptPlugin;
@@ -59,11 +67,7 @@ impl Plugin for ScriptPlugin {
         ctx.extensions
             .insert(Box::new(RuntimeScriptResolver { config }) as Box<dyn ScriptResolver>);
 
-        Ok(())
-    }
-
-    async fn prepare(&self, ctx: &mut PrepareContext<'_>) -> Result<()> {
-        ctx.tools.push(Tool {
+        ctx.registry.register(Tool {
             id: "script_rules_list".into(),
             description: "List all approved scripts with their paths and SHA-256 checksums.".into(),
             input_schema: json!({
@@ -74,10 +78,10 @@ impl Plugin for ScriptPlugin {
             require_approval: Some(ApprovalRequirement::Always {
                 reason: "Listing script rules requires approval".into(),
             }),
-            invoke: Box::new(ScriptRulesList),
+            invoke: Arc::new(ScriptRulesList),
         });
 
-        ctx.tools.push(Tool {
+        ctx.registry.register(Tool {
             id: "script_rules_add".into(),
             description: "Approve a workspace script by path. Reads the file and captures its \
                           SHA-256 checksum. The approval is invalidated if the file changes."
@@ -96,10 +100,10 @@ impl Plugin for ScriptPlugin {
             require_approval: Some(ApprovalRequirement::Always {
                 reason: "Adding script approval requires approval".into(),
             }),
-            invoke: Box::new(ScriptRulesAdd),
+            invoke: Arc::new(ScriptRulesAdd),
         });
 
-        ctx.tools.push(Tool {
+        ctx.registry.register(Tool {
             id: "script_rules_remove".into(),
             description: "Remove a script approval by path.".into(),
             input_schema: json!({
@@ -116,9 +120,16 @@ impl Plugin for ScriptPlugin {
             require_approval: Some(ApprovalRequirement::Always {
                 reason: "Removing script approval requires approval".into(),
             }),
-            invoke: Box::new(ScriptRulesRemove),
+            invoke: Arc::new(ScriptRulesRemove),
         });
 
+        Ok(())
+    }
+
+    async fn prepare(&self, ctx: &mut PrepareContext<'_>) -> Result<()> {
+        for id in SCRIPT_TOOL_IDS {
+            ctx.activate_tool(id)?;
+        }
         Ok(())
     }
 }

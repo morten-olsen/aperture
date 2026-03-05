@@ -2,25 +2,28 @@ use async_trait::async_trait;
 
 use crate::action::Action;
 use crate::context::ContextItem;
-use crate::error::Result;
+use crate::error::{EngineError, Result};
 use crate::event::EventBus;
 use crate::extensions::Extensions;
 use crate::prompt::PromptOutput;
 use crate::state::State;
 use crate::tool::Tool;
+use crate::tool_registry::ToolRegistry;
 
 /// Context provided during the setup phase.
 ///
-/// Plugins use this to register services in the type map and subscribe to events.
+/// Plugins use this to register services in the type map, subscribe to events,
+/// and register tools in the global tool registry.
 pub struct SetupContext<'a> {
     pub extensions: &'a mut Extensions,
     pub events: &'a EventBus,
     pub actions: &'a mut Vec<Action>,
+    pub registry: &'a mut ToolRegistry,
 }
 
 /// Context provided during the prepare phase (once per prompt).
 ///
-/// Plugins use this to register tools, inject context, and read shared state.
+/// Plugins use this to activate tools, inject context, and read shared state.
 pub struct PrepareContext<'a> {
     pub user_id: &'a str,
     pub input: &'a str,
@@ -30,6 +33,19 @@ pub struct PrepareContext<'a> {
     pub extensions: &'a Extensions,
     pub events: &'a EventBus,
     pub history: &'a [PromptOutput],
+    pub registry: &'a ToolRegistry,
+}
+
+impl PrepareContext<'_> {
+    /// Activate a tool from the registry by ID, pushing a clone into the tools list.
+    pub fn activate_tool(&mut self, id: &str) -> Result<()> {
+        let tool = self
+            .registry
+            .get(id)
+            .ok_or_else(|| EngineError::ToolNotFound(id.into()))?;
+        self.tools.push(tool.clone());
+        Ok(())
+    }
 }
 
 /// Context provided during the preflight phase (after prepare, before LLM call).

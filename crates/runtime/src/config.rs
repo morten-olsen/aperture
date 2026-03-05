@@ -93,10 +93,12 @@ mod tests {
         let mut extensions = Extensions::new();
         let events = EventBus::new();
         let mut actions: Vec<Action> = Vec::new();
+        let mut registry = aperture_engine::ToolRegistry::new();
         let mut ctx = SetupContext {
             extensions: &mut extensions,
             events: &events,
             actions: &mut actions,
+            registry: &mut registry,
         };
 
         plugin.setup(&mut ctx).await.unwrap();

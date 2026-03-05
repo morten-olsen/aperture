@@ -14,6 +14,7 @@ use crate::prompt_events::{
 };
 use crate::state::State;
 use crate::tool::{Tool, ToolContext};
+use crate::tool_registry::ToolRegistry;
 
 // ── Engine ───────────────────────────────────────────────────────────
 
@@ -22,6 +23,7 @@ pub struct Engine {
     extensions: Extensions,
     events: EventBus,
     actions: Vec<Action>,
+    registry: ToolRegistry,
 }
 
 impl Engine {
@@ -31,6 +33,7 @@ impl Engine {
             extensions: Extensions::new(),
             events: EventBus::new(),
             actions: Vec::new(),
+            registry: ToolRegistry::new(),
         }
     }
 
@@ -41,6 +44,7 @@ impl Engine {
                 extensions: &mut self.extensions,
                 events: &self.events,
                 actions: &mut self.actions,
+                registry: &mut self.registry,
             };
             plugin
                 .setup(&mut ctx)
@@ -49,6 +53,11 @@ impl Engine {
         }
         self.plugins.push(plugin);
         Ok(())
+    }
+
+    /// Get a reference to the tool registry.
+    pub fn registry(&self) -> &ToolRegistry {
+        &self.registry
     }
 
     /// Run the prepare phase on all registered plugins, collecting tools and context.
@@ -72,6 +81,7 @@ impl Engine {
                 extensions: &self.extensions,
                 events: &self.events,
                 history,
+                registry: &self.registry,
             };
             plugin
                 .prepare(&mut ctx)
@@ -192,8 +202,11 @@ impl Engine {
 
     /// Resume a prompt after approval was granted for a sandbox tool.
     ///
-    /// Finds the pending `ToolResult` with approval data, re-invokes `run_code`
-    /// with the replay log, and continues the agent loop.
+    /// Looks up the approved inner tool from the registry, invokes it directly
+    /// to get its result, appends that result to the replay log, then re-invokes
+    /// `run_code` with the extended log. This breaks the infinite loop: the
+    /// sandbox replays everything (including the now-recorded approved call)
+    /// and continues from the next operation.
     pub async fn approve(&self, llm: &dyn LlmClient, mut prompt: Prompt) -> Result<Prompt> {
         let mut state = State::new();
 
@@ -215,7 +228,8 @@ impl Engine {
             .ok_or_else(|| EngineError::ToolInvocation("no pending approval found".into()))?;
 
         // Extract the pending approval data.
-        let (tool_id_outer, tool_input_outer, approval_data) = match &prompt.output[pending_idx] {
+        let (tool_id_outer, tool_input_outer, mut approval_data) = match &prompt.output[pending_idx]
+        {
             PromptOutput::Tool {
                 tool_id,
                 input,
@@ -228,7 +242,41 @@ impl Engine {
             _ => unreachable!(),
         };
 
-        // Re-prepare plugins to get tools.
+        // Look up the approved inner tool from the registry and invoke it
+        // directly to extend the replay log with its result.
+        if let Some(inner_tool) = self.registry.get(&approval_data.tool_id) {
+            let inner_ctx = ToolContext {
+                input: approval_data.tool_input.clone(),
+                state: &mut state,
+                extensions: &self.extensions,
+                events: &self.events,
+                user_id: prompt.user_id.clone(),
+                replay: None,
+            };
+
+            match inner_tool.invoke.invoke(inner_ctx).await {
+                Ok(output) => {
+                    approval_data
+                        .replay_log
+                        .push(crate::sandbox::ReplayEntry::ToolCall {
+                            tool_id: approval_data.tool_id.clone(),
+                            input: approval_data.tool_input.clone(),
+                            output,
+                        });
+                }
+                Err(e) => {
+                    approval_data
+                        .replay_log
+                        .push(crate::sandbox::ReplayEntry::ToolCallError {
+                            tool_id: approval_data.tool_id.clone(),
+                            input: approval_data.tool_input.clone(),
+                            error: e.to_string(),
+                        });
+                }
+            }
+        }
+
+        // Re-prepare plugins to get the run_code tool.
         let input = prompt.input.as_deref().unwrap_or_default();
         let (tools, _context) = self
             .prepare_all(&prompt.user_id, input, &mut state, &prompt.output)
@@ -240,7 +288,7 @@ impl Engine {
             .find(|t| t.id == tool_id_outer)
             .ok_or_else(|| EngineError::ToolNotFound(tool_id_outer.clone()))?;
 
-        // Re-invoke with the replay log.
+        // Re-invoke with the extended replay log.
         let tool_ctx = ToolContext {
             input: serde_json::json!({"code": approval_data.code}),
             state: &mut state,
@@ -591,7 +639,7 @@ mod tests {
                 input_schema: json!({"type": "object"}),
                 output_schema: None,
                 require_approval: None,
-                invoke: Box::new(EchoTool),
+                invoke: Arc::new(EchoTool),
             });
             Ok(())
         }
@@ -740,7 +788,7 @@ mod tests {
                     require_approval: Some(crate::tool::ApprovalRequirement::Always {
                         reason: "This is dangerous".to_string(),
                     }),
-                    invoke: Box::new(EchoTool),
+                    invoke: Arc::new(EchoTool),
                 });
                 Ok(())
             }
@@ -790,7 +838,7 @@ mod tests {
                     input_schema: json!({"type": "object"}),
                     output_schema: None,
                     require_approval: None,
-                    invoke: Box::new(EchoTool),
+                    invoke: Arc::new(EchoTool),
                 });
                 Ok(())
             }
@@ -809,7 +857,7 @@ mod tests {
                     input_schema: json!({"type": "object"}),
                     output_schema: None,
                     require_approval: None,
-                    invoke: Box::new(EchoTool),
+                    invoke: Arc::new(EchoTool),
                 });
                 Ok(())
             }
@@ -921,7 +969,7 @@ mod tests {
                     input_schema: json!({"type": "object"}),
                     output_schema: None,
                     require_approval: None,
-                    invoke: Box::new(FailTool),
+                    invoke: Arc::new(FailTool),
                 });
                 Ok(())
             }
@@ -993,7 +1041,7 @@ mod tests {
                     input_schema: json!({"type": "object"}),
                     output_schema: None,
                     require_approval: None,
-                    invoke: Box::new(CounterTool),
+                    invoke: Arc::new(CounterTool),
                 });
                 Ok(())
             }
@@ -1066,7 +1114,7 @@ mod tests {
                     description: "Transfer money".into(),
                     input_schema: json!({"type": "object"}),
                     output_schema: None,
-                    require_approval: Some(crate::tool::ApprovalRequirement::Dynamic(Box::new(
+                    require_approval: Some(crate::tool::ApprovalRequirement::Dynamic(Arc::new(
                         |input, _ctx| {
                             let amount =
                                 input.get("amount").and_then(|v| v.as_f64()).unwrap_or(0.0);
@@ -1077,7 +1125,7 @@ mod tests {
                             }
                         },
                     ))),
-                    invoke: Box::new(EchoTool),
+                    invoke: Arc::new(EchoTool),
                 });
                 Ok(())
             }
@@ -1180,7 +1228,7 @@ mod tests {
                     input_schema: json!({"type": "object"}),
                     output_schema: None,
                     require_approval: None,
-                    invoke: Box::new(GreetTool),
+                    invoke: Arc::new(GreetTool),
                 });
                 Ok(())
             }
@@ -1242,7 +1290,7 @@ mod tests {
                     input_schema: json!({"type": "object"}),
                     output_schema: None,
                     require_approval: None,
-                    invoke: Box::new(EchoTool),
+                    invoke: Arc::new(EchoTool),
                 });
                 Ok(())
             }
@@ -1314,7 +1362,7 @@ mod tests {
                     input_schema: json!({"type": "object"}),
                     output_schema: None,
                     require_approval: None,
-                    invoke: Box::new(EchoTool),
+                    invoke: Arc::new(EchoTool),
                 });
                 Ok(())
             }
@@ -1358,7 +1406,7 @@ mod tests {
                     input_schema: json!({"type": "object"}),
                     output_schema: None,
                     require_approval: None,
-                    invoke: Box::new(EchoTool),
+                    invoke: Arc::new(EchoTool),
                 });
                 ctx.tools.push(Tool {
                     id: "tool_y".into(),
@@ -1366,7 +1414,7 @@ mod tests {
                     input_schema: json!({"type": "object"}),
                     output_schema: None,
                     require_approval: None,
-                    invoke: Box::new(EchoTool),
+                    invoke: Arc::new(EchoTool),
                 });
                 Ok(())
             }
@@ -1467,7 +1515,7 @@ mod tests {
                     input_schema: json!({"type": "object"}),
                     output_schema: None,
                     require_approval: None,
-                    invoke: Box::new(FakeRunCode),
+                    invoke: Arc::new(FakeRunCode),
                 });
                 Ok(())
             }
@@ -1560,9 +1608,17 @@ mod tests {
                     input_schema: json!({"type": "object", "properties": {"code": {"type": "string"}}, "required": ["code"]}),
                     output_schema: None,
                     require_approval: None,
-                    invoke: Box::new(ResumeRunCode {
+                    invoke: Arc::new(ResumeRunCode {
                         call_count: self.call_count.clone(),
                     }),
+                });
+                ctx.tools.push(Tool {
+                    id: "inner".into(),
+                    description: "Inner tool".into(),
+                    input_schema: json!({"type": "object"}),
+                    output_schema: None,
+                    require_approval: None,
+                    invoke: Arc::new(EchoTool),
                 });
                 Ok(())
             }
@@ -1654,7 +1710,7 @@ mod tests {
                     input_schema: json!({"type": "object"}),
                     output_schema: None,
                     require_approval: None,
-                    invoke: Box::new(RejectRunCode),
+                    invoke: Arc::new(RejectRunCode),
                 });
                 Ok(())
             }
@@ -1977,9 +2033,17 @@ mod tests {
                     input_schema: json!({"type": "object", "properties": {"code": {"type": "string"}}, "required": ["code"]}),
                     output_schema: None,
                     require_approval: None,
-                    invoke: Box::new(FailOnSecondRunCode {
+                    invoke: Arc::new(FailOnSecondRunCode {
                         call_count: self.call_count.clone(),
                     }),
+                });
+                ctx.tools.push(Tool {
+                    id: "inner".into(),
+                    description: "Inner tool".into(),
+                    input_schema: json!({"type": "object"}),
+                    output_schema: None,
+                    require_approval: None,
+                    invoke: Arc::new(EchoTool),
                 });
                 Ok(())
             }
@@ -2071,7 +2135,15 @@ mod tests {
                     input_schema: json!({"type": "object", "properties": {"code": {"type": "string"}}, "required": ["code"]}),
                     output_schema: None,
                     require_approval: None,
-                    invoke: Box::new(AlwaysApprovalRunCode),
+                    invoke: Arc::new(AlwaysApprovalRunCode),
+                });
+                ctx.tools.push(Tool {
+                    id: "inner".into(),
+                    description: "Inner tool".into(),
+                    input_schema: json!({"type": "object"}),
+                    output_schema: None,
+                    require_approval: None,
+                    invoke: Arc::new(EchoTool),
                 });
                 Ok(())
             }

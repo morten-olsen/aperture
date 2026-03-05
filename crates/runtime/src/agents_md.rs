@@ -81,6 +81,7 @@ mod tests {
         let mut tools: Vec<Tool> = Vec::new();
         let mut context: Vec<ContextItem> = Vec::new();
 
+        let registry = aperture_engine::ToolRegistry::new();
         let mut ctx = PrepareContext {
             user_id: "alice",
             input: "",
@@ -90,6 +91,7 @@ mod tests {
             extensions: &extensions,
             events: &events,
             history: &[],
+            registry: &registry,
         };
 
         AgentsMdPlugin.prepare(&mut ctx).await.unwrap();
@@ -113,6 +115,7 @@ mod tests {
         let mut tools: Vec<Tool> = Vec::new();
         let mut context: Vec<ContextItem> = Vec::new();
 
+        let registry = aperture_engine::ToolRegistry::new();
         let mut ctx = PrepareContext {
             user_id: "bob",
             input: "",
@@ -122,6 +125,7 @@ mod tests {
             extensions: &extensions,
             events: &events,
             history: &[],
+            registry: &registry,
         };
 
         AgentsMdPlugin.prepare(&mut ctx).await.unwrap();
@@ -139,6 +143,7 @@ mod tests {
         let mut tools: Vec<Tool> = Vec::new();
         let mut context: Vec<ContextItem> = Vec::new();
 
+        let registry = aperture_engine::ToolRegistry::new();
         let mut ctx = PrepareContext {
             user_id: "alice",
             input: "",
@@ -148,6 +153,7 @@ mod tests {
             extensions: &extensions,
             events: &events,
             history: &[],
+            registry: &registry,
         };
 
         AgentsMdPlugin.prepare(&mut ctx).await.unwrap();

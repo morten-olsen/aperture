@@ -2,6 +2,8 @@ pub(crate) mod crypto;
 pub(crate) mod store;
 pub(crate) mod tools;
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use serde_json::json;
 
@@ -49,11 +51,7 @@ impl Plugin for SecretPlugin {
             ctx.extensions.insert(RedactionRegistry::default());
         }
 
-        Ok(())
-    }
-
-    async fn prepare(&self, ctx: &mut PrepareContext<'_>) -> Result<()> {
-        ctx.tools.push(Tool {
+        ctx.registry.register(Tool {
             id: "secrets_list".into(),
             description: "List available secrets (id and name only, no values).".into(),
             input_schema: json!({
@@ -62,10 +60,10 @@ impl Plugin for SecretPlugin {
             }),
             output_schema: None,
             require_approval: None,
-            invoke: Box::new(SecretsList),
+            invoke: Arc::new(SecretsList),
         });
 
-        ctx.tools.push(Tool {
+        ctx.registry.register(Tool {
             id: "secrets_get_value".into(),
             description: "Retrieve the decrypted value of a secret by ID. The value will be automatically redacted from any output visible to the model.".into(),
             input_schema: json!({
@@ -79,9 +77,15 @@ impl Plugin for SecretPlugin {
             require_approval: Some(ApprovalRequirement::Always {
                 reason: "Accessing a secret value".into(),
             }),
-            invoke: Box::new(SecretsGetValue),
+            invoke: Arc::new(SecretsGetValue),
         });
 
+        Ok(())
+    }
+
+    async fn prepare(&self, ctx: &mut PrepareContext<'_>) -> Result<()> {
+        ctx.activate_tool("secrets_list")?;
+        ctx.activate_tool("secrets_get_value")?;
         Ok(())
     }
 }

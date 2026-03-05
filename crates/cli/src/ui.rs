@@ -91,14 +91,29 @@ fn render_messages(f: &mut Frame, app: &App, area: Rect) {
         }
     }
 
-    if app.status == Status::Waiting {
-        if !lines.is_empty() {
-            lines.push(Line::from(""));
+    match &app.status {
+        Status::Waiting => {
+            if !lines.is_empty() {
+                lines.push(Line::from(""));
+            }
+            lines.push(Line::from(Span::styled(
+                "  ◇ thinking…",
+                Style::default().fg(DIM),
+            )));
         }
-        lines.push(Line::from(Span::styled(
-            "  ◇ thinking…",
-            Style::default().fg(DIM),
-        )));
+        Status::WaitingForApproval { .. } => {
+            if !lines.is_empty() {
+                lines.push(Line::from(""));
+            }
+            lines.push(Line::from(vec![
+                Span::styled("  ⚠ ", Style::default().fg(SYSTEM)),
+                Span::styled(
+                    "Tool requires approval. Press y to approve, n to reject.",
+                    Style::default().fg(SYSTEM),
+                ),
+            ]));
+        }
+        Status::Connected => {}
     }
 
     let short_id: String = app.conversation_id.chars().take(8).collect();
@@ -178,7 +193,11 @@ fn render_tool_line(raw: &str, lines: &mut Vec<Line>) {
 // ── Input ───────────────────────────────────────────────────────────
 
 fn render_input(f: &mut Frame, app: &App, area: Rect) {
-    let title_style = if app.status == Status::Waiting {
+    let is_busy = matches!(
+        app.status,
+        Status::Waiting | Status::WaitingForApproval { .. }
+    );
+    let title_style = if is_busy {
         Style::default().fg(DIM)
     } else {
         Style::default().fg(ACCENT)
@@ -192,7 +211,7 @@ fn render_input(f: &mut Frame, app: &App, area: Rect) {
     let inner_w = area.width.saturating_sub(2).max(1);
     let inner_h = area.height.saturating_sub(2);
 
-    let display_text = if app.input.is_empty() && app.status != Status::Waiting {
+    let display_text = if app.input.is_empty() && !is_busy {
         Text::from(Span::styled("…", Style::default().fg(FAINT)))
     } else {
         Text::from(app.input.as_str())
@@ -209,7 +228,7 @@ fn render_input(f: &mut Frame, app: &App, area: Rect) {
     f.render_widget(input, area);
 
     // Cursor positioning.
-    if app.status != Status::Waiting {
+    if !is_busy {
         let w = inner_w as usize;
         let visual_len = Line::from(app.input.as_str()).width();
         let cursor_row = (visual_len / w) as u16;
@@ -228,9 +247,10 @@ fn render_input(f: &mut Frame, app: &App, area: Rect) {
 // ── Status bar ──────────────────────────────────────────────────────
 
 fn render_status(f: &mut Frame, app: &App, area: Rect) {
-    let (dot, dot_color, label) = match app.status {
+    let (dot, dot_color, label) = match &app.status {
         Status::Connected => ("●", USER, "ready"),
         Status::Waiting => ("◌", DIM, "thinking"),
+        Status::WaitingForApproval { .. } => ("⚠", SYSTEM, "approval required"),
     };
 
     let mut spans = vec![

@@ -350,6 +350,24 @@ impl PromptRunner for ServerPromptRunner {
             .expect("engine handle must be set before use");
         engine.run(&*self.llm, user_id, input, history).await
     }
+
+    async fn approve(&self, prompt: Prompt) -> Result<Prompt> {
+        let engine = self
+            .handle
+            .0
+            .get()
+            .expect("engine handle must be set before use");
+        engine.approve(&*self.llm, prompt).await
+    }
+
+    async fn reject(&self, prompt: Prompt, reason: &str) -> Result<Prompt> {
+        let engine = self
+            .handle
+            .0
+            .get()
+            .expect("engine handle must be set before use");
+        engine.reject(&*self.llm, prompt, reason).await
+    }
 }
 
 // ── Build engine ─────────────────────────────────────────────────────

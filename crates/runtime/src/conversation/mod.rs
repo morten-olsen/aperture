@@ -53,7 +53,10 @@ impl Plugin for ConversationPlugin {
             while let Ok(envelope) = rx.recv().await {
                 let is_prompt_event = matches!(
                     envelope.event_id.as_str(),
-                    "prompt.created" | "prompt.updated" | "prompt.completed"
+                    "prompt.created"
+                        | "prompt.updated"
+                        | "prompt.completed"
+                        | "prompt.waiting_for_approval"
                 );
                 if !is_prompt_event {
                     continue;
@@ -152,6 +155,37 @@ impl Plugin for ConversationPlugin {
             }),
             output_schema: None,
             invoke: Box::new(actions::AttachPrompt),
+        });
+
+        ctx.actions.push(Action {
+            id: "approve_prompt".into(),
+            description: "Approve a pending tool invocation and continue the prompt".into(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "conversation_id": {"type": "string"},
+                    "prompt_id": {"type": "string"}
+                },
+                "required": ["conversation_id", "prompt_id"]
+            }),
+            output_schema: None,
+            invoke: Box::new(actions::ApprovePrompt),
+        });
+
+        ctx.actions.push(Action {
+            id: "reject_prompt".into(),
+            description: "Reject a pending tool invocation and continue the prompt".into(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "conversation_id": {"type": "string"},
+                    "prompt_id": {"type": "string"},
+                    "reason": {"type": "string"}
+                },
+                "required": ["conversation_id", "prompt_id"]
+            }),
+            output_schema: None,
+            invoke: Box::new(actions::RejectPrompt),
         });
 
         Ok(())

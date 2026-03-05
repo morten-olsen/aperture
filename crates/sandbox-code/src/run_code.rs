@@ -403,7 +403,7 @@ mod tests {
             input_schema: json!({"type": "object", "properties": {"msg": {"type": "string"}}}),
             output_schema: None,
             require_approval: None,
-            invoke: Box::new(EchoInvoke),
+            invoke: Arc::new(EchoInvoke),
         }
     }
 
@@ -416,7 +416,7 @@ mod tests {
             require_approval: Some(ApprovalRequirement::Always {
                 reason: "dangerous operation".into(),
             }),
-            invoke: Box::new(EchoInvoke),
+            invoke: Arc::new(EchoInvoke),
         }
     }
 

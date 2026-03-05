@@ -33,15 +33,20 @@ pub trait Plugin: Send + Sync {
 Called once when the plugin is registered via `Engine::register()`. Use it for:
 
 - Registering services in the extensions type map (for other plugins to consume)
+- Registering tools in the global tool registry
 - Setting up event listeners
 - Validating configuration
 - Initializing resources
 
 ```rust
-async fn setup(&mut self, ctx: &mut SetupContext) -> Result<()> {
+async fn setup(&self, ctx: &mut SetupContext<'_>) -> Result<()> {
     // Register a service for other plugins to use
     let ha_service = HomeAssistantService::new(&self.config);
     ctx.extensions.insert(ha_service);
+
+    // Register tools in the global registry
+    ctx.registry.register(ha_list_devices_tool());
+    ctx.registry.register(ha_control_device_tool());
 
     // Subscribe to events
     ctx.events.subscribe(&SOME_EVENT, |payload, _| {
@@ -57,7 +62,7 @@ async fn setup(&mut self, ctx: &mut SetupContext) -> Result<()> {
 Called before every prompt in the agent loop. The framework creates a `PrepareContext` that accumulates tools, context items, and state across all plugins. Each plugin receives mutable access to this context.
 
 ```rust
-async fn prepare(&self, ctx: &mut PrepareContext) -> Result<()> {
+async fn prepare(&self, ctx: &mut PrepareContext<'_>) -> Result<()> {
     // Add system context
     ctx.add_context_item(ContextItem {
         item_type: "instruction".into(),
@@ -65,15 +70,9 @@ async fn prepare(&self, ctx: &mut PrepareContext) -> Result<()> {
         content: "You have access to home automation.".into(),
     });
 
-    // Consume a service registered by another plugin
-    let ha = ctx.extensions.get::<HomeAssistantService>()
-        .expect("HomeAssistantService not registered");
-    let devices = ha.list_devices().await?;
-
-    // Add model-facing tools based on available devices
-    for device in devices {
-        ctx.add_tool(device_control_tool(&device));
-    }
+    // Activate tools registered during setup()
+    ctx.activate_tool("ha.list_devices")?;
+    ctx.activate_tool("ha.control_device")?;
 
     Ok(())
 }
@@ -87,6 +86,7 @@ The `SetupContext` provides access to engine infrastructure during plugin regist
 |-------|------|-------------|
 | `extensions` | `&mut Extensions` | Type map for registering services. |
 | `events` | `&EventBus` | The event bus for subscribing to events. |
+| `registry` | `&mut ToolRegistry` | Global tool registry. Register tools here so the engine can look them up by ID. |
 
 ## PrepareContext
 
@@ -100,6 +100,7 @@ The `PrepareContext` provides everything a plugin needs during the prepare phase
 | `extensions` | `&Extensions` | Type map for consuming services from other plugins (read-only during prepare). |
 | `events` | `&EventBus` | The event bus for publishing/subscribing. |
 | `history` | `&[Prompt]` | Conversation history including the current prompt. |
+| `registry` | `&ToolRegistry` | Global tool registry (read-only). Use `activate_tool(id)` to activate a registered tool. |
 
 ## Context Items
 
@@ -147,17 +148,21 @@ impl Plugin for HomeAssistantPlugin {
     fn id(&self) -> &str { "home-assistant" }
     fn name(&self) -> Option<&str> { Some("Home Assistant") }
 
-    async fn setup(&mut self, ctx: &mut SetupContext) -> Result<()> {
+    async fn setup(&self, ctx: &mut SetupContext<'_>) -> Result<()> {
         // Register service for other plugins
         let service = HomeAssistantService::new(&self.config);
         ctx.extensions.insert(service);
+
+        // Register tools in the global registry
+        ctx.registry.register(ha_list_devices_tool());
+        ctx.registry.register(ha_control_device_tool());
         Ok(())
     }
 
-    async fn prepare(&self, ctx: &mut PrepareContext) -> Result<()> {
-        // Add model-facing tools
-        ctx.add_tool(ha_list_devices_tool());
-        ctx.add_tool(ha_control_device_tool());
+    async fn prepare(&self, ctx: &mut PrepareContext<'_>) -> Result<()> {
+        // Activate registered tools for this prompt
+        ctx.activate_tool("ha.list_devices")?;
+        ctx.activate_tool("ha.control_device")?;
         Ok(())
     }
 }
@@ -172,16 +177,23 @@ pub struct HomeAutomationPlugin;
 impl Plugin for HomeAutomationPlugin {
     fn id(&self) -> &str { "home-automation" }
 
-    async fn prepare(&self, ctx: &mut PrepareContext) -> Result<()> {
+    async fn setup(&self, ctx: &mut SetupContext<'_>) -> Result<()> {
+        ctx.registry.register(list_automations_tool());
+        ctx.registry.register(toggle_automation_tool());
+        Ok(())
+    }
+
+    async fn prepare(&self, ctx: &mut PrepareContext<'_>) -> Result<()> {
         // Consume the HomeAssistant service (internal, not model-facing)
         let ha = ctx.extensions.get::<HomeAssistantService>()
             .expect("HomeAssistantService not registered");
 
+        // Conditionally activate tools based on runtime state
         let automations = ha.list_automations().await?;
-
-        // Expose automation management as model-facing tools
-        ctx.add_tool(list_automations_tool(&automations));
-        ctx.add_tool(toggle_automation_tool());
+        if !automations.is_empty() {
+            ctx.activate_tool("automation.list")?;
+            ctx.activate_tool("automation.toggle")?;
+        }
 
         Ok(())
     }
@@ -309,9 +321,9 @@ WASM plugins are sandboxed by default. The host can grant additional capabilitie
 ## Plugin Design Guidelines
 
 1. **Choose a unique `id`** — The ID is used as the state storage key. Keep it stable across versions.
-2. **Keep `setup()` fast** — It runs at startup. Defer heavy work to `prepare()` or lazy initialization.
+2. **Keep `setup()` fast** — It runs at startup. Tool registration is cheap; defer heavy work to `prepare()` or lazy initialization.
 3. **Tools are for the model, services are for plugins** — If the LLM should call it, it's a tool. If another plugin should call it, register it as a service in the extensions type map.
-4. **Prefer dynamic tools in `prepare()`** — Adding tools conditionally based on state enables progressive disclosure.
+4. **Register tools in `setup()`, activate in `prepare()`** — Register tools in the global registry during `setup()` so the engine can look them up by ID. Activate them conditionally in `prepare()` via `ctx.activate_tool(id)` for progressive disclosure.
 5. **Use context items for instructions** — Don't embed instructions in tool descriptions. Use context items for system-level guidance.
 6. **Namespace tool IDs** — Prefix with plugin name: `trigger.create`, `skill.activate`.
 7. **Registration order matters** — If plugin B depends on plugin A's service, register A first.

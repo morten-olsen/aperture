@@ -14,6 +14,7 @@ pub mod redaction;
 pub mod sandbox;
 pub mod state;
 pub mod tool;
+pub mod tool_registry;
 
 pub use action::{Action, ActionContext, ActionInvoke};
 pub use context::ContextItem;
@@ -35,3 +36,4 @@ pub use sandbox::{
 };
 pub use state::State;
 pub use tool::{ApprovalContext, ApprovalRequirement, Tool, ToolContext, ToolInvoke};
+pub use tool_registry::ToolRegistry;

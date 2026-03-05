@@ -120,6 +120,7 @@ mod tests {
         let mut tools = Vec::new();
         let mut context_items: Vec<ContextItem> = Vec::new();
 
+        let registry = aperture_engine::ToolRegistry::new();
         let mut ctx = PrepareContext {
             user_id: "test-user",
             input: "",
@@ -129,6 +130,7 @@ mod tests {
             extensions: &extensions,
             events: &events,
             history: &[],
+            registry: &registry,
         };
 
         context::inject_trigger_context(&mut ctx).unwrap();
@@ -150,6 +152,7 @@ mod tests {
         };
         state.set("trigger", &ts).unwrap();
 
+        let registry = aperture_engine::ToolRegistry::new();
         let mut ctx = PrepareContext {
             user_id: "test-user",
             input: "",
@@ -159,6 +162,7 @@ mod tests {
             extensions: &extensions,
             events: &events,
             history: &[],
+            registry: &registry,
         };
 
         context::inject_trigger_context(&mut ctx).unwrap();

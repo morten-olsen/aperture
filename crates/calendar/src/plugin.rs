@@ -1,13 +1,22 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use serde_json::json;
 
 use aperture_engine::error::Result;
-use aperture_engine::plugin::{Plugin, PrepareContext};
+use aperture_engine::plugin::{Plugin, PrepareContext, SetupContext};
 use aperture_engine::tool::Tool;
 
 use crate::tools::{CalendarList, CalendarListEvents, CalendarSetup, CalendarUpdate};
 
 pub struct CalendarPlugin;
+
+const CALENDAR_TOOL_IDS: &[&str] = &[
+    "calendar_setup",
+    "calendar_list",
+    "calendar_list_events",
+    "calendar_update",
+];
 
 #[async_trait]
 impl Plugin for CalendarPlugin {
@@ -19,8 +28,8 @@ impl Plugin for CalendarPlugin {
         "CalDAV calendar integration"
     }
 
-    async fn prepare(&self, ctx: &mut PrepareContext<'_>) -> Result<()> {
-        ctx.tools.push(Tool {
+    async fn setup(&self, ctx: &mut SetupContext<'_>) -> Result<()> {
+        ctx.registry.register(Tool {
             id: "calendar_setup".into(),
             description: "Configure a CalDAV calendar account.".into(),
             input_schema: json!({
@@ -35,10 +44,10 @@ impl Plugin for CalendarPlugin {
             }),
             output_schema: None,
             require_approval: None,
-            invoke: Box::new(CalendarSetup),
+            invoke: Arc::new(CalendarSetup),
         });
 
-        ctx.tools.push(Tool {
+        ctx.registry.register(Tool {
             id: "calendar_list".into(),
             description: "List available calendars.".into(),
             input_schema: json!({
@@ -47,10 +56,10 @@ impl Plugin for CalendarPlugin {
             }),
             output_schema: None,
             require_approval: None,
-            invoke: Box::new(CalendarList),
+            invoke: Arc::new(CalendarList),
         });
 
-        ctx.tools.push(Tool {
+        ctx.registry.register(Tool {
             id: "calendar_list_events".into(),
             description: "List events in a calendar.".into(),
             input_schema: json!({
@@ -64,10 +73,10 @@ impl Plugin for CalendarPlugin {
             }),
             output_schema: None,
             require_approval: None,
-            invoke: Box::new(CalendarListEvents),
+            invoke: Arc::new(CalendarListEvents),
         });
 
-        ctx.tools.push(Tool {
+        ctx.registry.register(Tool {
             id: "calendar_update".into(),
             description: "Update a calendar event.".into(),
             input_schema: json!({
@@ -83,9 +92,16 @@ impl Plugin for CalendarPlugin {
             }),
             output_schema: None,
             require_approval: None,
-            invoke: Box::new(CalendarUpdate),
+            invoke: Arc::new(CalendarUpdate),
         });
 
+        Ok(())
+    }
+
+    async fn prepare(&self, ctx: &mut PrepareContext<'_>) -> Result<()> {
+        for id in CALENDAR_TOOL_IDS {
+            ctx.activate_tool(id)?;
+        }
         Ok(())
     }
 }

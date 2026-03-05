@@ -2,11 +2,13 @@ mod exec;
 mod rules;
 mod rules_tools;
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use serde_json::json;
 
 use aperture_engine::error::Result;
-use aperture_engine::plugin::{Plugin, PrepareContext};
+use aperture_engine::plugin::{Plugin, PrepareContext, SetupContext};
 use aperture_engine::tool::{ApprovalRequirement, Tool};
 
 use self::exec::CliExec;
@@ -15,6 +17,13 @@ use self::rules_tools::{CliRulesAdd, CliRulesList, CliRulesRemove};
 use crate::config::RuntimeConfig;
 
 pub struct CliPlugin;
+
+const CLI_TOOL_IDS: &[&str] = &[
+    "cli_exec",
+    "cli_rules_list",
+    "cli_rules_add",
+    "cli_rules_remove",
+];
 
 #[async_trait]
 impl Plugin for CliPlugin {
@@ -26,11 +35,10 @@ impl Plugin for CliPlugin {
         "Provides sandboxed CLI command execution with configurable allow/deny rules"
     }
 
-    async fn prepare(&self, ctx: &mut PrepareContext<'_>) -> Result<()> {
-        // Capture a clone of RuntimeConfig for the approval closure.
+    async fn setup(&self, ctx: &mut SetupContext<'_>) -> Result<()> {
         let config = ctx.extensions.get::<RuntimeConfig>().cloned();
 
-        ctx.tools.push(Tool {
+        ctx.registry.register(Tool {
             id: "cli_exec".into(),
             description: "Execute a shell command in the user's workspace sandbox. \
                           The command runs with filesystem access limited to the workspace \
@@ -58,7 +66,7 @@ impl Plugin for CliPlugin {
                     "exit_code": { "type": "integer" }
                 }
             })),
-            require_approval: Some(ApprovalRequirement::Dynamic(Box::new(
+            require_approval: Some(ApprovalRequirement::Dynamic(Arc::new(
                 move |input, approval_ctx| {
                     let command = match input.get("command").and_then(|v| v.as_str()) {
                         Some(cmd) => cmd,
@@ -94,11 +102,10 @@ impl Plugin for CliPlugin {
                     }
                 },
             ))),
-            invoke: Box::new(CliExec),
+            invoke: Arc::new(CliExec),
         });
 
-        // Rules management tools — always require human approval.
-        ctx.tools.push(Tool {
+        ctx.registry.register(Tool {
             id: "cli_rules_list".into(),
             description: "List all CLI allow/deny rules for the current user.".into(),
             input_schema: json!({
@@ -109,10 +116,10 @@ impl Plugin for CliPlugin {
             require_approval: Some(ApprovalRequirement::Always {
                 reason: "Listing CLI rules requires approval".into(),
             }),
-            invoke: Box::new(CliRulesList),
+            invoke: Arc::new(CliRulesList),
         });
 
-        ctx.tools.push(Tool {
+        ctx.registry.register(Tool {
             id: "cli_rules_add".into(),
             description: "Add a new CLI allow or deny rule.".into(),
             input_schema: json!({
@@ -138,10 +145,10 @@ impl Plugin for CliPlugin {
             require_approval: Some(ApprovalRequirement::Always {
                 reason: "Adding CLI rules requires approval".into(),
             }),
-            invoke: Box::new(CliRulesAdd),
+            invoke: Arc::new(CliRulesAdd),
         });
 
-        ctx.tools.push(Tool {
+        ctx.registry.register(Tool {
             id: "cli_rules_remove".into(),
             description: "Remove a CLI rule by its exact pattern.".into(),
             input_schema: json!({
@@ -158,9 +165,16 @@ impl Plugin for CliPlugin {
             require_approval: Some(ApprovalRequirement::Always {
                 reason: "Removing CLI rules requires approval".into(),
             }),
-            invoke: Box::new(CliRulesRemove),
+            invoke: Arc::new(CliRulesRemove),
         });
 
+        Ok(())
+    }
+
+    async fn prepare(&self, ctx: &mut PrepareContext<'_>) -> Result<()> {
+        for id in CLI_TOOL_IDS {
+            ctx.activate_tool(id)?;
+        }
         Ok(())
     }
 }

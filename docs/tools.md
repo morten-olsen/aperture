@@ -17,14 +17,14 @@ pub struct Tool {
     /// JSON Schema describing the tool's input parameters.
     pub input_schema: serde_json::Value,
 
-    /// JSON Schema describing the tool's output.
-    pub output_schema: serde_json::Value,
+    /// JSON Schema describing the tool's output (optional).
+    pub output_schema: Option<serde_json::Value>,
 
     /// Optional approval gate. If set, the agent loop pauses for human approval.
     pub require_approval: Option<ApprovalRequirement>,
 
-    /// The function that executes the tool.
-    pub invoke: Box<dyn ToolInvoke>,
+    /// The function that executes the tool. Uses `Arc` to allow cloning/sharing.
+    pub invoke: Arc<dyn ToolInvoke>,
 }
 ```
 
@@ -47,7 +47,8 @@ The `ToolContext` provides everything a tool needs:
 | `state` | `&mut State` | Plugin state manager. Read/write any plugin's state. |
 | `extensions` | `&Extensions` | The type map for accessing services from other plugins. |
 | `events` | `&EventBus` | The event bus for publishing events. |
-| `user_id` | `&str` | The user who initiated the prompt. |
+| `user_id` | `String` | The user who initiated the prompt. |
+| `replay` | `Option<Vec<ReplayEntry>>` | Replay log for sandbox re-execution (used internally by the code sandbox). |
 
 ## Creating Tools (Native)
 
@@ -73,7 +74,7 @@ pub fn search_tool() -> Tool {
             }
         }),
         require_approval: None,
-        invoke: Box::new(SearchInvoke),
+        invoke: Arc::new(SearchInvoke),
     }
 }
 
@@ -155,21 +156,42 @@ For WASM tools, schemas are provided as JSON strings by the guest plugin.
 
 ## Making Tools Available
 
-Tools are contributed during the plugin's `prepare()` phase:
+### Registry Pattern (recommended)
+
+Tools are registered in the global `ToolRegistry` during `setup()`, then activated during `prepare()`. This allows the engine to look up any tool by ID at any time — critical for features like sandbox approval replay.
 
 ```rust
-async fn prepare(&self, ctx: &mut PrepareContext) -> Result<()> {
+async fn setup(&self, ctx: &mut SetupContext<'_>) -> Result<()> {
+    ctx.registry.register(list_tool());
+    ctx.registry.register(create_tool());
+    ctx.registry.register(update_tool());
+    ctx.registry.register(delete_tool());
+    Ok(())
+}
+
+async fn prepare(&self, ctx: &mut PrepareContext<'_>) -> Result<()> {
     // Always available
-    ctx.add_tool(list_tool());
-    ctx.add_tool(create_tool());
+    ctx.activate_tool("notes.list")?;
+    ctx.activate_tool("notes.create")?;
 
     // Conditionally available based on state
     let state = ctx.state.get::<MyState>(self.id())?;
     if state.map_or(false, |s| s.has_active_item) {
-        ctx.add_tool(update_tool());
-        ctx.add_tool(delete_tool());
+        ctx.activate_tool("notes.update")?;
+        ctx.activate_tool("notes.delete")?;
     }
 
+    Ok(())
+}
+```
+
+### Direct Pattern
+
+Tools can also be added directly during `prepare()` without the registry. This is useful for dynamically constructed tools that don't have a stable ID:
+
+```rust
+async fn prepare(&self, ctx: &mut PrepareContext<'_>) -> Result<()> {
+    ctx.tools.push(device_control_tool(&device));
     Ok(())
 }
 ```
@@ -197,7 +219,7 @@ Approval depends on the input. The closure receives both the input and an `Appro
 
 ```rust
 Tool {
-    require_approval: Some(ApprovalRequirement::Dynamic(Box::new(|input, ctx| {
+    require_approval: Some(ApprovalRequirement::Dynamic(Arc::new(|input, ctx| {
         let amount = input["amount"].as_f64().unwrap_or(0.0);
         if amount > 100.0 {
             Some(format!("Sending ${amount} requires approval."))
@@ -219,7 +241,7 @@ The `ApprovalContext` provides:
 This enables approval logic that depends on runtime state, such as checking CLI rules for a user:
 
 ```rust
-ApprovalRequirement::Dynamic(Box::new(move |input, ctx| {
+ApprovalRequirement::Dynamic(Arc::new(move |input, ctx| {
     let config = config.clone();
     let command = input["command"].as_str()?;
     let rules = load_rules(&config.configs_dir(ctx.user_id).join("cli-rules.toml")).ok()?;

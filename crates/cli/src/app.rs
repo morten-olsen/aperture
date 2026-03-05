@@ -11,10 +11,11 @@ pub struct App {
     usage_counted: bool,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Status {
     Connected,
     Waiting,
+    WaitingForApproval { prompt_id: String },
 }
 
 #[derive(Default)]
@@ -50,7 +51,7 @@ impl App {
 
     /// Take the current input, push a user message, and return the text for sending.
     pub fn send_message(&mut self) -> Option<String> {
-        if self.input.is_empty() || self.status == Status::Waiting {
+        if self.input.is_empty() || !matches!(self.status, Status::Connected) {
             return None;
         }
         let text = std::mem::take(&mut self.input);
@@ -73,6 +74,14 @@ impl App {
             "prompt.completed" => {
                 self.finish_prompt(payload);
             }
+            "prompt.waiting_for_approval" => {
+                self.update_from_prompt(payload);
+                if let Some(id) = payload["id"].as_str() {
+                    self.status = Status::WaitingForApproval {
+                        prompt_id: id.to_string(),
+                    };
+                }
+            }
             _ => {}
         }
     }
@@ -83,7 +92,16 @@ impl App {
     /// `prompt.completed` event was missed, this guarantees the response
     /// is rendered.
     pub fn handle_action_result(&mut self, payload: &Value) {
-        self.finish_prompt(payload);
+        if payload["state"].as_str() == Some("waiting_for_approval") {
+            self.update_from_prompt(payload);
+            if let Some(id) = payload["id"].as_str() {
+                self.status = Status::WaitingForApproval {
+                    prompt_id: id.to_string(),
+                };
+            }
+        } else {
+            self.finish_prompt(payload);
+        }
     }
 
     fn finish_prompt(&mut self, payload: &Value) {
@@ -159,6 +177,35 @@ impl App {
             role: Role::Assistant,
             content,
         });
+    }
+
+    /// If waiting for approval, return the action payload to approve and reset status.
+    pub fn approve(&mut self) -> Option<(String, Value)> {
+        if let Status::WaitingForApproval { prompt_id } = &self.status {
+            let payload = serde_json::json!({
+                "conversation_id": self.conversation_id,
+                "prompt_id": prompt_id,
+            });
+            self.status = Status::Waiting;
+            Some(("approve_prompt".to_string(), payload))
+        } else {
+            None
+        }
+    }
+
+    /// If waiting for approval, return the action payload to reject and reset status.
+    pub fn reject(&mut self) -> Option<(String, Value)> {
+        if let Status::WaitingForApproval { prompt_id } = &self.status {
+            let payload = serde_json::json!({
+                "conversation_id": self.conversation_id,
+                "prompt_id": prompt_id,
+                "reason": "user rejected",
+            });
+            self.status = Status::Waiting;
+            Some(("reject_prompt".to_string(), payload))
+        } else {
+            None
+        }
     }
 
     pub fn scroll_up(&mut self, amount: u16) {

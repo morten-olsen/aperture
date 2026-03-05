@@ -258,7 +258,7 @@ async fn run_oneshot(
     prompt: &str,
     json_output: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let result = client
+    let mut result = client
         .invoke_action(
             "send_message",
             json!({
@@ -268,14 +268,53 @@ async fn run_oneshot(
         )
         .await?;
 
-    if json_output {
-        println!("{}", serde_json::to_string_pretty(&result)?);
-    } else {
-        print_human(&result);
-    }
+    loop {
+        if json_output {
+            println!("{}", serde_json::to_string_pretty(&result)?);
+        } else {
+            print_human(&result);
+        }
 
-    if result["state"].as_str() == Some("waiting_for_approval") {
-        std::process::exit(3);
+        if result["state"].as_str() != Some("waiting_for_approval") {
+            break;
+        }
+
+        let prompt_id = match result["id"].as_str() {
+            Some(id) => id.to_string(),
+            None => {
+                eprintln!("error: prompt missing id, cannot approve/reject");
+                std::process::exit(3);
+            }
+        };
+
+        eprint!("Approve? [y/n] ");
+        io::stdout().flush().ok();
+        let mut line = String::new();
+        io::stdin().lock().read_line(&mut line).ok();
+
+        let answer = line.trim().to_lowercase();
+        result = if answer == "y" || answer == "yes" {
+            client
+                .invoke_action(
+                    "approve_prompt",
+                    json!({
+                        "conversation_id": conversation_id,
+                        "prompt_id": prompt_id,
+                    }),
+                )
+                .await?
+        } else {
+            client
+                .invoke_action(
+                    "reject_prompt",
+                    json!({
+                        "conversation_id": conversation_id,
+                        "prompt_id": prompt_id,
+                        "reason": "user rejected",
+                    }),
+                )
+                .await?
+        };
     }
 
     Ok(())
@@ -400,6 +439,32 @@ async fn run_interactive(
                                             Err(e) => {
                                                 let _ = tx_err.send(format!("send failed: {e}"));
                                             }
+                                        }
+                                    });
+                                }
+                            }
+                            KeyCode::Char('y') if matches!(app.status, app::Status::WaitingForApproval { .. }) => {
+                                if let Some((action, payload)) = app.approve() {
+                                    let c = client.clone();
+                                    let tx_err = err_tx.clone();
+                                    let tx_ok = result_tx.clone();
+                                    tokio::spawn(async move {
+                                        match c.invoke_action(&action, payload).await {
+                                            Ok(result) => { let _ = tx_ok.send(result); }
+                                            Err(e) => { let _ = tx_err.send(format!("approve failed: {e}")); }
+                                        }
+                                    });
+                                }
+                            }
+                            KeyCode::Char('n') if matches!(app.status, app::Status::WaitingForApproval { .. }) => {
+                                if let Some((action, payload)) = app.reject() {
+                                    let c = client.clone();
+                                    let tx_err = err_tx.clone();
+                                    let tx_ok = result_tx.clone();
+                                    tokio::spawn(async move {
+                                        match c.invoke_action(&action, payload).await {
+                                            Ok(result) => { let _ = tx_ok.send(result); }
+                                            Err(e) => { let _ = tx_err.send(format!("reject failed: {e}")); }
                                         }
                                     });
                                 }

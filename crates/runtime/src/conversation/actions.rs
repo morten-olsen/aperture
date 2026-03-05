@@ -191,6 +191,163 @@ impl aperture_engine::action::ActionInvoke for SendMessage {
     }
 }
 
+// ── ApprovePrompt ────────────────────────────────────────────────────
+
+pub struct ApprovePrompt;
+
+#[async_trait]
+impl aperture_engine::action::ActionInvoke for ApprovePrompt {
+    async fn invoke(&self, ctx: ActionContext<'_>) -> Result<Value> {
+        let db = get_db(&ctx)?;
+        let conversation_id = ctx.input["conversation_id"]
+            .as_str()
+            .ok_or_else(|| EngineError::ToolInvocation("conversation_id required".into()))?
+            .to_string();
+        let prompt_id = ctx.input["prompt_id"]
+            .as_str()
+            .ok_or_else(|| EngineError::ToolInvocation("prompt_id required".into()))?
+            .to_string();
+
+        // Load the prompt from DB.
+        let pid = prompt_id.clone();
+        let conv_id = conversation_id.clone();
+        let (_, prompt_rows): (db::ConversationRow, Vec<db::PromptRow>) = db
+            .call(move |conn| db::get_conversation_with_prompts(conn, &conv_id))
+            .await?;
+
+        let prompt_row = prompt_rows
+            .iter()
+            .find(|r| r.id == pid)
+            .ok_or_else(|| EngineError::ToolInvocation("prompt not found".into()))?;
+
+        let prompt = db::row_to_prompt(prompt_row)
+            .map_err(|e| EngineError::ToolInvocation(format!("deserialize prompt: {e}")))?;
+
+        // Call runner.approve().
+        let runner = ctx
+            .extensions
+            .get::<Arc<dyn PromptRunner>>()
+            .ok_or_else(|| EngineError::ToolInvocation("PromptRunner not found".into()))?;
+
+        let updated = runner.approve(prompt).await?;
+
+        // Persist the result.
+        let pid = updated.id.clone();
+        let user_id = updated.user_id.clone();
+        let state = db::state_to_str(&updated.state).to_string();
+        let input = updated.input.clone();
+        let output_json = serde_json::to_string(&updated.output)
+            .map_err(|e| EngineError::ToolInvocation(format!("serialize output: {e}")))?;
+        let usage_json = serde_json::to_string(&updated.usage)
+            .map_err(|e| EngineError::ToolInvocation(format!("serialize usage: {e}")))?;
+
+        db.call(move |conn| {
+            db::upsert_prompt(
+                conn,
+                &pid,
+                &user_id,
+                &state,
+                input.as_deref(),
+                &output_json,
+                &usage_json,
+            )
+        })
+        .await?;
+
+        ctx.events
+            .publish(
+                &CONVERSATION_PROMPT_ATTACHED,
+                &ConversationPromptAttachedPayload {
+                    conversation_id,
+                    prompt_id: updated.id.clone(),
+                },
+            )
+            .await;
+
+        Ok(serde_json::to_value(&updated)
+            .map_err(|e| EngineError::ToolInvocation(format!("serialize: {e}")))?)
+    }
+}
+
+// ── RejectPrompt ─────────────────────────────────────────────────────
+
+pub struct RejectPrompt;
+
+#[async_trait]
+impl aperture_engine::action::ActionInvoke for RejectPrompt {
+    async fn invoke(&self, ctx: ActionContext<'_>) -> Result<Value> {
+        let db = get_db(&ctx)?;
+        let conversation_id = ctx.input["conversation_id"]
+            .as_str()
+            .ok_or_else(|| EngineError::ToolInvocation("conversation_id required".into()))?
+            .to_string();
+        let prompt_id = ctx.input["prompt_id"]
+            .as_str()
+            .ok_or_else(|| EngineError::ToolInvocation("prompt_id required".into()))?
+            .to_string();
+        let reason = ctx.input["reason"].as_str().unwrap_or("user rejected");
+
+        // Load the prompt from DB.
+        let pid = prompt_id.clone();
+        let conv_id = conversation_id.clone();
+        let (_, prompt_rows): (db::ConversationRow, Vec<db::PromptRow>) = db
+            .call(move |conn| db::get_conversation_with_prompts(conn, &conv_id))
+            .await?;
+
+        let prompt_row = prompt_rows
+            .iter()
+            .find(|r| r.id == pid)
+            .ok_or_else(|| EngineError::ToolInvocation("prompt not found".into()))?;
+
+        let prompt = db::row_to_prompt(prompt_row)
+            .map_err(|e| EngineError::ToolInvocation(format!("deserialize prompt: {e}")))?;
+
+        // Call runner.reject().
+        let runner = ctx
+            .extensions
+            .get::<Arc<dyn PromptRunner>>()
+            .ok_or_else(|| EngineError::ToolInvocation("PromptRunner not found".into()))?;
+
+        let updated = runner.reject(prompt, reason).await?;
+
+        // Persist the result.
+        let pid = updated.id.clone();
+        let user_id = updated.user_id.clone();
+        let state = db::state_to_str(&updated.state).to_string();
+        let input = updated.input.clone();
+        let output_json = serde_json::to_string(&updated.output)
+            .map_err(|e| EngineError::ToolInvocation(format!("serialize output: {e}")))?;
+        let usage_json = serde_json::to_string(&updated.usage)
+            .map_err(|e| EngineError::ToolInvocation(format!("serialize usage: {e}")))?;
+
+        db.call(move |conn| {
+            db::upsert_prompt(
+                conn,
+                &pid,
+                &user_id,
+                &state,
+                input.as_deref(),
+                &output_json,
+                &usage_json,
+            )
+        })
+        .await?;
+
+        ctx.events
+            .publish(
+                &CONVERSATION_PROMPT_ATTACHED,
+                &ConversationPromptAttachedPayload {
+                    conversation_id,
+                    prompt_id: updated.id.clone(),
+                },
+            )
+            .await;
+
+        Ok(serde_json::to_value(&updated)
+            .map_err(|e| EngineError::ToolInvocation(format!("serialize: {e}")))?)
+    }
+}
+
 // ── AttachPrompt ────────────────────────────────────────────────────
 
 pub struct AttachPrompt;

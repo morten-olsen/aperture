@@ -356,10 +356,12 @@ mod tests {
 
         extensions.insert(RuntimeConfig::default());
 
+        let mut registry = aperture_engine::ToolRegistry::new();
         let mut ctx = SetupContext {
             extensions: &mut extensions,
             events: &events,
             actions: &mut actions,
+            registry: &mut registry,
         };
 
         BehaviourPlugin.setup(&mut ctx).await.unwrap();
@@ -400,6 +402,7 @@ mod tests {
         let mut tools: Vec<Tool> = Vec::new();
         let mut context: Vec<ContextItem> = Vec::new();
 
+        let registry = aperture_engine::ToolRegistry::new();
         let mut ctx = PrepareContext {
             user_id: "alice",
             input: "deploy something",
@@ -409,6 +412,7 @@ mod tests {
             extensions: &extensions,
             events: &events,
             history: &[],
+            registry: &registry,
         };
 
         BehaviourPlugin.prepare(&mut ctx).await.unwrap();
@@ -437,6 +441,7 @@ mod tests {
         let mut tools: Vec<Tool> = Vec::new();
         let mut context: Vec<ContextItem> = Vec::new();
 
+        let registry = aperture_engine::ToolRegistry::new();
         let mut ctx = PrepareContext {
             user_id: "alice",
             input: "deploy something",
@@ -446,6 +451,7 @@ mod tests {
             extensions: &extensions,
             events: &events,
             history: &[],
+            registry: &registry,
         };
 
         BehaviourPlugin.prepare(&mut ctx).await.unwrap();
@@ -481,6 +487,7 @@ mod tests {
         let mut tools: Vec<Tool> = Vec::new();
         let mut context: Vec<ContextItem> = Vec::new();
 
+        let registry = aperture_engine::ToolRegistry::new();
         let mut ctx = PrepareContext {
             user_id: "alice",
             input: "deploy something",
@@ -490,6 +497,7 @@ mod tests {
             extensions: &extensions,
             events: &events,
             history: &[],
+            registry: &registry,
         };
 
         BehaviourPlugin.prepare(&mut ctx).await.unwrap();
@@ -547,6 +555,7 @@ mod tests {
         let mut tools: Vec<Tool> = Vec::new();
         let mut context: Vec<ContextItem> = Vec::new();
 
+        let registry = aperture_engine::ToolRegistry::new();
         let mut ctx = PrepareContext {
             user_id: "alice",
             input: "how do I deploy?",
@@ -556,6 +565,7 @@ mod tests {
             extensions: &extensions,
             events: &events,
             history: &[],
+            registry: &registry,
         };
 
         BehaviourPlugin.prepare(&mut ctx).await.unwrap();
