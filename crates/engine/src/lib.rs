@@ -1,0 +1,27 @@
+pub mod action;
+pub mod error;
+pub mod extensions;
+pub mod state;
+pub mod context;
+pub mod prompt;
+pub mod tool;
+pub mod event;
+pub mod plugin;
+pub mod engine;
+pub mod prompt_events;
+pub mod prompt_runner;
+pub mod sandbox;
+
+pub use action::{Action, ActionContext, ActionInvoke};
+pub use error::{EngineError, Result};
+pub use extensions::Extensions;
+pub use state::State;
+pub use context::ContextItem;
+pub use prompt::{Prompt, PromptOutput, PromptState, PromptUsage, ToolResult};
+pub use tool::{Tool, ToolContext, ToolInvoke, ApprovalContext, ApprovalRequirement};
+pub use event::{EventBus, EventDescriptor, EventEnvelope};
+pub use plugin::{Plugin, SetupContext, PrepareContext};
+pub use engine::Engine;
+pub use prompt_events::{PROMPT_COMPLETED, PROMPT_CREATED, PROMPT_UPDATED, PROMPT_WAITING_FOR_APPROVAL};
+pub use prompt_runner::PromptRunner;
+pub use sandbox::{ToolDescriptor, SandboxResult, SandboxRequest, ReplayEntry, PendingApproval, ScriptResolver};

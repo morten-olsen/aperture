@@ -1,0 +1,13 @@
+[package]
+name = "aperture-sandbox-os"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+thiserror = "2"
+tokio = { version = "1", features = ["process", "time", "io-util"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+landlock = "0.4"
+seccompiler = "0.4"
+libc = "0.2"

@@ -1,0 +1,18 @@
+[package]
+name = "aperture-runtime"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+aperture-engine = { path = "../engine" }
+aperture-sandbox-os = { path = "../sandbox-os" }
+tokio = { version = "1", features = ["full"] }
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+glob-match = "0.2"
+dirs = "6"
+sha2 = "0.10"
+rusqlite = { version = "0.32", features = ["bundled"] }
+uuid = { version = "1", features = ["v4"] }
