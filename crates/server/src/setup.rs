@@ -1,5 +1,6 @@
 use std::sync::{Arc, OnceLock};
 
+use aperture_engine::embedding::EmbeddingClient;
 use aperture_engine::engine::Engine;
 use aperture_engine::error::{EngineError, Result};
 use aperture_engine::llm::{LlmClient, LlmMessage, LlmResponse};
@@ -7,8 +8,8 @@ use aperture_engine::prompt::{Prompt, PromptOutput};
 use aperture_engine::prompt_runner::PromptRunner;
 use aperture_engine::tool::Tool;
 use aperture_runtime::{
-    CliPlugin, ConversationPlugin, DatabasePlugin, FilesystemPlugin, RuntimeConfig,
-    RuntimeConfigPlugin,
+    AgentsMdPlugin, AuthPlugin, BehaviourPlugin, CliPlugin, ConversationPlugin, DatabasePlugin,
+    FilesystemPlugin, RuntimeConfig, RuntimeConfigPlugin,
 };
 use aperture_sandbox_code::{QuickJsSandbox, SandboxPlugin};
 use async_trait::async_trait;
@@ -247,6 +248,88 @@ impl LlmClient for OpenAiClient {
     }
 }
 
+// ── OpenAI embedding client ─────────────────────────────────────────
+
+struct OpenAiEmbeddingClient {
+    api_key: String,
+    base_url: String,
+    model: String,
+    http: reqwest::Client,
+}
+
+impl OpenAiEmbeddingClient {
+    fn new(api_key: String, base_url: String, model: String) -> Self {
+        Self {
+            api_key,
+            base_url,
+            model,
+            http: reqwest::Client::new(),
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct EmbeddingRequest {
+    model: String,
+    input: Vec<String>,
+}
+
+#[derive(Deserialize)]
+struct EmbeddingResponse {
+    data: Vec<EmbeddingData>,
+}
+
+#[derive(Deserialize)]
+struct EmbeddingData {
+    embedding: Vec<f32>,
+    index: usize,
+}
+
+#[async_trait]
+impl EmbeddingClient for OpenAiEmbeddingClient {
+    fn model_id(&self) -> &str {
+        &self.model
+    }
+
+    async fn embed(&self, texts: &[&str]) -> Result<Vec<Vec<f32>>> {
+        let request = EmbeddingRequest {
+            model: self.model.clone(),
+            input: texts.iter().map(|s| s.to_string()).collect(),
+        };
+
+        let url = format!("{}/embeddings", self.base_url);
+        let resp = self
+            .http
+            .post(&url)
+            .bearer_auth(&self.api_key)
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| EngineError::ToolInvocation(format!("embedding HTTP error: {e}")))?;
+
+        if resp.status().as_u16() == 404 {
+            return Err(EngineError::EmbeddingUnavailable);
+        }
+
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_else(|_| "no body".into());
+            return Err(EngineError::ToolInvocation(format!(
+                "embedding API error {status}: {body}"
+            )));
+        }
+
+        let emb_resp: EmbeddingResponse = resp
+            .json()
+            .await
+            .map_err(|e| EngineError::ToolInvocation(format!("embedding JSON error: {e}")))?;
+
+        let mut sorted = emb_resp.data;
+        sorted.sort_by_key(|d| d.index);
+        Ok(sorted.into_iter().map(|d| d.embedding).collect())
+    }
+}
+
 // ── Engine handle for deferred Arc ───────────────────────────────────
 
 struct EngineHandle(OnceLock<Arc<Engine>>);
@@ -278,9 +361,12 @@ pub async fn build_engine(config: &ServerConfig) -> Result<Arc<Engine>> {
         .register(Box::new(RuntimeConfigPlugin::new(RuntimeConfig::default())))
         .await?;
     engine.register(Box::new(DatabasePlugin)).await?;
+    engine.register(Box::new(AuthPlugin)).await?;
     engine.register(Box::new(ConversationPlugin)).await?;
     engine.register(Box::new(FilesystemPlugin)).await?;
     engine.register(Box::new(CliPlugin)).await?;
+    engine.register(Box::new(AgentsMdPlugin)).await?;
+    engine.register(Box::new(BehaviourPlugin)).await?;
 
     let sandbox = Arc::new(QuickJsSandbox::new());
     engine
@@ -325,11 +411,19 @@ pub async fn build_engine(config: &ServerConfig) -> Result<Arc<Engine>> {
         config.openai_model.clone(),
     ));
 
-    let runner: Box<dyn PromptRunner> = Box::new(ServerPromptRunner {
+    let runner: Arc<dyn PromptRunner> = Arc::new(ServerPromptRunner {
         llm,
         handle: handle.clone(),
     });
     engine.insert_extension(runner);
+
+    // Embedding client for behaviour matching.
+    let embedding_client: Arc<dyn EmbeddingClient> = Arc::new(OpenAiEmbeddingClient::new(
+        config.openai_api_key.clone(),
+        config.openai_base_url.clone(),
+        config.openai_embedding_model.clone(),
+    ));
+    engine.insert_extension(embedding_client);
 
     let engine = Arc::new(engine);
     handle

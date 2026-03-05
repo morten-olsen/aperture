@@ -14,6 +14,9 @@ pub enum EngineError {
     #[error("plugin prepare failed: {0}")]
     PluginPrepare(String),
 
+    #[error("plugin preflight failed: {0}")]
+    PluginPreflight(String),
+
     #[error("tool invocation failed: {0}")]
     ToolInvocation(String),
 
@@ -25,6 +28,9 @@ pub enum EngineError {
 
     #[error("state error: {0}")]
     StateError(String),
+
+    #[error("embedding service unavailable")]
+    EmbeddingUnavailable,
 
     #[error("action not found: {0}")]
     ActionNotFound(String),

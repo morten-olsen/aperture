@@ -5,7 +5,7 @@ mod ui;
 use std::io::{self, BufRead, Write as _};
 use std::sync::Arc;
 
-use crossterm::event::{Event, EventStream, KeyCode, KeyEventKind, KeyModifiers};
+use crossterm::event::{Event, EventStream, KeyCode, KeyEventKind, KeyModifiers, MouseEventKind};
 use futures::StreamExt;
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
@@ -18,15 +18,14 @@ use config::{config_path, load_config, save_config, CliConfig};
 
 const USAGE: &str = "\
 Usage: aperture-cli [OPTIONS] [PROMPT]
-       aperture-cli config [show | set <key> <value> | path]
+       aperture-cli auth [login | logout | status]
 
   PROMPT  If provided, send a single message and exit.
           If omitted, start interactive TUI mode.
 
 Options:
-  --url <URL>           Server WebSocket URL (e.g. ws://localhost:3000/ws)
+  --url <URL>           Server base URL (e.g. http://localhost:3000)
                         Uses config file default if omitted.
-  --user <ID>           User ID (default: cli-user)
   --conversation <ID>   Conversation ID (creates new if omitted)
   --json                Output full prompt result as JSON (one-shot mode)
   --help                Print this help message
@@ -39,7 +38,7 @@ Exit Codes:
 
 struct Args {
     url: String,
-    user_id: String,
+    token: String,
     conversation_id: Option<String>,
     json_output: bool,
     prompt: Option<String>,
@@ -47,13 +46,12 @@ struct Args {
 
 enum Command {
     Run(Args),
-    Config(Vec<String>),
+    Auth(Vec<String>),
 }
 
 fn parse_args() -> Result<Command, String> {
     let mut args = std::env::args().skip(1).peekable();
     let mut url: Option<String> = None;
-    let mut user_id: Option<String> = None;
     let mut conversation_id = None;
     let mut json_output = false;
     let mut positional = Vec::new();
@@ -71,12 +69,6 @@ fn parse_args() -> Result<Command, String> {
                         .ok_or_else(|| "--url requires a value".to_string())?,
                 );
             }
-            "--user" => {
-                user_id = Some(
-                    args.next()
-                        .ok_or_else(|| "--user requires a value".to_string())?,
-                );
-            }
             "--conversation" => {
                 conversation_id = Some(
                     args.next()
@@ -90,9 +82,9 @@ fn parse_args() -> Result<Command, String> {
         }
     }
 
-    // Detect config subcommand.
-    if positional.first().map(|s| s.as_str()) == Some("config") {
-        return Ok(Command::Config(positional[1..].to_vec()));
+    // Detect auth subcommand.
+    if positional.first().map(|s| s.as_str()) == Some("auth") {
+        return Ok(Command::Auth(positional[1..].to_vec()));
     }
 
     // Load config file, then merge with CLI flags.
@@ -100,13 +92,13 @@ fn parse_args() -> Result<Command, String> {
 
     // Resolve URL: --url flag > config file > error.
     let url = url.or(config.url).ok_or_else(|| {
-        "no server URL configured\n\nRun `aperture-cli config` to set a default URL, or pass --url <URL>."
+        "no server URL configured\n\nRun `aperture-cli auth login` to configure, or pass --url <URL>."
             .to_string()
     })?;
 
-    let user_id = user_id
-        .or(config.user)
-        .unwrap_or_else(|| "cli-user".to_string());
+    let token = config.token.ok_or_else(|| {
+        "not logged in\n\nRun `aperture-cli auth login` to authenticate.".to_string()
+    })?;
 
     let prompt = if positional.is_empty() {
         None
@@ -116,7 +108,7 @@ fn parse_args() -> Result<Command, String> {
 
     Ok(Command::Run(Args {
         url,
-        user_id,
+        token,
         conversation_id,
         json_output,
         prompt,
@@ -134,8 +126,8 @@ async fn main() {
     };
 
     match command {
-        Command::Config(sub_args) => {
-            if let Err(e) = run_config(sub_args) {
+        Command::Auth(sub_args) => {
+            if let Err(e) = run_auth(sub_args).await {
                 eprintln!("error: {e}");
                 std::process::exit(1);
             }
@@ -149,44 +141,75 @@ async fn main() {
     }
 }
 
-// ── Config subcommand ───────────────────────────────────────────────
+// ── Auth subcommand ─────────────────────────────────────────────────
 
-fn run_config(sub_args: Vec<String>) -> Result<(), String> {
+async fn run_auth(sub_args: Vec<String>) -> Result<(), String> {
     match sub_args.first().map(|s| s.as_str()) {
-        None => config_interactive(),
-        Some("show") => config_show(),
-        Some("set") => config_set(&sub_args[1..]),
-        Some("path") => {
-            println!("{}", config_path().display());
-            Ok(())
-        }
-        Some(other) => Err(format!("unknown config subcommand: {other}")),
+        None | Some("login") => auth_login().await,
+        Some("logout") => auth_logout(),
+        Some("status") => auth_status().await,
+        Some(other) => Err(format!("unknown auth subcommand: {other}")),
     }
 }
 
-fn config_interactive() -> Result<(), String> {
+async fn auth_login() -> Result<(), String> {
     let config = load_config();
     let path = config_path();
-
-    println!("Aperture CLI configuration ({})\n", path.display());
+    println!("Aperture CLI login ({})\n", path.display());
 
     let url = prompt_field(
         "Server URL",
-        config.url.as_deref().unwrap_or("ws://localhost:3000/ws"),
+        config.url.as_deref().unwrap_or("http://localhost:3000"),
     );
-    let user = prompt_field("User ID", config.user.as_deref().unwrap_or("cli-user"));
+    let username = prompt_field("Username", "");
+    let password = prompt_password("Password");
+
+    let resp = ApertureClient::login(&url, &username, &password)
+        .await
+        .map_err(|e| format!("login failed: {e}"))?;
 
     let new_config = CliConfig {
         url: Some(url),
-        user: Some(user),
+        token: Some(resp.token),
     };
     save_config(&new_config)?;
-    println!("\nConfiguration saved.");
+
+    println!(
+        "\nLogged in as {} (id: {})",
+        resp.user.username, resp.user.id
+    );
+    Ok(())
+}
+
+fn auth_logout() -> Result<(), String> {
+    let mut config = load_config();
+    config.token = None;
+    save_config(&config)?;
+    println!("Logged out.");
+    Ok(())
+}
+
+async fn auth_status() -> Result<(), String> {
+    let config = load_config();
+
+    let url = config.url.as_deref().ok_or("no server URL configured")?;
+    let token = config.token.as_deref().ok_or("not logged in")?;
+
+    let user = ApertureClient::me(url, token)
+        .await
+        .map_err(|e| format!("status check failed: {e}"))?;
+
+    println!("Logged in as {} (id: {})", user.username, user.id);
+    println!("Server: {url}");
     Ok(())
 }
 
 fn prompt_field(label: &str, default: &str) -> String {
-    print!("{label} [{default}]: ");
+    if default.is_empty() {
+        print!("{label}: ");
+    } else {
+        print!("{label} [{default}]: ");
+    }
     io::stdout().flush().ok();
     let mut line = String::new();
     io::stdin().lock().read_line(&mut line).ok();
@@ -198,46 +221,15 @@ fn prompt_field(label: &str, default: &str) -> String {
     }
 }
 
-fn config_show() -> Result<(), String> {
-    let path = config_path();
-    println!("Config file: {}\n", path.display());
-    if !path.exists() {
-        println!("No config file found.");
-        return Ok(());
-    }
-    let config = load_config();
-    if let Some(url) = &config.url {
-        println!("url  = {url}");
-    }
-    if let Some(user) = &config.user {
-        println!("user = {user}");
-    }
-    if config.url.is_none() && config.user.is_none() {
-        println!("(empty)");
-    }
-    Ok(())
-}
-
-fn config_set(args: &[String]) -> Result<(), String> {
-    if args.len() != 2 {
-        return Err("usage: aperture-cli config set <key> <value>".to_string());
-    }
-    let key = &args[0];
-    let value = &args[1];
-    let mut config = load_config();
-    match key.as_str() {
-        "url" => config.url = Some(value.clone()),
-        "user" => config.user = Some(value.clone()),
-        _ => return Err(format!("unknown config key: {key} (valid keys: url, user)")),
-    }
-    save_config(&config)?;
-    Ok(())
+fn prompt_password(label: &str) -> String {
+    eprint!("{label}: ");
+    rpassword::read_password().unwrap_or_default()
 }
 
 // ── Run ─────────────────────────────────────────────────────────────
 
 async fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
-    let client = Arc::new(ApertureClient::connect(&args.url, &args.user_id).await?);
+    let client = Arc::new(ApertureClient::connect(&args.url, &args.token).await?);
 
     let conversation_id = match args.conversation_id {
         Some(id) => id,
@@ -348,9 +340,14 @@ async fn run_interactive(
     let mut app = App::new(conversation_id);
     let mut server_events = client.events();
     let (err_tx, mut err_rx) = mpsc::unbounded_channel::<String>();
+    let (result_tx, mut result_rx) = mpsc::unbounded_channel::<Value>();
 
     crossterm::terminal::enable_raw_mode()?;
-    crossterm::execute!(io::stdout(), crossterm::terminal::EnterAlternateScreen)?;
+    crossterm::execute!(
+        io::stdout(),
+        crossterm::terminal::EnterAlternateScreen,
+        crossterm::event::EnableMouseCapture,
+    )?;
     let backend = CrosstermBackend::new(io::stdout());
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
@@ -362,50 +359,77 @@ async fn run_interactive(
 
         tokio::select! {
             Some(Ok(evt)) = term_events.next() => {
-                if let Event::Key(key) = evt {
-                    if key.kind != KeyEventKind::Press {
-                        continue;
-                    }
-                    match key.code {
-                        KeyCode::Esc => app.should_quit = true,
-                        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                            app.should_quit = true;
-                        }
-                        KeyCode::Enter => {
-                            if let Some(message) = app.send_message() {
-                                let c = client.clone();
-                                let conv_id = app.conversation_id.clone();
-                                let tx = err_tx.clone();
-                                tokio::spawn(async move {
-                                    if let Err(e) = c
-                                        .invoke_action(
-                                            "send_message",
-                                            json!({
-                                                "conversation_id": conv_id,
-                                                "message": message,
-                                            }),
-                                        )
-                                        .await
-                                    {
-                                        let _ = tx.send(format!("send failed: {e}"));
-                                    }
-                                });
+                match evt {
+                    Event::Key(key) if key.kind == KeyEventKind::Press => {
+                        match key.code {
+                            KeyCode::Esc => app.should_quit = true,
+                            KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                                app.should_quit = true;
                             }
+                            KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                                app.input.clear();
+                            }
+                            KeyCode::Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                                let end = app.input.trim_end().len();
+                                if let Some(pos) = app.input[..end].rfind(' ') {
+                                    app.input.truncate(pos + 1);
+                                } else {
+                                    app.input.clear();
+                                }
+                            }
+                            KeyCode::Enter => {
+                                if let Some(message) = app.send_message() {
+                                    let c = client.clone();
+                                    let conv_id = app.conversation_id.clone();
+                                    let tx_err = err_tx.clone();
+                                    let tx_ok = result_tx.clone();
+                                    tokio::spawn(async move {
+                                        match c
+                                            .invoke_action(
+                                                "send_message",
+                                                json!({
+                                                    "conversation_id": conv_id,
+                                                    "message": message,
+                                                }),
+                                            )
+                                            .await
+                                        {
+                                            Ok(result) => {
+                                                let _ = tx_ok.send(result);
+                                            }
+                                            Err(e) => {
+                                                let _ = tx_err.send(format!("send failed: {e}"));
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                            KeyCode::Char(c) => app.input.push(c),
+                            KeyCode::Backspace => {
+                                app.input.pop();
+                            }
+                            KeyCode::Up => app.scroll_up(1),
+                            KeyCode::Down => app.scroll_down(1),
+                            KeyCode::PageUp => app.scroll_up(10),
+                            KeyCode::PageDown => app.scroll_down(10),
+                            _ => {}
                         }
-                        KeyCode::Char(c) => app.input.push(c),
-                        KeyCode::Backspace => {
-                            app.input.pop();
-                        }
-                        KeyCode::Up => app.scroll_up(1),
-                        KeyCode::Down => app.scroll_down(1),
-                        KeyCode::PageUp => app.scroll_up(10),
-                        KeyCode::PageDown => app.scroll_down(10),
-                        _ => {}
                     }
+                    Event::Mouse(mouse) => {
+                        match mouse.kind {
+                            MouseEventKind::ScrollUp => app.scroll_up(3),
+                            MouseEventKind::ScrollDown => app.scroll_down(3),
+                            _ => {}
+                        }
+                    }
+                    _ => {}
                 }
             }
             Ok(event) = server_events.recv() => {
                 app.handle_event(&event.event_id, &event.payload);
+            }
+            Some(result) = result_rx.recv() => {
+                app.handle_action_result(&result);
             }
             Some(error) = err_rx.recv() => {
                 app.handle_error(error);
@@ -418,7 +442,11 @@ async fn run_interactive(
     }
 
     crossterm::terminal::disable_raw_mode()?;
-    crossterm::execute!(io::stdout(), crossterm::terminal::LeaveAlternateScreen)?;
+    crossterm::execute!(
+        io::stdout(),
+        crossterm::terminal::LeaveAlternateScreen,
+        crossterm::event::DisableMouseCapture,
+    )?;
 
     Ok(())
 }

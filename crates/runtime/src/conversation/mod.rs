@@ -229,7 +229,7 @@ mod tests {
         engine.register(Box::new(ConversationPlugin)).await.unwrap();
 
         // Insert PromptRunner after plugins are registered.
-        let runner: Box<dyn PromptRunner> = Box::new(MockPromptRunner);
+        let runner: std::sync::Arc<dyn PromptRunner> = std::sync::Arc::new(MockPromptRunner);
         engine.insert_extension(runner);
 
         // 1. Create conversation.

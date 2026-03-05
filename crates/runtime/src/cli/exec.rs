@@ -105,12 +105,13 @@ mod tests {
     use crate::config::RuntimeConfig;
 
     fn test_setup(rules_toml: &str) -> (std::path::PathBuf, Extensions) {
-        let tmp =
-            std::env::temp_dir().join(format!("aperture-cli-test-{}", uuid::Uuid::new_v4()));
+        let tmp = std::env::temp_dir().join(format!("aperture-cli-test-{}", uuid::Uuid::new_v4()));
         let config = RuntimeConfig {
             data_root: tmp.clone(),
             cli_timeout_ms: 30_000,
             cli_max_output_bytes: 10_000_000,
+            web_timeout_ms: 30_000,
+            web_max_response_bytes: 10_000_000,
         };
 
         // Write rules file.

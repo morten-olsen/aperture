@@ -8,7 +8,7 @@ use serde_json::Value;
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ClientMessage {
     Hello {
-        user_id: String,
+        token: String,
     },
     InvokeAction {
         id: String,
@@ -25,6 +25,27 @@ pub enum ServerMessage {
     Event { event_id: String, payload: Value },
     ActionResult { id: String, result: Value },
     ActionError { id: String, error: String },
+}
+
+// ── HTTP auth types ─────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoginRequest {
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoginResponse {
+    pub token: String,
+    pub user: UserInfo,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserInfo {
+    pub id: String,
+    pub username: String,
+    pub created_at: String,
 }
 
 // ── Schema endpoint types ────────────────────────────────────────────
@@ -57,14 +78,14 @@ mod tests {
     #[test]
     fn client_hello_round_trip() {
         let msg = ClientMessage::Hello {
-            user_id: "alice".into(),
+            token: "jwt-token-here".into(),
         };
         let json = serde_json::to_value(&msg).unwrap();
         assert_eq!(json["type"], "hello");
-        assert_eq!(json["user_id"], "alice");
+        assert_eq!(json["token"], "jwt-token-here");
 
         let decoded: ClientMessage = serde_json::from_value(json).unwrap();
-        assert!(matches!(decoded, ClientMessage::Hello { user_id } if user_id == "alice"));
+        assert!(matches!(decoded, ClientMessage::Hello { token } if token == "jwt-token-here"));
     }
 
     #[test]
@@ -139,6 +160,34 @@ mod tests {
         assert!(
             matches!(decoded, ServerMessage::ActionError { id, error } if id == "corr-3" && error == "not found")
         );
+    }
+
+    #[test]
+    fn login_request_round_trip() {
+        let req = LoginRequest {
+            username: "alice".into(),
+            password: "secret".into(),
+        };
+        let json = serde_json::to_string(&req).unwrap();
+        let decoded: LoginRequest = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded.username, "alice");
+        assert_eq!(decoded.password, "secret");
+    }
+
+    #[test]
+    fn login_response_round_trip() {
+        let resp = LoginResponse {
+            token: "jwt-token".into(),
+            user: UserInfo {
+                id: "u1".into(),
+                username: "alice".into(),
+                created_at: "2024-01-01".into(),
+            },
+        };
+        let json = serde_json::to_string(&resp).unwrap();
+        let decoded: LoginResponse = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded.token, "jwt-token");
+        assert_eq!(decoded.user.username, "alice");
     }
 
     #[test]

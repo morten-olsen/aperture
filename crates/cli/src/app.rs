@@ -8,6 +8,7 @@ pub struct App {
     pub status: Status,
     pub total_usage: Usage,
     pub should_quit: bool,
+    usage_counted: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -43,6 +44,7 @@ impl App {
             status: Status::Connected,
             total_usage: Usage::default(),
             should_quit: false,
+            usage_counted: false,
         }
     }
 
@@ -58,6 +60,7 @@ impl App {
         });
         self.status = Status::Waiting;
         self.scroll_offset = 0;
+        self.usage_counted = false;
         Some(text)
     }
 
@@ -68,16 +71,32 @@ impl App {
                 self.update_from_prompt(payload);
             }
             "prompt.completed" => {
-                self.update_from_prompt(payload);
-                self.status = Status::Connected;
-                if let Some(usage) = payload.get("usage") {
-                    self.total_usage.prompt_tokens +=
-                        usage["prompt_tokens"].as_u64().unwrap_or(0) as u32;
-                    self.total_usage.completion_tokens +=
-                        usage["completion_tokens"].as_u64().unwrap_or(0) as u32;
-                }
+                self.finish_prompt(payload);
             }
             _ => {}
+        }
+    }
+
+    /// Handle the action result from `send_message` as a reliable fallback.
+    ///
+    /// The action always returns the final `Prompt`, so even if the
+    /// `prompt.completed` event was missed, this guarantees the response
+    /// is rendered.
+    pub fn handle_action_result(&mut self, payload: &Value) {
+        self.finish_prompt(payload);
+    }
+
+    fn finish_prompt(&mut self, payload: &Value) {
+        self.update_from_prompt(payload);
+        self.status = Status::Connected;
+        if !self.usage_counted {
+            self.usage_counted = true;
+            if let Some(usage) = payload.get("usage") {
+                self.total_usage.prompt_tokens +=
+                    usage["prompt_tokens"].as_u64().unwrap_or(0) as u32;
+                self.total_usage.completion_tokens +=
+                    usage["completion_tokens"].as_u64().unwrap_or(0) as u32;
+            }
         }
     }
 
@@ -133,7 +152,6 @@ impl App {
         if let Some(last) = self.messages.last_mut() {
             if matches!(last.role, Role::Assistant) {
                 last.content = content;
-                self.scroll_offset = 0;
                 return;
             }
         }
@@ -141,7 +159,6 @@ impl App {
             role: Role::Assistant,
             content,
         });
-        self.scroll_offset = 0;
     }
 
     pub fn scroll_up(&mut self, amount: u16) {

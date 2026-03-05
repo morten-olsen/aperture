@@ -8,6 +8,7 @@ use tokio::sync::mpsc;
 
 use aperture_engine::engine::Engine;
 use aperture_protocol::{ClientMessage, ServerMessage};
+use aperture_runtime::AuthService;
 
 pub struct AppState {
     pub engine: Arc<Engine>,
@@ -29,8 +30,8 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
     // Spawn outbound writer: reads from mpsc → writes to WebSocket sink.
     let writer_handle = tokio::spawn(outbound_writer(ws_sender, out_rx));
 
-    // Wait for Hello message.
-    let user_id = match wait_for_hello(&mut ws_receiver).await {
+    // Wait for Hello message with token and validate it.
+    let user_id = match wait_for_hello(&mut ws_receiver, &state.engine, &out_tx).await {
         Some(uid) => uid,
         None => return,
     };
@@ -95,7 +96,11 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
     writer_handle.abort();
 }
 
-async fn wait_for_hello(receiver: &mut futures::stream::SplitStream<WebSocket>) -> Option<String> {
+async fn wait_for_hello(
+    receiver: &mut futures::stream::SplitStream<WebSocket>,
+    engine: &Engine,
+    out_tx: &mpsc::UnboundedSender<ServerMessage>,
+) -> Option<String> {
     while let Some(Ok(frame)) = receiver.next().await {
         let text = match frame {
             Message::Text(t) => t,
@@ -103,7 +108,22 @@ async fn wait_for_hello(receiver: &mut futures::stream::SplitStream<WebSocket>) 
             _ => continue,
         };
         match serde_json::from_str::<ClientMessage>(&text) {
-            Ok(ClientMessage::Hello { user_id }) => return Some(user_id),
+            Ok(ClientMessage::Hello { token }) => {
+                let auth = match engine.get_extension::<AuthService>() {
+                    Some(a) => a,
+                    None => return None,
+                };
+                match auth.validate_token(&token) {
+                    Ok(claims) => return Some(claims.sub),
+                    Err(_) => {
+                        let _ = out_tx.send(ServerMessage::ActionError {
+                            id: "auth".into(),
+                            error: "invalid token".into(),
+                        });
+                        return None;
+                    }
+                }
+            }
             _ => continue,
         }
     }

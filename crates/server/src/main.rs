@@ -1,3 +1,4 @@
+mod auth;
 mod config;
 mod routes;
 mod schema;
@@ -6,14 +7,59 @@ mod ws;
 
 use std::sync::Arc;
 
+use clap::{Parser, Subcommand};
+
 use crate::config::ServerConfig;
 use crate::routes::build_router;
 use crate::ws::AppState;
 
+#[derive(Parser)]
+#[command(name = "aperture-server")]
+struct Cli {
+    #[command(subcommand)]
+    command: Option<Commands>,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Start the HTTP/WebSocket server
+    Serve,
+    /// Manage users
+    User {
+        #[command(subcommand)]
+        action: UserAction,
+    },
+}
+
+#[derive(Subcommand)]
+enum UserAction {
+    /// Create a new user
+    Create {
+        username: String,
+        /// Prompt for a password
+        #[arg(long)]
+        password: bool,
+    },
+    /// List all users
+    List,
+    /// Delete a user
+    Delete { username: String },
+    /// Set a user's password
+    SetPassword { username: String },
+}
+
 #[tokio::main]
 async fn main() {
     let _ = dotenvy::dotenv();
+    let cli = Cli::parse();
 
+    match cli.command.unwrap_or(Commands::Serve) {
+        Commands::Serve => run_serve().await,
+        Commands::User { action } => run_user(action).await,
+    }
+}
+
+async fn run_serve() {
     let config = match ServerConfig::from_env() {
         Ok(c) => c,
         Err(e) => {
@@ -47,4 +93,128 @@ async fn main() {
         eprintln!("server error: {e}");
         std::process::exit(1);
     });
+}
+
+async fn run_user(action: UserAction) {
+    use aperture_engine::engine::Engine;
+    use aperture_runtime::{
+        AuthPlugin, AuthService, DatabasePlugin, RuntimeConfig, RuntimeConfigPlugin,
+    };
+
+    // Build minimal engine with just config + database + auth.
+    let mut engine = Engine::new();
+    if let Err(e) = engine
+        .register(Box::new(RuntimeConfigPlugin::new(RuntimeConfig::default())))
+        .await
+    {
+        eprintln!("error: {e}");
+        std::process::exit(1);
+    }
+    if let Err(e) = engine.register(Box::new(DatabasePlugin)).await {
+        eprintln!("error: {e}");
+        std::process::exit(1);
+    }
+    if let Err(e) = engine.register(Box::new(AuthPlugin)).await {
+        eprintln!("error: {e}");
+        std::process::exit(1);
+    }
+
+    let auth = match engine.get_extension::<AuthService>() {
+        Some(a) => a.clone(),
+        None => {
+            eprintln!("error: auth service not available");
+            std::process::exit(1);
+        }
+    };
+
+    match action {
+        UserAction::Create { username, password } => {
+            let pw = if password {
+                eprint!("Password: ");
+                let p = rpassword::read_password().unwrap_or_else(|e| {
+                    eprintln!("error reading password: {e}");
+                    std::process::exit(1);
+                });
+                Some(p)
+            } else {
+                None
+            };
+
+            match auth.create_user(&username, pw.as_deref()).await {
+                Ok(user) => println!("created user: {} (id: {})", user.username, user.id),
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    std::process::exit(1);
+                }
+            }
+        }
+        UserAction::List => match auth.list_users().await {
+            Ok(users) => {
+                if users.is_empty() {
+                    println!("no users");
+                } else {
+                    for user in users {
+                        let has_pw = if user.password_hash.is_some() {
+                            "has password"
+                        } else {
+                            "no password"
+                        };
+                        println!(
+                            "{} (id: {}, {}, created: {})",
+                            user.username, user.id, has_pw, user.created_at
+                        );
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("error: {e}");
+                std::process::exit(1);
+            }
+        },
+        UserAction::Delete { username } => {
+            let user = match auth.get_user_by_username(&username).await {
+                Ok(Some(u)) => u,
+                Ok(None) => {
+                    eprintln!("error: user '{username}' not found");
+                    std::process::exit(1);
+                }
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    std::process::exit(1);
+                }
+            };
+            match auth.delete_user(&user.id).await {
+                Ok(()) => println!("deleted user: {username}"),
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    std::process::exit(1);
+                }
+            }
+        }
+        UserAction::SetPassword { username } => {
+            let user = match auth.get_user_by_username(&username).await {
+                Ok(Some(u)) => u,
+                Ok(None) => {
+                    eprintln!("error: user '{username}' not found");
+                    std::process::exit(1);
+                }
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    std::process::exit(1);
+                }
+            };
+            eprint!("New password: ");
+            let pw = rpassword::read_password().unwrap_or_else(|e| {
+                eprintln!("error reading password: {e}");
+                std::process::exit(1);
+            });
+            match auth.set_password(&user.id, &pw).await {
+                Ok(()) => println!("password updated for {username}"),
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    std::process::exit(1);
+                }
+            }
+        }
+    }
 }

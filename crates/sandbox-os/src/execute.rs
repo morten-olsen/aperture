@@ -37,8 +37,7 @@ pub async fn execute(cmd: &SandboxedCommand) -> Result<CommandOutput> {
                     writable_paths: writable.clone(),
                     readable_paths: readable.clone(),
                 };
-                platform::pre_exec_setup(&setup_cmd)
-                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+                platform::pre_exec_setup(&setup_cmd).map_err(std::io::Error::other)?;
                 Ok(())
             });
         }

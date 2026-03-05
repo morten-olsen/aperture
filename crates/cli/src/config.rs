@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CliConfig {
     pub url: Option<String>,
-    pub user: Option<String>,
+    pub token: Option<String>,
 }
 
 pub fn config_path() -> PathBuf {
