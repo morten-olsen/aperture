@@ -12,6 +12,7 @@ pub mod prompt_events;
 pub mod prompt_runner;
 pub mod redaction;
 pub mod sandbox;
+pub mod secret;
 pub mod state;
 pub mod tool;
 pub mod tool_registry;
@@ -34,6 +35,7 @@ pub use redaction::RedactionRegistry;
 pub use sandbox::{
     PendingApproval, ReplayEntry, SandboxRequest, SandboxResult, ScriptResolver, ToolDescriptor,
 };
+pub use secret::{PluginSecretStore, PluginSecretStoreService, PluginSecretSummary};
 pub use state::State;
 pub use tool::{ApprovalContext, ApprovalRequirement, Tool, ToolContext, ToolInvoke};
 pub use tool_registry::ToolRegistry;

@@ -9,6 +9,7 @@ pub struct App {
     pub total_usage: Usage,
     pub should_quit: bool,
     usage_counted: bool,
+    current_prompt_id: Option<String>,
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -46,6 +47,7 @@ impl App {
             total_usage: Usage::default(),
             should_quit: false,
             usage_counted: false,
+            current_prompt_id: None,
         }
     }
 
@@ -62,17 +64,18 @@ impl App {
         self.status = Status::Waiting;
         self.scroll_offset = 0;
         self.usage_counted = false;
+        self.current_prompt_id = None;
         Some(text)
     }
 
     /// Handle a server event.
+    ///
+    /// Events update messages only — status transitions to `Connected`
+    /// happen in `handle_action_result` once the full agent loop finishes.
     pub fn handle_event(&mut self, event_id: &str, payload: &Value) {
         match event_id {
-            "prompt.updated" => {
+            "prompt.updated" | "prompt.completed" => {
                 self.update_from_prompt(payload);
-            }
-            "prompt.completed" => {
-                self.finish_prompt(payload);
             }
             "prompt.waiting_for_approval" => {
                 self.update_from_prompt(payload);
@@ -133,6 +136,8 @@ impl App {
             None => return,
         };
 
+        let prompt_id = payload["id"].as_str().map(|s| s.to_string());
+
         let mut lines = Vec::new();
         for output in outputs {
             match output.get("type").and_then(|t| t.as_str()) {
@@ -146,15 +151,30 @@ impl App {
                         .get("tool_id")
                         .and_then(|t| t.as_str())
                         .unwrap_or("?");
-                    let status = match output.get("result") {
-                        Some(r) if !r.is_null() => match r.get("status").and_then(|s| s.as_str()) {
+                    let result_obj = output.get("result").filter(|r| !r.is_null());
+                    let status = match result_obj {
+                        Some(r) => match r.get("status").and_then(|s| s.as_str()) {
                             Some("success") => "ok",
                             Some("error") => "err",
                             _ => "...",
                         },
-                        _ => "...",
+                        None => "...",
                     };
                     lines.push(format!("[tool: {tool_id}] {status}"));
+                    if let Some(v) = output.get("input").filter(|v| !v.is_null()) {
+                        let s = serde_json::to_string(v).unwrap_or_default();
+                        if s != "{}" {
+                            lines.push(format!("[tool-input] {s}"));
+                        }
+                    }
+                    if let Some(r) = result_obj {
+                        if let Some(err) = r.get("error").and_then(|e| e.as_str()) {
+                            lines.push(format!("[tool-result] error: {err}"));
+                        } else if let Some(out) = r.get("output").filter(|v| !v.is_null()) {
+                            let s = serde_json::to_string(out).unwrap_or_default();
+                            lines.push(format!("[tool-result] {s}"));
+                        }
+                    }
                 }
                 Some("file") => {
                     let path = output.get("path").and_then(|p| p.as_str()).unwrap_or("?");
@@ -166,13 +186,19 @@ impl App {
 
         let content = lines.join("\n");
 
-        // Replace the latest assistant message, or push a new one.
-        if let Some(last) = self.messages.last_mut() {
-            if matches!(last.role, Role::Assistant) {
-                last.content = content;
-                return;
+        // Same prompt → replace its assistant message; new prompt → push a new one.
+        let same_prompt = prompt_id.is_some() && prompt_id == self.current_prompt_id;
+
+        if same_prompt {
+            if let Some(last) = self.messages.last_mut() {
+                if matches!(last.role, Role::Assistant) {
+                    last.content = content;
+                    return;
+                }
             }
         }
+
+        self.current_prompt_id = prompt_id;
         self.messages.push(ChatMessage {
             role: Role::Assistant,
             content,

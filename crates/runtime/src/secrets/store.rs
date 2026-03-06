@@ -13,6 +13,8 @@ struct SecretEntry {
     id: String,
     name: String,
     encrypted_value: String,
+    #[serde(default)]
+    plugin: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -68,12 +70,14 @@ impl SecretStore {
             .map_err(|e| EngineError::PluginSetup(format!("write secrets file: {e}")))
     }
 
-    /// List secrets for a user (id + name only, no decryption).
+    /// List agent secrets for a user (id + name only, no decryption).
+    /// Excludes plugin-owned secrets.
     pub fn list(&self, user_id: &str) -> Result<Vec<SecretSummary>> {
         let file = self.read_file(user_id)?;
         Ok(file
             .secrets
             .into_iter()
+            .filter(|e| e.plugin.is_none())
             .map(|e| SecretSummary {
                 id: e.id,
                 name: e.name,
@@ -105,10 +109,79 @@ impl SecretStore {
                 id: id.to_string(),
                 name: name.to_string(),
                 encrypted_value: encrypted,
+                plugin: None,
             });
         }
 
         self.write_file(user_id, &file)
+    }
+
+    /// List secrets owned by a specific plugin.
+    pub fn list_by_plugin(&self, user_id: &str, plugin_id: &str) -> Result<Vec<SecretSummary>> {
+        let file = self.read_file(user_id)?;
+        Ok(file
+            .secrets
+            .into_iter()
+            .filter(|e| e.plugin.as_deref() == Some(plugin_id))
+            .map(|e| SecretSummary {
+                id: e.id,
+                name: e.name,
+            })
+            .collect())
+    }
+
+    /// Decrypt and return a plugin-owned secret's value.
+    pub fn get_plugin_value(&self, user_id: &str, secret_id: &str) -> Result<String> {
+        let file = self.read_file(user_id)?;
+        let entry = file
+            .secrets
+            .iter()
+            .find(|e| e.id == secret_id && e.plugin.is_some())
+            .ok_or_else(|| {
+                EngineError::ToolInvocation(format!("plugin secret not found: {secret_id}"))
+            })?;
+        crypto::decrypt(&self.key, &entry.encrypted_value)
+    }
+
+    /// Encrypt and upsert a plugin-owned secret.
+    pub fn add_for_plugin(
+        &self,
+        user_id: &str,
+        plugin_id: &str,
+        id: &str,
+        name: &str,
+        value: &str,
+    ) -> Result<()> {
+        let encrypted = crypto::encrypt(&self.key, value)?;
+        let mut file = self.read_file(user_id)?;
+
+        if let Some(existing) = file.secrets.iter_mut().find(|e| e.id == id) {
+            existing.name = name.to_string();
+            existing.encrypted_value = encrypted;
+            existing.plugin = Some(plugin_id.to_string());
+        } else {
+            file.secrets.push(SecretEntry {
+                id: id.to_string(),
+                name: name.to_string(),
+                encrypted_value: encrypted,
+                plugin: Some(plugin_id.to_string()),
+            });
+        }
+
+        self.write_file(user_id, &file)
+    }
+
+    /// Remove a plugin-owned secret. Returns whether it existed.
+    pub fn remove_for_plugin(&self, user_id: &str, secret_id: &str) -> Result<bool> {
+        let mut file = self.read_file(user_id)?;
+        let before = file.secrets.len();
+        file.secrets
+            .retain(|e| !(e.id == secret_id && e.plugin.is_some()));
+        let removed = file.secrets.len() < before;
+        if removed {
+            self.write_file(user_id, &file)?;
+        }
+        Ok(removed)
     }
 
     /// Remove a secret. Returns whether it existed.
@@ -197,6 +270,39 @@ mod tests {
         let (dir, store) = test_store();
         let result = store.get_value("alice", "nonexistent");
         assert!(result.is_err());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn plugin_secrets_isolated_from_agent_list() {
+        let (dir, store) = test_store();
+        store.add("alice", "agent_key", "Agent Key", "a").unwrap();
+        store
+            .add_for_plugin("alice", "calendar", "cal_pw", "Cal Password", "b")
+            .unwrap();
+
+        let agent_list = store.list("alice").unwrap();
+        assert_eq!(agent_list.len(), 1);
+        assert_eq!(agent_list[0].id, "agent_key");
+
+        let plugin_list = store.list_by_plugin("alice", "calendar").unwrap();
+        assert_eq!(plugin_list.len(), 1);
+        assert_eq!(plugin_list[0].id, "cal_pw");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn plugin_secret_get_and_remove() {
+        let (dir, store) = test_store();
+        store
+            .add_for_plugin("alice", "calendar", "pw1", "Password", "s3cret")
+            .unwrap();
+
+        assert_eq!(store.get_plugin_value("alice", "pw1").unwrap(), "s3cret");
+        assert!(store.remove_for_plugin("alice", "pw1").unwrap());
+        assert!(!store.remove_for_plugin("alice", "pw1").unwrap());
+
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

@@ -72,6 +72,21 @@ fn render_messages(f: &mut Frame, app: &App, area: Rect) {
                 for text_line in msg.content.lines() {
                     if text_line.starts_with("[tool: ") {
                         render_tool_line(text_line, &mut lines);
+                    } else if let Some(data) = text_line.strip_prefix("[tool-input] ") {
+                        lines.push(Line::from(Span::styled(
+                            format!("    ▸ {data}"),
+                            Style::default().fg(DIM),
+                        )));
+                    } else if let Some(data) = text_line.strip_prefix("[tool-result] ") {
+                        let (color, prefix) = if data.starts_with("error: ") {
+                            (TOOL_ERR, "    ✗ ")
+                        } else {
+                            (DIM, "    ◂ ")
+                        };
+                        lines.push(Line::from(Span::styled(
+                            format!("{prefix}{data}"),
+                            Style::default().fg(color),
+                        )));
                     } else if text_line.starts_with("[file: ") {
                         lines.push(Line::from(Span::styled(
                             format!("  {text_line}"),

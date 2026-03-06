@@ -65,6 +65,8 @@ enum SecretAction {
     },
     /// Remove a secret
     Remove { user_id: String, secret_id: String },
+    /// List secrets for a user
+    List { user_id: String },
 }
 
 #[tokio::main]
@@ -289,6 +291,21 @@ async fn run_secret(action: SecretAction) {
             Ok(false) => {
                 eprintln!("secret '{secret_id}' not found for user '{user_id}'");
                 std::process::exit(1);
+            }
+            Err(e) => {
+                eprintln!("error: {e}");
+                std::process::exit(1);
+            }
+        },
+        SecretAction::List { user_id } => match store.list(&user_id) {
+            Ok(secrets) => {
+                if secrets.is_empty() {
+                    println!("no secrets for user '{user_id}'");
+                } else {
+                    for s in secrets {
+                        println!("{} ({})", s.id, s.name);
+                    }
+                }
             }
             Err(e) => {
                 eprintln!("error: {e}");

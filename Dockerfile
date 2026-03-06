@@ -1,12 +1,20 @@
 FROM rust:1-alpine AS builder
 
-RUN apk add --no-cache musl-dev
+RUN apk add --no-cache musl-dev pkgconfig openssl-dev openssl-libs-static
 
 WORKDIR /src
 
 # Cache dependencies by building a dummy project first
 COPY Cargo.toml Cargo.lock ./
-COPY --parents crates/*/Cargo.toml ./
+COPY crates/calendar/Cargo.toml crates/calendar/Cargo.toml
+COPY crates/cli/Cargo.toml crates/cli/Cargo.toml
+COPY crates/client/Cargo.toml crates/client/Cargo.toml
+COPY crates/engine/Cargo.toml crates/engine/Cargo.toml
+COPY crates/protocol/Cargo.toml crates/protocol/Cargo.toml
+COPY crates/runtime/Cargo.toml crates/runtime/Cargo.toml
+COPY crates/sandbox-code/Cargo.toml crates/sandbox-code/Cargo.toml
+COPY crates/sandbox-os/Cargo.toml crates/sandbox-os/Cargo.toml
+COPY crates/server/Cargo.toml crates/server/Cargo.toml
 
 RUN for dir in crates/*/; do \
   mkdir -p "${dir}src"; \

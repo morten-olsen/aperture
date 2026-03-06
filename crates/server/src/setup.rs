@@ -375,9 +375,11 @@ impl PromptRunner for ServerPromptRunner {
 pub async fn build_engine(config: &ServerConfig) -> Result<Arc<Engine>> {
     let mut engine = Engine::new();
 
+    let runtime_config = RuntimeConfig::default();
+
     // Register plugins.
     engine
-        .register(Box::new(RuntimeConfigPlugin::new(RuntimeConfig::default())))
+        .register(Box::new(RuntimeConfigPlugin::new(runtime_config.clone())))
         .await?;
     engine.register(Box::new(DatabasePlugin)).await?;
     engine.register(Box::new(AuthPlugin)).await?;
@@ -387,7 +389,11 @@ pub async fn build_engine(config: &ServerConfig) -> Result<Arc<Engine>> {
     engine.register(Box::new(AgentsMdPlugin)).await?;
     engine.register(Box::new(BehaviourPlugin)).await?;
     engine.register(Box::new(SecretPlugin)).await?;
-    engine.register(Box::new(CalendarPlugin)).await?;
+    engine
+        .register(Box::new(CalendarPlugin::new(
+            runtime_config.data_root.clone(),
+        )))
+        .await?;
 
     let sandbox = Arc::new(QuickJsSandbox::new());
     engine

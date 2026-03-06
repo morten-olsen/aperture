@@ -10,6 +10,7 @@ use serde_json::json;
 use aperture_engine::error::{EngineError, Result};
 use aperture_engine::plugin::{Plugin, PrepareContext, SetupContext};
 use aperture_engine::redaction::RedactionRegistry;
+use aperture_engine::secret::{PluginSecretStore, PluginSecretStoreService, PluginSecretSummary};
 use aperture_engine::tool::{ApprovalRequirement, Tool};
 
 use crate::config::RuntimeConfig;
@@ -18,6 +19,32 @@ pub use self::store::{SecretStore, SecretSummary};
 
 use self::crypto::SecretKey;
 use self::tools::{SecretsGetValue, SecretsList};
+
+impl PluginSecretStore for SecretStore {
+    fn get_plugin_secret(&self, user_id: &str, secret_id: &str) -> Result<String> {
+        self.get_plugin_value(user_id, secret_id)
+    }
+
+    fn add_plugin_secret(&self, user_id: &str, id: &str, name: &str, value: &str) -> Result<()> {
+        self.add_for_plugin(user_id, "plugin", id, name, value)
+    }
+
+    fn remove_plugin_secret(&self, user_id: &str, secret_id: &str) -> Result<bool> {
+        self.remove_for_plugin(user_id, secret_id)
+    }
+
+    fn list_plugin_secrets(&self, user_id: &str) -> Result<Vec<PluginSecretSummary>> {
+        // Return all plugin secrets regardless of which plugin owns them
+        let file = self.list_by_plugin(user_id, "plugin")?;
+        Ok(file
+            .into_iter()
+            .map(|s| PluginSecretSummary {
+                id: s.id,
+                name: s.name,
+            })
+            .collect())
+    }
+}
 
 /// Plugin providing encrypted secret storage and tool access.
 ///
@@ -45,6 +72,8 @@ impl Plugin for SecretPlugin {
 
         let key = SecretKey::from_env_or_file(&config.data_root)?;
         let store = SecretStore::new(config, key);
+        ctx.extensions
+            .insert(PluginSecretStoreService(Arc::new(store.clone())));
         ctx.extensions.insert(store);
 
         if !ctx.extensions.contains::<RedactionRegistry>() {

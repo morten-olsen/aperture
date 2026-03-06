@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -5,18 +6,27 @@ use serde_json::json;
 
 use aperture_engine::error::Result;
 use aperture_engine::plugin::{Plugin, PrepareContext, SetupContext};
-use aperture_engine::tool::Tool;
+use aperture_engine::tool::{ApprovalRequirement, Tool};
 
-use crate::tools::{CalendarList, CalendarListEvents, CalendarSetup, CalendarUpdate};
+use crate::tools::{CalendarList, CalendarListEvents, CalendarRemove, CalendarSetup, CalendarSync};
 
-pub struct CalendarPlugin;
-
-const CALENDAR_TOOL_IDS: &[&str] = &[
+const TOOL_IDS: &[&str] = &[
     "calendar_setup",
+    "calendar_remove",
+    "calendar_sync",
     "calendar_list",
     "calendar_list_events",
-    "calendar_update",
 ];
+
+pub struct CalendarPlugin {
+    data_root: PathBuf,
+}
+
+impl CalendarPlugin {
+    pub fn new(data_root: PathBuf) -> Self {
+        Self { data_root }
+    }
+}
 
 #[async_trait]
 impl Plugin for CalendarPlugin {
@@ -31,75 +41,88 @@ impl Plugin for CalendarPlugin {
     async fn setup(&self, ctx: &mut SetupContext<'_>) -> Result<()> {
         ctx.registry.register(Tool {
             id: "calendar_setup".into(),
-            description: "Configure a CalDAV calendar account.".into(),
+            description: "Configure a CalDAV calendar account. Stores credentials securely and performs initial calendar discovery.".into(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
-                    "id": { "type": "string", "description": "Account identifier" },
-                    "email": { "type": "string", "description": "Account email" },
-                    "password": { "type": "string", "description": "App password or token" },
-                    "server_url": { "type": "string", "description": "CalDAV server URL" }
+                    "server_url": { "type": "string", "description": "CalDAV server URL (e.g. https://caldav.fastmail.com/dav/)" },
+                    "email": { "type": "string", "description": "Account email / username" },
+                    "password": { "type": "string", "description": "App password or authentication token" }
                 },
-                "required": ["id", "email", "password", "server_url"]
+                "required": ["server_url", "email", "password"]
             }),
             output_schema: None,
-            require_approval: None,
-            invoke: Arc::new(CalendarSetup),
+            require_approval: Some(ApprovalRequirement::Always {
+                reason: "Storing calendar credentials".into(),
+            }),
+            invoke: Arc::new(CalendarSetup { data_root: self.data_root.clone() }),
         });
 
         ctx.registry.register(Tool {
-            id: "calendar_list".into(),
-            description: "List available calendars.".into(),
+            id: "calendar_remove".into(),
+            description: "Remove a CalDAV calendar account and all its cached data.".into(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "account_id": { "type": "string", "description": "Account ID to remove" }
+                },
+                "required": ["account_id"]
+            }),
+            output_schema: None,
+            require_approval: Some(ApprovalRequirement::Always {
+                reason: "Removing calendar account".into(),
+            }),
+            invoke: Arc::new(CalendarRemove {
+                data_root: self.data_root.clone(),
+            }),
+        });
+
+        ctx.registry.register(Tool {
+            id: "calendar_sync".into(),
+            description: "Sync all calendar accounts — discovers calendars and fetches events (30 days back, 90 days forward).".into(),
             input_schema: json!({
                 "type": "object",
                 "properties": {}
             }),
             output_schema: None,
             require_approval: None,
-            invoke: Arc::new(CalendarList),
+            invoke: Arc::new(CalendarSync { data_root: self.data_root.clone() }),
+        });
+
+        ctx.registry.register(Tool {
+            id: "calendar_list".into(),
+            description: "List all configured calendar accounts and their calendars.".into(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {}
+            }),
+            output_schema: None,
+            require_approval: None,
+            invoke: Arc::new(CalendarList {
+                data_root: self.data_root.clone(),
+            }),
         });
 
         ctx.registry.register(Tool {
             id: "calendar_list_events".into(),
-            description: "List events in a calendar.".into(),
+            description: "List calendar events in a time range.".into(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
-                    "calendar_id": { "type": "string", "description": "Calendar ID" },
-                    "from": { "type": "string", "description": "Start date (ISO 8601)" },
-                    "to": { "type": "string", "description": "End date (ISO 8601)" }
-                },
-                "required": ["calendar_id"]
+                    "from": { "type": "string", "description": "Start date (ISO 8601, default: today)" },
+                    "duration_days": { "type": "integer", "description": "Number of days to include (default: 7)" }
+                }
             }),
             output_schema: None,
             require_approval: None,
-            invoke: Arc::new(CalendarListEvents),
-        });
-
-        ctx.registry.register(Tool {
-            id: "calendar_update".into(),
-            description: "Update a calendar event.".into(),
-            input_schema: json!({
-                "type": "object",
-                "properties": {
-                    "calendar_id": { "type": "string", "description": "Calendar ID" },
-                    "event_id": { "type": "string", "description": "Event ID" },
-                    "title": { "type": "string", "description": "New title" },
-                    "start": { "type": "string", "description": "New start time (ISO 8601)" },
-                    "end": { "type": "string", "description": "New end time (ISO 8601)" }
-                },
-                "required": ["calendar_id", "event_id"]
-            }),
-            output_schema: None,
-            require_approval: None,
-            invoke: Arc::new(CalendarUpdate),
+            invoke: Arc::new(CalendarListEvents { data_root: self.data_root.clone() }),
         });
 
         Ok(())
     }
 
     async fn prepare(&self, ctx: &mut PrepareContext<'_>) -> Result<()> {
-        for id in CALENDAR_TOOL_IDS {
+        for id in TOOL_IDS {
             ctx.activate_tool(id)?;
         }
         Ok(())
