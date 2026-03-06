@@ -4,7 +4,8 @@ use axum::extract::ws::{Message, WebSocket};
 use axum::extract::{State, WebSocketUpgrade};
 use axum::response::IntoResponse;
 use futures::stream::StreamExt;
-use tokio::sync::mpsc;
+use std::time::Duration;
+use tokio::sync::{mpsc, Semaphore};
 
 use aperture_engine::engine::Engine;
 use aperture_protocol::{ClientMessage, ServerMessage};
@@ -18,7 +19,8 @@ pub async fn ws_handler(
     ws: WebSocketUpgrade,
     State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| handle_socket(socket, state))
+    ws.max_message_size(1024 * 1024) // 1 MB
+        .on_upgrade(move |socket| handle_socket(socket, state))
 }
 
 async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
@@ -30,10 +32,15 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
     // Spawn outbound writer: reads from mpsc → writes to WebSocket sink.
     let writer_handle = tokio::spawn(outbound_writer(ws_sender, out_rx));
 
-    // Wait for Hello message with token and validate it.
-    let user_id = match wait_for_hello(&mut ws_receiver, &state.engine, &out_tx).await {
-        Some(uid) => uid,
-        None => return,
+    // Wait for Hello message with token and validate it (30s timeout).
+    let hello_result = tokio::time::timeout(
+        Duration::from_secs(30),
+        wait_for_hello(&mut ws_receiver, &state.engine, &out_tx),
+    )
+    .await;
+    let user_id = match hello_result {
+        Ok(Some(uid)) => uid,
+        _ => return,
     };
 
     // Send HelloAck.
@@ -41,11 +48,18 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
         user_id: user_id.clone(),
     });
 
-    // Subscribe to all engine events and forward them.
+    // Subscribe to engine events and forward only those belonging to this user.
     let mut event_rx = state.engine.events().listen_all();
     let event_out_tx = out_tx.clone();
+    let event_user_id = user_id.clone();
     let event_handle = tokio::spawn(async move {
         while let Ok(envelope) = event_rx.recv().await {
+            // Only forward events scoped to this user (or unscoped system events).
+            if let Some(ref uid) = envelope.user_id {
+                if uid != &event_user_id {
+                    continue;
+                }
+            }
             let msg = ServerMessage::Event {
                 event_id: envelope.event_id,
                 payload: envelope.payload,
@@ -55,6 +69,9 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
             }
         }
     });
+
+    // Cap concurrent in-flight actions per connection.
+    let semaphore = Arc::new(Semaphore::new(8));
 
     // Read loop: parse client messages and dispatch actions.
     while let Some(Ok(frame)) = ws_receiver.next().await {
@@ -74,7 +91,9 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                 let engine = state.engine.clone();
                 let user_id = user_id.clone();
                 let tx = out_tx.clone();
+                let sem = semaphore.clone();
                 tokio::spawn(async move {
+                    let _permit = sem.acquire().await;
                     let msg = match engine.invoke_action(&action, &user_id, input).await {
                         Ok(result) => ServerMessage::ActionResult { id, result },
                         Err(e) => ServerMessage::ActionError {

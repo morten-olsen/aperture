@@ -250,6 +250,7 @@ impl ActionInvoke for UpdateTrigger {
                     name: name.to_string(),
                     user_id: ctx.user_id.clone(),
                 },
+                Some(&ctx.user_id),
             )
             .await;
 

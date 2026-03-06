@@ -275,6 +275,7 @@ impl TriggerScheduler {
                     name: trigger.name.clone(),
                     user_id: user_id.to_string(),
                 },
+                Some(user_id),
             )
             .await;
 
@@ -386,6 +387,7 @@ impl TriggerScheduler {
                         old_status,
                         new_status: updated.status.clone(),
                     },
+                    Some(user_id),
                 )
                 .await;
         }
@@ -397,6 +399,7 @@ impl TriggerScheduler {
                     name: updated.name.clone(),
                     user_id: user_id.to_string(),
                 },
+                Some(user_id),
             )
             .await;
 
@@ -408,6 +411,7 @@ impl TriggerScheduler {
                     user_id: user_id.to_string(),
                     continuation,
                 },
+                Some(user_id),
             )
             .await;
     }
@@ -451,6 +455,7 @@ impl TriggerScheduler {
                         old_status,
                         new_status: updated.status.clone(),
                     },
+                    Some(user_id),
                 )
                 .await;
         }
@@ -462,6 +467,7 @@ impl TriggerScheduler {
                     name: updated.name.clone(),
                     user_id: user_id.to_string(),
                 },
+                Some(user_id),
             )
             .await;
 
@@ -474,6 +480,7 @@ impl TriggerScheduler {
                     error: error.to_string(),
                     consecutive_failures: updated.consecutive_failures,
                 },
+                Some(user_id),
             )
             .await;
     }

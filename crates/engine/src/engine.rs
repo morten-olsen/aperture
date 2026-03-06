@@ -195,7 +195,9 @@ impl Engine {
             Some(input.to_string()),
         );
 
-        self.events.publish(&PROMPT_CREATED, &prompt).await;
+        self.events
+            .publish(&PROMPT_CREATED, &prompt, Some(user_id))
+            .await;
 
         self.run_loop(llm, &mut state, prompt, history).await
     }
@@ -450,7 +452,11 @@ impl Engine {
                             });
                             prompt.state = PromptState::WaitingForApproval;
                             self.events
-                                .publish(&PROMPT_WAITING_FOR_APPROVAL, &prompt)
+                                .publish(
+                                    &PROMPT_WAITING_FOR_APPROVAL,
+                                    &prompt,
+                                    Some(&user_id),
+                                )
                                 .await;
                             return Ok(prompt);
                         }
@@ -495,7 +501,11 @@ impl Engine {
                         if is_pending_approval {
                             prompt.state = PromptState::WaitingForApproval;
                             self.events
-                                .publish(&PROMPT_WAITING_FOR_APPROVAL, &prompt)
+                                .publish(
+                                    &PROMPT_WAITING_FOR_APPROVAL,
+                                    &prompt,
+                                    Some(&user_id),
+                                )
                                 .await;
                             return Ok(prompt);
                         }
@@ -509,12 +519,16 @@ impl Engine {
             // 5. If no tool calls were made, the model is done.
             if !has_tool_calls {
                 prompt.state = PromptState::Completed;
-                self.events.publish(&PROMPT_COMPLETED, &prompt).await;
+                self.events
+                    .publish(&PROMPT_COMPLETED, &prompt, Some(&user_id))
+                    .await;
                 return Ok(prompt);
             }
 
             // Emit update after processing all outputs for this iteration.
-            self.events.publish(&PROMPT_UPDATED, &prompt).await;
+            self.events
+                .publish(&PROMPT_UPDATED, &prompt, Some(&user_id))
+                .await;
 
             // Otherwise, loop — the tool results will be projected as conversation
             // history on the next iteration.

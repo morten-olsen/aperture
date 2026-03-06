@@ -1,3 +1,4 @@
+use std::io::Write;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -29,9 +30,10 @@ impl JwtSecret {
         }
 
         // Generate a random secret and persist it.
-        use rand::Rng;
-        let secret: Vec<u8> = rand::thread_rng()
-            .sample_iter(&rand::distributions::Alphanumeric)
+        use rand::distr::Alphanumeric;
+        use rand::RngExt;
+        let secret: Vec<u8> = rand::rng()
+            .sample_iter(Alphanumeric)
             .take(64)
             .collect();
 
@@ -39,8 +41,18 @@ impl JwtSecret {
             std::fs::create_dir_all(parent)
                 .map_err(|e| EngineError::PluginSetup(format!("create data dir: {e}")))?;
         }
-        std::fs::write(&secret_path, &secret)
-            .map_err(|e| EngineError::PluginSetup(format!("write jwt_secret: {e}")))?;
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            let mut f = std::fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .mode(0o600)
+                .open(&secret_path)
+                .map_err(|e| EngineError::PluginSetup(format!("write jwt_secret: {e}")))?;
+            f.write_all(&secret)
+                .map_err(|e| EngineError::PluginSetup(format!("write jwt_secret: {e}")))?;
+        }
 
         Ok(Self { secret })
     }

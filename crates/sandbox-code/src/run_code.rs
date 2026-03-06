@@ -127,7 +127,10 @@ pub(crate) async fn run_in_sandbox(
                     continue;
                 }
                 // Live mode.
-                let v = rand::random::<f64>();
+                let v: f64 = {
+                    use rand::RngExt;
+                    rand::rng().random()
+                };
                 recording.push(ReplayEntry::MathRandom { value: v });
                 let _ = response.send(v);
             }

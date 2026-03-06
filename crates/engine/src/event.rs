@@ -29,6 +29,7 @@ impl<T> EventDescriptor<T> {
 #[derive(Debug, Clone)]
 pub struct EventEnvelope {
     pub event_id: String,
+    pub user_id: Option<String>,
     pub payload: Value,
 }
 
@@ -61,8 +62,13 @@ impl EventBus {
             .or_insert_with(|| broadcast::channel(64).0);
     }
 
-    /// Publish a typed event.
-    pub async fn publish<T: Serialize>(&self, descriptor: &EventDescriptor<T>, payload: &T) {
+    /// Publish a typed event scoped to a specific user.
+    pub async fn publish<T: Serialize>(
+        &self,
+        descriptor: &EventDescriptor<T>,
+        payload: &T,
+        user_id: Option<&str>,
+    ) {
         let value = serde_json::to_value(payload).expect("event payload must be serializable");
 
         // Send on the per-event channel.
@@ -78,6 +84,7 @@ impl EventBus {
         // Also send on the wildcard channel.
         let _ = self.wildcard.send(EventEnvelope {
             event_id: descriptor.id.to_string(),
+            user_id: user_id.map(String::from),
             payload: value,
         });
     }
@@ -154,7 +161,7 @@ mod tests {
         let payload = TestPayload {
             message: "hello".into(),
         };
-        bus.publish(&TEST_EVENT, &payload).await;
+        bus.publish(&TEST_EVENT, &payload, Some("user-1")).await;
 
         let received: Value = rx.recv().await.unwrap();
         let deserialized: TestPayload = serde_json::from_value(received).unwrap();
@@ -169,10 +176,11 @@ mod tests {
         let payload = TestPayload {
             message: "wildcard".into(),
         };
-        bus.publish(&TEST_EVENT, &payload).await;
+        bus.publish(&TEST_EVENT, &payload, Some("user-1")).await;
 
         let envelope = rx.recv().await.unwrap();
         assert_eq!(envelope.event_id, "test.event");
+        assert_eq!(envelope.user_id.as_deref(), Some("user-1"));
         let deserialized: TestPayload = serde_json::from_value(envelope.payload).unwrap();
         assert_eq!(deserialized, payload);
     }
@@ -206,6 +214,6 @@ mod tests {
             message: "no one listening".into(),
         };
         // Should not panic.
-        bus.publish(&TEST_EVENT, &payload).await;
+        bus.publish(&TEST_EVENT, &payload, None).await;
     }
 }

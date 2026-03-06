@@ -1,3 +1,4 @@
+use std::io::Write;
 use std::path::Path;
 
 use aes_gcm::aead::{Aead, OsRng};
@@ -44,15 +45,25 @@ impl SecretKey {
         }
 
         // Generate a random 32-byte key and persist it.
-        use rand::Rng;
-        let bytes: Vec<u8> = (0..32).map(|_| rand::thread_rng().gen()).collect();
+        use rand::RngExt;
+        let bytes: Vec<u8> = (0..32).map(|_| rand::rng().random()).collect();
 
         if let Some(parent) = key_path.parent() {
             std::fs::create_dir_all(parent)
                 .map_err(|e| EngineError::PluginSetup(format!("create data dir: {e}")))?;
         }
-        std::fs::write(&key_path, &bytes)
-            .map_err(|e| EngineError::PluginSetup(format!("write secret.key: {e}")))?;
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            let mut f = std::fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .mode(0o600)
+                .open(&key_path)
+                .map_err(|e| EngineError::PluginSetup(format!("write secret.key: {e}")))?;
+            f.write_all(&bytes)
+                .map_err(|e| EngineError::PluginSetup(format!("write secret.key: {e}")))?;
+        }
 
         Ok(Self { bytes })
     }

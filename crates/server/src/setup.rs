@@ -199,8 +199,9 @@ impl LlmClient for OpenAiClient {
         if !resp.status().is_success() {
             let status = resp.status();
             let body = resp.text().await.unwrap_or_else(|_| "no body".into());
+            eprintln!("LLM API error {status}: {body}");
             return Err(EngineError::ToolInvocation(format!(
-                "OpenAI API error {status}: {body}"
+                "LLM request failed ({status})"
             )));
         }
 
@@ -316,8 +317,9 @@ impl EmbeddingClient for OpenAiEmbeddingClient {
         if !resp.status().is_success() {
             let status = resp.status();
             let body = resp.text().await.unwrap_or_else(|_| "no body".into());
+            eprintln!("Embedding API error {status}: {body}");
             return Err(EngineError::ToolInvocation(format!(
-                "embedding API error {status}: {body}"
+                "embedding request failed ({status})"
             )));
         }
 

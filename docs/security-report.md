@@ -10,9 +10,9 @@
 | Severity      | Count |
 |---------------|-------|
 | Critical      | 1     |
-| High          | 6     |
-| Medium        | 5     |
-| Low           | 4     |
+| High          | 0     |
+| Medium        | 3     |
+| Low           | 3     |
 | Informational | 4     |
 
 ---
@@ -42,96 +42,53 @@ The `tower-http` CORS dependency has been removed. The only client is the CLI, w
 
 ## High Findings
 
-### HIGH-1: Unauthenticated `/schema` Endpoint Leaks Full API Surface
+### ~~HIGH-1: Unauthenticated `/schema` Endpoint~~ — ACCEPTED RISK
 
-**File:** `crates/server/src/routes.rs`
-
-```rust
-.route("/schema", get(schema_handler))  // No auth middleware
-```
-
-Any unauthenticated client can enumerate all action names, descriptions, input/output schemas, and event IDs. This provides full reconnaissance of system capabilities.
-
-**Fix:** Require authentication on this route.
+The `/schema` endpoint is intentionally public. It serves as API documentation for client generation (similar to OpenAPI), and does not expose sensitive data.
 
 ---
 
-### HIGH-2: Unbounded Concurrent Action Invocations — No Rate Limiting
+### ~~HIGH-2: Unbounded Concurrent Action Invocations~~ — RESOLVED
 
-**File:** `crates/server/src/ws.rs`
-
-Each `InvokeAction` message spawns a new Tokio task unconditionally. No limit on concurrent tasks per connection or globally. A single client can:
-- Spawn thousands of tasks consuming memory
-- Trigger unbounded LLM calls (draining API budget)
-- Overflow the `mpsc::unbounded_channel` for outbound messages
-
-**Fix:** Use a semaphore to cap concurrent in-flight actions per connection (e.g. 4–8). Use `mpsc::channel(N)` instead of `mpsc::unbounded_channel`. Consider a per-user rate limiter.
+A per-connection `Semaphore` (8 permits) now caps concurrent in-flight actions. Each spawned task acquires a permit before invoking the action and releases it on completion.
 
 ---
 
-### HIGH-3: No WebSocket Message Size Limit — Memory Exhaustion
+### ~~HIGH-3: No WebSocket Message Size Limit~~ — RESOLVED
 
-**File:** `crates/server/src/ws.rs`
-
-The default `tokio-tungstenite` max message size is 64 MB. No downward configuration is applied. The `input: Value` field in `InvokeAction` is arbitrary JSON with no size constraint before being passed to `invoke_action`.
-
-**Fix:** Configure the WebSocket upgrade with a reduced `max_message_size` (e.g. 1 MB). Validate input size before deserialization.
+WebSocket upgrade now sets `max_message_size(1 MB)`, down from the 64 MB default. Messages exceeding this are rejected at the protocol layer before deserialization.
 
 ---
 
-### HIGH-4: Cross-User Event Leakage via Global Broadcast
+### ~~HIGH-4: Cross-User Event Leakage via Global Broadcast~~ — RESOLVED
 
-**File:** `crates/server/src/ws.rs`
-
-```rust
-let mut event_rx = state.engine.events().listen_all();
-```
-
-The wildcard event subscription receives every event from all users. In a multi-user deployment, user A's WebSocket receives user B's prompt events — including full prompt content, tool results, and text responses. This is a direct multi-tenancy data isolation breach.
-
-**Fix:** Add `user_id` to `EventEnvelope`. Filter events in the WebSocket forwarding loop. Alternatively, use per-user event channels.
+`EventEnvelope` now carries `user_id: Option<String>`. All publish call sites pass the originating user ID. The WebSocket event forwarding loop in `ws.rs` filters envelopes, only forwarding events whose `user_id` matches the authenticated connection (or events with no user scope).
 
 ---
 
-### HIGH-5: Upstream API Error Bodies Leaked to Clients
+### ~~HIGH-5: Upstream API Error Bodies Leaked to Clients~~ — RESOLVED
 
-**File:** `crates/server/src/setup.rs`, `crates/server/src/ws.rs`
-
-OpenAI API error responses are returned verbatim to clients via `e.to_string()`. These can reveal account status, rate limits, model access, organization details, and billing information.
-
-**Fix:** Log full errors server-side. Return a sanitized generic message to the client (e.g. `"upstream service error"`) with a correlation ID.
+Full upstream error bodies are now logged server-side via `eprintln!`. Clients receive only a generic message with the HTTP status code (e.g. `"LLM request failed (429)"`) — no response body is forwarded.
 
 ---
 
-### HIGH-6: No TLS — All Traffic Transmitted in Plaintext
+### ~~HIGH-6: No TLS~~ — ACCEPTED RISK
 
-**File:** `crates/server/src/main.rs`, `crates/server/src/config.rs`
-
-The server binds a plain TCP listener. Login credentials, JWTs, and all data are transmitted without encryption. The default bind address is `0.0.0.0` (all interfaces).
-
-**Fix:** Integrate `axum-server` with `RustlsConfig`. Add `TLS_CERT_PATH` / `TLS_KEY_PATH` config fields. Default bind to `127.0.0.1` unless explicitly configured.
+The application is designed to run behind a reverse proxy (e.g. nginx, Caddy) that handles TLS termination. The server itself does not need to implement TLS.
 
 ---
 
 ## Medium Findings
 
-### MED-1: Hello-Phase Has No Timeout — Connection Pinning
+### ~~MED-1: Hello-Phase Has No Timeout~~ — RESOLVED
 
-**File:** `crates/server/src/ws.rs`
-
-`wait_for_hello` loops indefinitely. A client can open a WebSocket and send nothing, holding the connection forever. No connection limit exists.
-
-**Fix:** Wrap in `tokio::time::timeout(Duration::from_secs(30), ...)`. Add a global connection counter; reject beyond a configurable limit.
+`wait_for_hello` is now wrapped in `tokio::time::timeout(Duration::from_secs(30))`. Connections that don't authenticate within 30 seconds are dropped.
 
 ---
 
-### MED-2: Secret Files Written with Default umask — Potentially World-Readable
+### ~~MED-2: Secret Files Written with Default umask~~ — RESOLVED
 
-**File:** `crates/runtime/src/auth/jwt.rs`, `crates/runtime/src/secrets/crypto.rs`
-
-JWT signing secret and AES-256-GCM encryption key are written with `std::fs::write`, inheriting the process umask. On systems with umask `0022`, files are world-readable.
-
-**Fix:** Use `std::fs::OpenOptions` with `mode(0o600)` via `std::os::unix::fs::OpenOptionsExt`.
+Both `jwt_secret` and `secret.key` are now written via `OpenOptions` with explicit `mode(0o600)` (owner read/write only), regardless of the process umask.
 
 ---
 
@@ -195,13 +152,9 @@ There is no structured logging anywhere in the server. Login attempts, WebSocket
 
 ---
 
-### LOW-4: Outdated `rpassword` Dependency
+### ~~LOW-4: Outdated Dependencies~~ — RESOLVED
 
-**File:** `crates/server/Cargo.toml`
-
-`rpassword = "5"` — several major versions behind current (7.x). No specific CVEs, but staying current reduces future vulnerability exposure.
-
-**Fix:** Update to `rpassword = "7"`.
+All dependencies upgraded to latest major versions (landlock excluded per design). Notable: `rpassword` 5→7, `rusqlite` 0.32→0.38, `reqwest` 0.12→0.13, `jsonwebtoken` 9→10, `rand` 0.8/0.9→0.10, `scraper` 0.22→0.25, `rquickjs` 0.9→0.11.
 
 ---
 
@@ -284,16 +237,16 @@ Client
 ### Immediate (before any network exposure)
 - CRIT-1: JWT expiration
 - ~~CRIT-2: CORS~~ — resolved (removed; CLI-only client)
-- HIGH-4: Per-user event filtering
-- HIGH-6: TLS support; default to `127.0.0.1`
+- ~~HIGH-4: Per-user event filtering~~ — resolved
+- ~~HIGH-6: TLS~~ — accepted risk (reverse proxy handles TLS termination)
 
 ### Short-term (before production use)
-- HIGH-1: Authenticate `/schema`
-- HIGH-2: Bounded concurrency + rate limiting
-- HIGH-3: WebSocket message size limit
-- HIGH-5: Sanitize upstream error messages
-- MED-1: Hello timeout
-- MED-2: Secret file permissions (`0o600`)
+- ~~HIGH-1: Authenticate `/schema`~~ — accepted risk (intentional for client generation)
+- ~~HIGH-2: Bounded concurrency~~ — resolved (semaphore, 8 permits per connection)
+- ~~HIGH-3: WebSocket message size limit~~ — resolved (1 MB cap)
+- ~~HIGH-5: Sanitize upstream error messages~~ — resolved
+- ~~MED-1: Hello timeout~~ — resolved (30s)
+- ~~MED-2: Secret file permissions~~ — resolved (`0o600`)
 
 ### Medium-term (hardening)
 - MED-3: Don't echo action names in errors
@@ -302,7 +255,7 @@ Client
 - LOW-1: Validate `OPENAI_BASE_URL`
 - LOW-2: Sanitize all client-facing errors
 - LOW-3: Structured logging
-- LOW-4: Update `rpassword`
+- ~~LOW-4: Update dependencies~~ — resolved (all upgraded to latest)
 
 ### Ongoing (code quality)
 - INFO-1: Replace `expect()` with proper error handling

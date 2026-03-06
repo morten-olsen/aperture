@@ -54,6 +54,7 @@ impl aperture_engine::action::ActionInvoke for CreateConversation {
                     conversation_id: id.clone(),
                     user_id: ctx.user_id.clone(),
                 },
+                Some(&ctx.user_id),
             )
             .await;
 
@@ -183,6 +184,7 @@ impl aperture_engine::action::ActionInvoke for SendMessage {
                     conversation_id,
                     prompt_id,
                 },
+                Some(&ctx.user_id),
             )
             .await;
 
@@ -261,6 +263,7 @@ impl aperture_engine::action::ActionInvoke for ApprovePrompt {
                     conversation_id,
                     prompt_id: updated.id.clone(),
                 },
+                Some(&ctx.user_id),
             )
             .await;
 
@@ -340,6 +343,7 @@ impl aperture_engine::action::ActionInvoke for RejectPrompt {
                     conversation_id,
                     prompt_id: updated.id.clone(),
                 },
+                Some(&ctx.user_id),
             )
             .await;
 
@@ -377,6 +381,7 @@ impl aperture_engine::action::ActionInvoke for AttachPrompt {
                     conversation_id,
                     prompt_id,
                 },
+                Some(&ctx.user_id),
             )
             .await;
 

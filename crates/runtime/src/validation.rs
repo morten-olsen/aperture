@@ -94,6 +94,7 @@ pub async fn validated_write(
                     path: rel_path.to_string(),
                     user_id: user_id.to_string(),
                 },
+                Some(user_id),
             )
             .await;
     }
