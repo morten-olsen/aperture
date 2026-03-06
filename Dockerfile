@@ -26,7 +26,8 @@ RUN for dir in crates/*/; do \
 
 # Copy real source and build
 COPY crates/ crates/
-RUN cargo build --release --bin aperture-server
+RUN find crates -name '*.rs' -exec touch {} + \
+  && cargo build --release --bin aperture-server
 
 # -------------------------------------------------------------------
 FROM scratch
