@@ -32,10 +32,7 @@ impl JwtSecret {
         // Generate a random secret and persist it.
         use rand::distr::Alphanumeric;
         use rand::RngExt;
-        let secret: Vec<u8> = rand::rng()
-            .sample_iter(Alphanumeric)
-            .take(64)
-            .collect();
+        let secret: Vec<u8> = rand::rng().sample_iter(Alphanumeric).take(64).collect();
 
         if let Some(parent) = secret_path.parent() {
             std::fs::create_dir_all(parent)

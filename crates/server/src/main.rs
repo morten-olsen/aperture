@@ -57,16 +57,16 @@ enum UserAction {
 enum SecretAction {
     /// Add or update a secret
     Add {
-        user_id: String,
+        username: String,
         secret_id: String,
         /// Human-readable name for the secret
         #[arg(long)]
         name: Option<String>,
     },
     /// Remove a secret
-    Remove { user_id: String, secret_id: String },
+    Remove { username: String, secret_id: String },
     /// List secrets for a user
-    List { user_id: String },
+    List { username: String },
 }
 
 #[tokio::main]
@@ -251,7 +251,10 @@ async fn run_user(action: UserAction) {
 
 async fn run_secret(action: SecretAction) {
     use aperture_engine::engine::Engine;
-    use aperture_runtime::{RuntimeConfig, RuntimeConfigPlugin, SecretPlugin, SecretStore};
+    use aperture_runtime::{
+        AuthPlugin, AuthService, DatabasePlugin, RuntimeConfig, RuntimeConfigPlugin, SecretPlugin,
+        SecretStore,
+    };
 
     let mut engine = Engine::new();
     if let Err(e) = engine
@@ -261,10 +264,26 @@ async fn run_secret(action: SecretAction) {
         eprintln!("error: {e}");
         std::process::exit(1);
     }
+    if let Err(e) = engine.register(Box::new(DatabasePlugin)).await {
+        eprintln!("error: {e}");
+        std::process::exit(1);
+    }
+    if let Err(e) = engine.register(Box::new(AuthPlugin)).await {
+        eprintln!("error: {e}");
+        std::process::exit(1);
+    }
     if let Err(e) = engine.register(Box::new(SecretPlugin)).await {
         eprintln!("error: {e}");
         std::process::exit(1);
     }
+
+    let auth = match engine.get_extension::<AuthService>() {
+        Some(a) => a.clone(),
+        None => {
+            eprintln!("error: auth service not available");
+            std::process::exit(1);
+        }
+    };
 
     let store = match engine.get_extension::<SecretStore>() {
         Some(s) => s.clone(),
@@ -276,10 +295,11 @@ async fn run_secret(action: SecretAction) {
 
     match action {
         SecretAction::Add {
-            user_id,
+            username,
             secret_id,
             name,
         } => {
+            let user_id = resolve_user(&auth, &username).await;
             let display_name = name.unwrap_or_else(|| secret_id.clone());
             eprint!("Secret value: ");
             let value = rpassword::read_password().unwrap_or_else(|e| {
@@ -287,38 +307,62 @@ async fn run_secret(action: SecretAction) {
                 std::process::exit(1);
             });
             match store.add(&user_id, &secret_id, &display_name, &value) {
-                Ok(()) => println!("secret '{secret_id}' added for user '{user_id}'"),
+                Ok(()) => println!("secret '{secret_id}' added for user '{username}'"),
                 Err(e) => {
                     eprintln!("error: {e}");
                     std::process::exit(1);
                 }
             }
         }
-        SecretAction::Remove { user_id, secret_id } => match store.remove(&user_id, &secret_id) {
-            Ok(true) => println!("secret '{secret_id}' removed for user '{user_id}'"),
-            Ok(false) => {
-                eprintln!("secret '{secret_id}' not found for user '{user_id}'");
-                std::process::exit(1);
-            }
-            Err(e) => {
-                eprintln!("error: {e}");
-                std::process::exit(1);
-            }
-        },
-        SecretAction::List { user_id } => match store.list(&user_id) {
-            Ok(secrets) => {
-                if secrets.is_empty() {
-                    println!("no secrets for user '{user_id}'");
-                } else {
-                    for s in secrets {
-                        println!("{} ({})", s.id, s.name);
-                    }
+        SecretAction::Remove {
+            username,
+            secret_id,
+        } => {
+            let user_id = resolve_user(&auth, &username).await;
+            match store.remove(&user_id, &secret_id) {
+                Ok(true) => println!("secret '{secret_id}' removed for user '{username}'"),
+                Ok(false) => {
+                    eprintln!("secret '{secret_id}' not found for user '{username}'");
+                    std::process::exit(1);
+                }
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    std::process::exit(1);
                 }
             }
-            Err(e) => {
-                eprintln!("error: {e}");
-                std::process::exit(1);
+        }
+        SecretAction::List { username } => {
+            let user_id = resolve_user(&auth, &username).await;
+            match store.list(&user_id) {
+                Ok(secrets) => {
+                    if secrets.is_empty() {
+                        println!("no secrets for user '{username}'");
+                    } else {
+                        for s in secrets {
+                            println!("{} ({})", s.id, s.name);
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    std::process::exit(1);
+                }
             }
-        },
+        }
+    }
+}
+
+/// Resolve a username to the database user ID, exiting on failure.
+async fn resolve_user(auth: &aperture_runtime::AuthService, username: &str) -> String {
+    match auth.get_user_by_username(username).await {
+        Ok(Some(u)) => u.id,
+        Ok(None) => {
+            eprintln!("error: user '{username}' not found");
+            std::process::exit(1);
+        }
+        Err(e) => {
+            eprintln!("error: {e}");
+            std::process::exit(1);
+        }
     }
 }

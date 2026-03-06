@@ -452,11 +452,7 @@ impl Engine {
                             });
                             prompt.state = PromptState::WaitingForApproval;
                             self.events
-                                .publish(
-                                    &PROMPT_WAITING_FOR_APPROVAL,
-                                    &prompt,
-                                    Some(&user_id),
-                                )
+                                .publish(&PROMPT_WAITING_FOR_APPROVAL, &prompt, Some(&user_id))
                                 .await;
                             return Ok(prompt);
                         }
@@ -501,11 +497,7 @@ impl Engine {
                         if is_pending_approval {
                             prompt.state = PromptState::WaitingForApproval;
                             self.events
-                                .publish(
-                                    &PROMPT_WAITING_FOR_APPROVAL,
-                                    &prompt,
-                                    Some(&user_id),
-                                )
+                                .publish(&PROMPT_WAITING_FOR_APPROVAL, &prompt, Some(&user_id))
                                 .await;
                             return Ok(prompt);
                         }
