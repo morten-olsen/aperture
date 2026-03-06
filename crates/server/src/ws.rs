@@ -40,8 +40,14 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
     .await;
     let user_id = match hello_result {
         Ok(Some(uid)) => uid,
-        _ => return,
+        Ok(None) => return,
+        Err(_) => {
+            tracing::warn!("hello timeout, dropping connection");
+            return;
+        }
     };
+
+    tracing::info!(user_id = %user_id, "client connected");
 
     // Send HelloAck.
     let _ = out_tx.send(ServerMessage::HelloAck {
@@ -88,6 +94,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
 
         match client_msg {
             ClientMessage::InvokeAction { id, action, input } => {
+                tracing::info!(user_id = %user_id, action = %action, id = %id, "action invoked");
                 let engine = state.engine.clone();
                 let user_id = user_id.clone();
                 let tx = out_tx.clone();
@@ -96,10 +103,19 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                     let _permit = sem.acquire().await;
                     let msg = match engine.invoke_action(&action, &user_id, input).await {
                         Ok(result) => ServerMessage::ActionResult { id, result },
-                        Err(e) => ServerMessage::ActionError {
-                            id,
-                            error: e.to_string(),
-                        },
+                        Err(e) => {
+                            tracing::warn!(
+                                user_id = %user_id,
+                                action = %action,
+                                id = %id,
+                                error = %e,
+                                "action failed"
+                            );
+                            ServerMessage::ActionError {
+                                id,
+                                error: e.to_string(),
+                            }
+                        }
                     };
                     let _ = tx.send(msg);
                 });
@@ -109,6 +125,8 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
             }
         }
     }
+
+    tracing::info!(user_id = %user_id, "client disconnected");
 
     // Clean up.
     event_handle.abort();

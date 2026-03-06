@@ -82,10 +82,18 @@ async fn main() {
 }
 
 async fn run_serve() {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::from_default_env()
+                .add_directive("aperture=info".parse().expect("valid filter directive")),
+        )
+        .json()
+        .init();
+
     let config = match ServerConfig::from_env() {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("error: {e}");
+            tracing::error!(error = %e, "configuration error");
             std::process::exit(2);
         }
     };
@@ -95,7 +103,7 @@ async fn run_serve() {
     let engine = match setup::build_engine(&config).await {
         Ok(e) => e,
         Err(e) => {
-            eprintln!("error building engine: {e}");
+            tracing::error!(error = %e, "error building engine");
             std::process::exit(1);
         }
     };
@@ -106,13 +114,13 @@ async fn run_serve() {
     let listener = tokio::net::TcpListener::bind(&addr)
         .await
         .unwrap_or_else(|e| {
-            eprintln!("error binding to {addr}: {e}");
+            tracing::error!(addr = %addr, error = %e, "error binding listener");
             std::process::exit(1);
         });
 
-    eprintln!("aperture-server listening on {addr}");
+    tracing::info!(addr = %addr, "aperture-server listening");
     axum::serve(listener, router).await.unwrap_or_else(|e| {
-        eprintln!("server error: {e}");
+        tracing::error!(error = %e, "server error");
         std::process::exit(1);
     });
 }

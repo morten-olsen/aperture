@@ -12,7 +12,7 @@
 | Critical      | 1     |
 | High          | 0     |
 | Medium        | 3     |
-| Low           | 3     |
+| Low           | 2     |
 | Informational | 4     |
 
 ---
@@ -144,11 +144,9 @@ Database, file I/O, and internal errors are converted to strings and returned in
 
 ---
 
-### LOW-3: No Logging or Audit Trail
+### ~~LOW-3: No Logging or Audit Trail~~ — RESOLVED
 
-There is no structured logging anywhere in the server. Login attempts, WebSocket connections, action invocations, and errors produce no log output. No way to audit activity or detect brute-force attempts.
-
-**Fix:** Integrate `tracing` / `tracing-subscriber`. Emit structured events for auth, connections, actions, and errors.
+Structured JSON logging added via `tracing` / `tracing-subscriber` with `env-filter`. Key events logged: login success/failure, token validation failure, WebSocket connect/disconnect, hello timeout, action invocation, action errors, and LLM/embedding API errors. Controlled via `RUST_LOG` (defaults to `aperture=info`).
 
 ---
 
@@ -254,7 +252,7 @@ Client
 - MED-5: HTTP client timeouts
 - LOW-1: Validate `OPENAI_BASE_URL`
 - LOW-2: Sanitize all client-facing errors
-- LOW-3: Structured logging
+- ~~LOW-3: Structured logging~~ — resolved
 - ~~LOW-4: Update dependencies~~ — resolved (all upgraded to latest)
 
 ### Ongoing (code quality)

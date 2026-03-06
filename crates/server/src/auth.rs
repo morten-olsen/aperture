@@ -23,7 +23,12 @@ pub async fn login(
     let (user, token) = auth
         .authenticate(&body.username, &body.password)
         .await
-        .map_err(|_| (StatusCode::UNAUTHORIZED, "invalid credentials".to_string()))?;
+        .map_err(|_| {
+            tracing::warn!(username = %body.username, "login failed");
+            (StatusCode::UNAUTHORIZED, "invalid credentials".to_string())
+        })?;
+
+    tracing::info!(username = %user.username, user_id = %user.id, "login successful");
 
     Ok(Json(LoginResponse {
         token,
@@ -63,9 +68,10 @@ pub async fn me(
         )
     })?;
 
-    let claims = auth
-        .validate_token(token)
-        .map_err(|_| (StatusCode::UNAUTHORIZED, "invalid token".to_string()))?;
+    let claims = auth.validate_token(token).map_err(|_| {
+        tracing::warn!("token validation failed");
+        (StatusCode::UNAUTHORIZED, "invalid token".to_string())
+    })?;
 
     let user = auth
         .get_user(&claims.sub)
