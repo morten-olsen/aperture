@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
 
 use aperture_calendar::CalendarPlugin;
@@ -375,7 +376,13 @@ impl PromptRunner for ServerPromptRunner {
 pub async fn build_engine(config: &ServerConfig) -> Result<Arc<Engine>> {
     let mut engine = Engine::new();
 
-    let runtime_config = RuntimeConfig::default();
+    let runtime_config = match &config.data_path {
+        Some(path) => RuntimeConfig {
+            data_root: PathBuf::from(path),
+            ..RuntimeConfig::default()
+        },
+        None => RuntimeConfig::default(),
+    };
 
     // Register plugins.
     engine

@@ -1,6 +1,7 @@
 pub struct ServerConfig {
     pub port: u16,
     pub host: String,
+    pub data_path: Option<String>,
     pub openai_api_key: String,
     pub openai_base_url: String,
     pub openai_model: String,
@@ -18,6 +19,7 @@ impl ServerConfig {
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(3000),
             host: std::env::var("HOST").unwrap_or_else(|_| "0.0.0.0".into()),
+            data_path: std::env::var("APERTURE_DATA_PATH").ok(),
             openai_api_key: api_key,
             openai_base_url: std::env::var("OPENAI_BASE_URL")
                 .unwrap_or_else(|_| "https://api.openai.com/v1".into()),

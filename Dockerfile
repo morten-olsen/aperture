@@ -17,6 +17,9 @@ FROM scratch
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /usr/local/bin/aperture-server /usr/local/bin/aperture-server
 
+ENV APERTURE_DATA_PATH=/data
+VOLUME /data
+
 USER 1000
 EXPOSE 3000
 
